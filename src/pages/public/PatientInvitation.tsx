@@ -1,0 +1,20 @@
+import { useState } from 'react'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { CheckCircle2, HeartHandshake, ShieldCheck } from 'lucide-react'
+import { Logo } from '../../components/Logo'
+import { getInvitationByToken } from '../../lib/invitations'
+import { getUsers } from '../../lib/auth'
+import { saveConsent } from '../../lib/records'
+import { useAuth } from '../../lib/AuthContext'
+
+export function PatientInvitation() {
+  const { token = '' } = useParams(); const invitation = getInvitationByToken(token); const navigate = useNavigate(); const { registerPatient } = useAuth()
+  const professional = invitation ? getUsers().find(u=>u.id===invitation.professionalId) : null
+  const [form,setForm]=useState({name:invitation?.patientName||'',email:invitation?.patientEmail||'',phone:invitation?.patientPhone||'',password:'',confirm:''})
+  const [error,setError]=useState('')
+  const [shareRecord,setShareRecord]=useState(false)
+  if (!invitation) return <Navigate to="/" replace />
+  function submit(e:React.FormEvent){e.preventDefault();setError('');if(form.password.length<6)return setError('A senha precisa ter pelo menos 6 caracteres.');if(form.password!==form.confirm)return setError('As senhas não coincidem.');try{const newUser=registerPatient(token,form);saveConsent({patientId:newUser.id,globalConsent:shareRecord,professionalIds:shareRecord&&professional?[professional.id]:[],updatedAt:new Date().toISOString()});navigate('/paciente',{replace:true})}catch(err){setError(err instanceof Error?err.message:'Não foi possível criar seu acesso.')}}
+  if(invitation.status!=='pending') return <div className="auth-page"><div className="auth-card success-card"><Logo/><div className="success-icon">!</div><h1>Convite indisponível</h1><p className="muted">Este link já foi utilizado ou cancelado.</p><a className="btn btn-primary" href="/login">Ir para o login</a></div></div>
+  return <div className="invite-page"><section className="invite-welcome"><Logo/><div><span className="badge">Convite pessoal</span><h1>Seu espaço de cuidado começa aqui.</h1><p>{professional?.name} convidou você para acompanhar atendimentos, mensagens, agendamentos e pagamentos em um ambiente reservado.</p></div><div className="invite-benefits"><span><HeartHandshake/>Vínculo exclusivo com sua profissional</span><span><ShieldCheck/>Dados organizados em um só lugar</span><span><CheckCircle2/>Acesso simples pelo celular</span></div></section><section className="invite-register"><form className="auth-card" onSubmit={submit}><h2>Crie seu acesso</h2><p className="muted">Confirme seus dados e escolha uma senha.</p>{error&&<div className="alert alert-error">{error}</div>}<label className="field"><span>Nome completo</span><input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></label><label className="field"><span>E-mail</span><input type="email" required value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></label><label className="field"><span>Telefone</span><input required value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></label><div className="form-grid"><label className="field"><span>Senha</span><input type="password" required value={form.password} onChange={e=>setForm({...form,password:e.target.value})}/></label><label className="field"><span>Confirmar senha</span><input type="password" required value={form.confirm} onChange={e=>setForm({...form,confirm:e.target.value})}/></label></div><label className="consent-main"><input type="checkbox" checked={shareRecord} onChange={e=>setShareRecord(e.target.checked)}/><span><strong>Autorizo o compartilhamento do meu prontuário</strong><small>Inicialmente apenas com {professional?.name}. Depois poderei incluir ou remover profissionais no meu perfil.</small></span></label><button className="btn btn-primary" style={{width:'100%'}}>Criar minha conta</button><p className="auth-footer muted">Já possui acesso? <a href="/login"><strong>Entrar</strong></a></p></form></section></div>
+}

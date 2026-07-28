@@ -1,0 +1,6 @@
+export type RecordScope = 'full' | 'reports' | 'files' | 'care_plans' | 'selected'
+export type TimelineType = 'appointment'|'evolution'|'report'|'document'|'care_plan'|'referral'|'relevant_event'|'addendum'
+export interface MedicalRecord { id:string; patientId:string; patientData:Record<string,string>; babyData:Record<string,string>; pregnancy:Record<string,string>; birth:Record<string,string>; contacts:{name:string;relationship:string;phone:string}[]; relevantInformation:string[] }
+export interface TimelineEntry { id:string; medicalRecordId:string; authorId:string; authorRole:'professional'|'admin'|'system'; specialty?:string; type:TimelineType; content:string; attachmentIds:string[]; visibility:'patient_and_authorized'|'authorized_only'; appointmentId?:string; correctsEntryId?:string; createdAt:string; version:number }
+export interface RecordConsent { id:string; patientId:string; professionalId:string; grantedById:string; scopes:RecordScope[]; selectedEntryIds:string[]; startsAt:string; expiresAt?:string; endsWithCare:boolean; revokedAt?:string }
+export interface AuditLog { id:string; actorId:string; actorRole:string; action:'access'|'create'|'update'|'addendum'|'upload'|'download'|'share'|'revoke'|'export'|'report'; resource:string; resourceId:string; occurredAt:string; metadata:Record<string,string|number|boolean>; ip?:string; userAgent?:string }

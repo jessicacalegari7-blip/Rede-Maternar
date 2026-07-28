@@ -1,0 +1,74 @@
+import { useState, type FormEvent } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { Logo } from '../../components/Logo'
+import { registerProfessional } from '../../lib/auth'
+
+const specialties = [
+  'Consultoria de amamentação', 'Pediatria', 'Fonoaudiologia', 'Nutrição materno-infantil',
+  'Psicologia perinatal', 'Fisioterapia', 'Doula', 'Enfermagem obstétrica', 'Odontopediatria', 'Outra',
+]
+
+export function ProfessionalSignup() {
+  const [searchParams] = useSearchParams()
+  const initialPlan = searchParams.get('plano') === 'annual' ? 'annual' : 'free'
+  const [success, setSuccess] = useState(false)
+  const [error, setError] = useState('')
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError('')
+    const form = new FormData(event.currentTarget)
+    const password = String(form.get('password'))
+    const confirmation = String(form.get('passwordConfirmation'))
+    if (password !== confirmation) {
+      setError('As senhas precisam ser iguais.')
+      return
+    }
+    try {
+      registerProfessional({
+        name: String(form.get('name')),
+        email: String(form.get('email')),
+        phone: String(form.get('phone')),
+        specialty: String(form.get('specialty')),
+        city: String(form.get('city')),
+        registration: String(form.get('registration') ?? ''),
+        password,
+        plan: String(form.get('plan')) === 'annual' ? 'annual' : 'free',
+      })
+      setSuccess(true)
+      event.currentTarget.reset()
+    } catch (signupError) {
+      setError(signupError instanceof Error ? signupError.message : 'Não foi possível enviar o cadastro.')
+    }
+  }
+
+  if (success) {
+    return <div className="auth-page"><div className="auth-card success-card"><Logo /><div className="success-icon">✓</div><h1>Cadastro recebido</h1><p>Seus dados foram enviados para análise da equipe Rede Maternar.</p><p className="muted">Assim que o cadastro for aprovado, você poderá entrar usando o e-mail e a senha informados.</p><Link className="btn btn-primary" to="/login">Ir para o login</Link></div></div>
+  }
+
+  return (
+    <div className="auth-page">
+      <form className="auth-card auth-card-wide" onSubmit={submit}>
+        <Logo />
+        <span className="badge">Cadastro profissional</span>
+        <h1>Faça parte da Rede Maternar</h1>
+        <p className="muted">Preencha seus dados e escolha como deseja participar da Rede Maternar.</p>
+        <div className="plan-selector"><label><input type="radio" name="plan" value="free" defaultChecked={initialPlan === 'free'} /><span><strong>Plano Comunidade · Gratuito</strong><small>Indique profissionais e receba 20% das indicações convertidas.</small></span></label><label><input type="radio" name="plan" value="annual" defaultChecked={initialPlan === 'annual'} /><span><strong>Plano Anual</strong><small>R$ 179,90 no cartão ou R$ 149,00 à vista. Indique e receba indicações.</small></span></label></div>
+        {error && <div className="alert alert-error">{error}</div>}
+        <div className="form-grid">
+          <div className="field field-span-2"><label>Nome completo</label><input name="name" placeholder="Seu nome" required minLength={3} /></div>
+          <div className="field"><label>E-mail profissional</label><input name="email" type="email" placeholder="voce@email.com" required /></div>
+          <div className="field"><label>WhatsApp</label><input name="phone" placeholder="(11) 99999-9999" required /></div>
+          <div className="field"><label>Especialidade</label><select name="specialty" required><option value="">Selecione</option>{specialties.map((specialty) => <option key={specialty}>{specialty}</option>)}</select></div>
+          <div className="field"><label>Registro profissional</label><input name="registration" placeholder="Quando aplicável" /></div>
+          <div className="field field-span-2"><label>Cidade e estado</label><input name="city" placeholder="São Paulo, SP" required /></div>
+          <div className="field"><label>Crie uma senha</label><input name="password" type="password" minLength={6} required /></div>
+          <div className="field"><label>Confirme a senha</label><input name="passwordConfirmation" type="password" minLength={6} required /></div>
+        </div>
+        <label className="check-row"><input type="checkbox" required /> <span>Confirmo que os dados informados são verdadeiros e aceito a análise cadastral.</span></label>
+        <button className="btn btn-primary" style={{ width: '100%' }}>Enviar para análise</button>
+        <p className="muted auth-footer">Já possui cadastro? <Link to="/login"><strong>Entrar</strong></Link></p>
+      </form>
+    </div>
+  )
+}
