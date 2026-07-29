@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Landing } from './pages/public/Landing'
+import { Marketplace } from './pages/public/Marketplace'
 import { Login } from './pages/public/Login'
 import { ProfessionalSignup } from './pages/public/ProfessionalSignup'
 import { PublicProfessionalProfile } from './pages/public/PublicProfessionalProfile'
@@ -18,7 +19,7 @@ import { Placeholder } from './pages/Placeholder'
 import { ProfessionalConversations } from './pages/professional/Conversations'
 import { PatientConversations } from './pages/patient/Conversations'
 import { PatientPayments } from './pages/patient/Payments'
-import { ProfessionalFinance } from './pages/professional/Finance'
+import { FinanceSuite } from './pages/professional/FinanceSuite'
 import { AdminFinance } from './pages/admin/Finance'
 import { AuthProvider } from './lib/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
@@ -30,6 +31,7 @@ import { PatientProfile } from './pages/patient/Profile'
 export default function App() {
   return <BrowserRouter><AuthProvider><Routes>
     <Route path="/" element={<Landing />} />
+    <Route path="/profissionais" element={<Marketplace />} />
     <Route path="/login" element={<Login />} />
     <Route path="/cadastro-profissional" element={<ProfessionalSignup />} />
     <Route path="/perfil/:slug" element={<PublicProfessionalProfile />} />
@@ -57,7 +59,7 @@ export default function App() {
           <Route path="conversas" element={<ProfessionalConversations />} />
           <Route path="agenda" element={<ProfessionalAgenda />} />
           <Route path="servicos" element={<ErpServices />} />
-          <Route path="financeiro" element={<ProfessionalFinance />} />
+          <Route path="financeiro" element={<FinanceSuite />} />
           <Route path="relatorios" element={<ErpReports />} />
           <Route path="perfil" element={<ProfessionalProfilePage />} />
         </Route>
