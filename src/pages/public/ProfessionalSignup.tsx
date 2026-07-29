@@ -14,6 +14,7 @@ export function ProfessionalSignup() {
   const initialPlan = requestedPlan === 'business' || requestedPlan === 'marketplace' ? requestedPlan : 'free'
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
+  const [acceptsInsurance, setAcceptsInsurance] = useState(false)
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -54,7 +55,7 @@ export function ProfessionalSignup() {
         <span className="badge">Cadastro profissional</span>
         <h1>Faça parte da Rede Maternar</h1>
         <p className="muted">Preencha seus dados e escolha como deseja participar da Rede Maternar.</p>
-        <div className="plan-selector plan-selector-3"><label><input type="radio" name="plan" value="free" defaultChecked={initialPlan === 'free'} /><span><strong>Marketplace Gratuito</strong><small>Até 30 visitas mensais no perfil.</small></span></label><label><input type="radio" name="plan" value="marketplace" defaultChecked={initialPlan === 'marketplace'} /><span><strong>Marketplace Ilimitado</strong><small>R$ 29,90 por mês, com visitas ilimitadas.</small></span></label><label><input type="radio" name="plan" value="business" defaultChecked={initialPlan === 'business'} /><span><strong>Gestão Completa</strong><small>R$ 159,90 por mês com CRM, ERP e Marketplace.</small></span></label></div>
+        <div className="plan-selector plan-selector-3"><label><input type="radio" name="plan" value="free" defaultChecked={initialPlan === 'free'} /><span><strong>Marketplace Gratuito</strong><small>Até 30 visitas mensais no perfil, sem selo verificado.</small></span></label><label><input type="radio" name="plan" value="marketplace" defaultChecked={initialPlan === 'marketplace'} /><span><strong>Marketplace Ilimitado</strong><small>R$ 29,90 por mês, visitas ilimitadas e selo verificado.</small></span></label><label><input type="radio" name="plan" value="business" defaultChecked={initialPlan === 'business'} /><span><strong>Gestão Completa</strong><small>R$ 159,90 por mês com CRM, ERP, Marketplace e selo.</small></span></label></div>
         {error && <div className="alert alert-error">{error}</div>}
         <div className="form-grid">
           <div className="field field-span-2"><label>Nome completo</label><input name="name" placeholder="Seu nome" required minLength={3} /></div>
@@ -63,6 +64,7 @@ export function ProfessionalSignup() {
           <div className="field"><label>Especialidade</label><select name="specialty" required><option value="">Selecione</option>{specialties.map((specialty) => <option key={specialty}>{specialty}</option>)}</select></div>
           <div className="field"><label>Registro profissional</label><input name="registration" placeholder="Quando aplicável" /></div>
           <div className="field field-span-2"><label>Cidade e estado</label><input name="city" placeholder="São Paulo, SP" required /></div>
+          <div className="field field-span-2 insurance-signup"><label className="check-row"><input type="checkbox" checked={acceptsInsurance} onChange={e=>setAcceptsInsurance(e.target.checked)}/><span><strong>Atendo por convênio ou plano de saúde</strong><small>Marque para informar os convênios aceitos.</small></span></label>{acceptsInsurance&&<div className="insurance-options">{['Unimed','Bradesco Saúde','SulAmérica','Amil','NotreDame Intermédica','Porto Saúde','Omint','Care Plus','Hapvida','Outro'].map(item=><label key={item}><input type="checkbox" name="insurances" value={item}/>{item}</label>)}</div>}</div>
           <div className="field"><label>Crie uma senha</label><input name="password" type="password" minLength={6} required /></div>
           <div className="field"><label>Confirme a senha</label><input name="passwordConfirmation" type="password" minLength={6} required /></div>
         </div>

@@ -3,9 +3,9 @@ import { BarChart3, CalendarDays, Check, MessageCircle, Search, Users, Wallet } 
 import { Logo } from '../../components/Logo'
 
 const plans = [
-  { name:'Marketplace Gratuito', price:'R$ 0', note:'Para começar a divulgar seu trabalho.', features:['Perfil profissional verificado','Até 30 visitas por mês','Até 3 serviços publicados','Relatório básico'], action:'Criar perfil gratuito', plan:'free' },
-  { name:'Marketplace Ilimitado', price:'R$ 29,90/mês', note:'Para ampliar sua presença e ser encontrada.', features:['Visitas ilimitadas','Serviços ilimitados','Destaque nas buscas','Relatório completo do perfil'], action:'Quero visitas ilimitadas', plan:'marketplace' },
-  { name:'Gestão Completa', price:'R$ 159,90/mês', note:'Marketplace + CRM + ERP para sua operação.', features:['Marketplace Ilimitado incluso','Funil CRM e clientes','Agenda e WhatsApp Business','Financeiro, serviços e relatórios'], action:'Quero profissionalizar minha gestão', plan:'business', featured:true },
+  { name:'Marketplace Gratuito', price:'R$ 0', note:'Para começar a divulgar seu trabalho.', features:['Perfil profissional básico','Até 30 visitas por mês','Até 3 serviços publicados','Relatório básico'], action:'Criar perfil gratuito', plan:'free' },
+  { name:'Marketplace Ilimitado', price:'R$ 29,90/mês', note:'Para ampliar sua presença e ser encontrada.', features:['Selo de perfil verificado','Visitas e serviços ilimitados','Destaque nas buscas','Relatório completo do perfil'], action:'Quero visitas ilimitadas', plan:'marketplace' },
+  { name:'Gestão Completa', price:'R$ 159,90/mês', note:'Marketplace + CRM + ERP para sua operação.', features:['Selo de perfil verificado','Marketplace Ilimitado incluso','Funil CRM, agenda e WhatsApp','ERP financeiro e relatórios'], action:'Quero profissionalizar minha gestão', plan:'business', featured:true },
 ]
 
 export function Landing() {

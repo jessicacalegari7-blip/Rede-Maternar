@@ -29,6 +29,7 @@ export function PublicProfessionalProfile() {
         </div>
         <aside className="public-side-column">
           <section className="card public-section"><h2>Disponibilidade</h2><div className="availability-summary">{profile.availability.filter((day) => day.enabled).slice(0,5).map((day) => <div key={day.weekday}><span>{['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][day.weekday]}</span><strong>{day.start}–{day.end}</strong></div>)}</div><p className="small-note">Os horários exibidos são uma referência e dependem de confirmação.</p></section>
+          <section className="card public-section"><h2>Convênios atendidos</h2><div className="insurance-profile-tags"><span>Unimed</span><span>Bradesco Saúde</span><span>SulAmérica</span></div><p className="small-note">Confirme cobertura, reembolso e elegibilidade diretamente com a profissional e a operadora.</p></section>
           {(profile.instagram || profile.website) && <section className="card public-section"><h2>Links</h2>{profile.instagram && <div className="external-row"><span>Instagram</span><strong>{profile.instagram}</strong></div>}{profile.website && <a className="external-row" href={profile.website} target="_blank" rel="noreferrer"><span>Site</span><ExternalLink size={16}/></a>}</section>}
         </aside>
       </div>
