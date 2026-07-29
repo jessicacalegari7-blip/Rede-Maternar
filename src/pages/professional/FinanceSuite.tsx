@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   ArrowDownLeft, ArrowUpRight, BadgeDollarSign, Building2, CalendarDays, CheckCircle2,
-  CircleDollarSign, FileCheck2, FileText, Landmark, Plus, ReceiptText, Users, Wallet,
+  CircleDollarSign, Copy, FileCheck2, FileText, Landmark, Link2, MessageCircle, Plus, ReceiptText, Users, Wallet,
 } from 'lucide-react'
 
 type FinanceView = 'overview'|'payable'|'receivable'|'costs'|'taxes'|'payroll'|'invoices'
@@ -60,7 +60,10 @@ const tabs: [FinanceView,string][] = [
 
 export function FinanceSuite({ initial='overview' }:{initial?:FinanceView}) {
   const [view,setView]=useState<FinanceView>(initial)
-  return <><div className="page-heading"><div><span className="badge">ERP financeiro</span><h1>Gestão financeira</h1><p className="muted">Controle completo da operação financeira da profissional ou clínica.</p></div><button className="btn btn-primary"><Plus size={17}/> Novo lançamento</button></div>
+  const [paymentLink,setPaymentLink]=useState(false)
+  const [generated,setGenerated]=useState('')
+  function generate(){setGenerated('https://pagar.redematernar.com/cob/demo-48291')}
+  return <><div className="page-heading"><div><span className="badge">ERP financeiro</span><h1>Gestão financeira</h1><p className="muted">Controle completo da operação financeira da profissional ou clínica.</p></div><div className="heading-actions"><button className="btn btn-secondary" onClick={()=>setPaymentLink(true)}><Link2 size={17}/> Gerar link de pagamento</button><button className="btn btn-primary"><Plus size={17}/> Novo lançamento</button></div></div>
     <div className="finance-tabs">{tabs.map(([id,label])=><button className={view===id?'active':''} onClick={()=>setView(id)} key={id}>{label}</button>)}</div>
     {view==='overview'&&<Overview setView={setView}/>}
     {view==='payable'&&<Payable/>}
@@ -69,6 +72,7 @@ export function FinanceSuite({ initial='overview' }:{initial?:FinanceView}) {
     {view==='taxes'&&<Taxes/>}
     {view==='payroll'&&<Payroll/>}
     {view==='invoices'&&<Invoices/>}
+    {paymentLink&&<div className="modal-backdrop"><div className="modal-card payment-link-modal"><div className="modal-head"><div><span className="badge">Cobrança online</span><h2>Gerar link de pagamento</h2><p className="muted">Crie uma cobrança para enviar à cliente pelo WhatsApp.</p></div><button className="icon-btn" onClick={()=>{setPaymentLink(false);setGenerated('')}}>×</button></div>{!generated?<><div className="form-grid"><label className="field"><span>Cliente</span><select><option>Juliana Martins</option><option>Beatriz Lopes</option><option>Mariana Alves</option></select></label><label className="field"><span>Serviço</span><select><option>Consulta online</option><option>Consulta inicial</option><option>Acompanhamento pós-parto</option></select></label><label className="field"><span>Valor</span><input defaultValue="220,00"/></label><label className="field"><span>Vencimento</span><input type="date" defaultValue="2026-08-05"/></label><label className="field field-span-2"><span>Formas aceitas</span><div className="payment-options"><label><input type="checkbox" defaultChecked/> Pix</label><label><input type="checkbox" defaultChecked/> Cartão</label><label><input type="checkbox"/> Boleto</label></div></label></div><label className="check-row"><input type="checkbox" defaultChecked/><span>Confirmar automaticamente a agenda após o pagamento.</span></label><button className="btn btn-primary full" onClick={generate}>Gerar link seguro</button></>:<div className="generated-link"><CheckCircle2/><h3>Link gerado com sucesso</h3><p>A cobrança foi registrada em Contas a Receber.</p><code>{generated}</code><div className="grid grid-2"><button className="btn btn-secondary" onClick={()=>navigator.clipboard?.writeText(generated)}><Copy/> Copiar link</button><button className="btn whatsapp-btn" onClick={()=>alert('Na versão real, o WhatsApp da cliente será aberto com o link e uma mensagem personalizada.')}><MessageCircle/> Enviar no WhatsApp</button></div><small>Ambiente demonstrativo: nenhum pagamento real será processado.</small></div>}</div></div>}
   </>
 }
 

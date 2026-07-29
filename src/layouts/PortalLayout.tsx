@@ -2,7 +2,7 @@ import type { ComponentType } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   BadgeDollarSign, BarChart3, BriefcaseBusiness, CalendarDays, Home, KanbanSquare,
-  LogOut, MessageCircle, Search, Settings, ShieldCheck, Sparkles, UserRound, Users, Wallet,
+  LogOut, MessageCircle, Search, Settings, ShieldCheck, Sparkles, UserRound, Users, Video, Wallet,
 } from 'lucide-react'
 import { Logo } from '../components/Logo'
 import type { UserRole } from '../lib/types'
@@ -34,6 +34,7 @@ const management: Item[] = [
   ['Clientes', '/profissional/clientes', Users],
   ['Caixa de entrada', '/profissional/conversas', MessageCircle],
   ['Agenda', '/profissional/agenda', CalendarDays],
+  ['Teleconsultas', '/profissional/teleconsultas', Video],
   ['Serviços', '/profissional/servicos', BriefcaseBusiness],
   ['Financeiro ERP', '/profissional/financeiro', Wallet],
   ['Relatórios', '/profissional/relatorios', BarChart3],

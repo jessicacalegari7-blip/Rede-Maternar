@@ -20,6 +20,7 @@ import { ProfessionalConversations } from './pages/professional/Conversations'
 import { PatientConversations } from './pages/patient/Conversations'
 import { PatientPayments } from './pages/patient/Payments'
 import { FinanceSuite } from './pages/professional/FinanceSuite'
+import { Teleconsultations } from './pages/professional/Teleconsultations'
 import { AdminFinance } from './pages/admin/Finance'
 import { AuthProvider } from './lib/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
@@ -58,6 +59,7 @@ export default function App() {
           <Route path="pacientes" element={<ProfessionalPatients />} />
           <Route path="conversas" element={<ProfessionalConversations />} />
           <Route path="agenda" element={<ProfessionalAgenda />} />
+          <Route path="teleconsultas" element={<Teleconsultations />} />
           <Route path="servicos" element={<ErpServices />} />
           <Route path="financeiro" element={<FinanceSuite />} />
           <Route path="relatorios" element={<ErpReports />} />
