@@ -2,11 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Logo } from '../../components/Logo'
 import { registerProfessional } from '../../lib/auth'
-
-const specialties = [
-  'Consultoria de amamentação', 'Pediatria', 'Fonoaudiologia', 'Nutrição materno-infantil',
-  'Psicologia perinatal', 'Fisioterapia', 'Doula', 'Enfermagem obstétrica', 'Odontopediatria', 'Outra',
-]
+import { maternalChildSpecialties } from '../../data/specialties'
 
 export function ProfessionalSignup() {
   const [searchParams] = useSearchParams()
@@ -61,7 +57,7 @@ export function ProfessionalSignup() {
           <div className="field field-span-2"><label>Nome completo</label><input name="name" placeholder="Seu nome" required minLength={3} /></div>
           <div className="field"><label>E-mail profissional</label><input name="email" type="email" placeholder="voce@email.com" required /></div>
           <div className="field"><label>WhatsApp</label><input name="phone" placeholder="(11) 99999-9999" required /></div>
-          <div className="field"><label>Especialidade</label><select name="specialty" required><option value="">Selecione</option>{specialties.map((specialty) => <option key={specialty}>{specialty}</option>)}</select></div>
+          <div className="field"><label>Especialidade</label><select name="specialty" required><option value="">Selecione</option>{maternalChildSpecialties.map((specialty) => <option key={specialty}>{specialty}</option>)}<option>Outra especialidade materno-infantil</option></select></div>
           <div className="field"><label>Registro profissional</label><input name="registration" placeholder="Quando aplicável" /></div>
           <div className="field field-span-2"><label>Cidade e estado</label><input name="city" placeholder="São Paulo, SP" required /></div>
           <div className="field field-span-2 insurance-signup"><label className="check-row"><input type="checkbox" checked={acceptsInsurance} onChange={e=>setAcceptsInsurance(e.target.checked)}/><span><strong>Atendo por convênio ou plano de saúde</strong><small>Marque para informar os convênios aceitos.</small></span></label>{acceptsInsurance&&<div className="insurance-options">{['Unimed','Bradesco Saúde','SulAmérica','Amil','NotreDame Intermédica','Porto Saúde','Omint','Care Plus','Hapvida','Outro'].map(item=><label key={item}><input type="checkbox" name="insurances" value={item}/>{item}</label>)}</div>}</div>

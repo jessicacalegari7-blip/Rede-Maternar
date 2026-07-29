@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { CheckCircle2, ChevronDown, MapPin, MessageCircle, Search, SlidersHorizontal, Star } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Logo } from '../../components/Logo'
+import { maternalChildSpecialties } from '../../data/specialties'
 
 const professionals = [
   {slug:'marina-lopes',name:'Marina Lopes',specialty:'Fonoaudióloga materno-infantil',registration:'CRFa 2-12345',city:'São Paulo, SP',neighborhood:'Moema',rating:4.9,reviews:87,mode:'Presencial e online',price:'A partir de R$ 180',available:'Hoje',initials:'ML',tone:'rose',verified:true,insurances:['Unimed','Bradesco Saúde','SulAmérica'],services:['Amamentação','Motricidade oral','Introdução alimentar']},
@@ -9,6 +10,9 @@ const professionals = [
   {slug:'camila-rocha',name:'Camila Rocha',specialty:'Pediatra',registration:'CRM-SP 123456 · RQE 98765',city:'São Paulo, SP',neighborhood:'Pinheiros',rating:4.8,reviews:126,mode:'Presencial',price:'A partir de R$ 320',available:'Qui, 14:00',initials:'CR',tone:'wine',verified:true,insurances:['Amil','NotreDame Intermédica','Porto Saúde'],services:['Puericultura','Consulta pediátrica','Sono infantil']},
   {slug:'fernanda-alves',name:'Fernanda Alves',specialty:'Psicóloga perinatal',registration:'CRP 06/123456',city:'Campinas, SP',neighborhood:'Cambuí',rating:4.9,reviews:64,mode:'Online',price:'A partir de R$ 190',available:'Hoje',initials:'FA',tone:'sage',verified:true,insurances:['Bradesco Saúde','Care Plus'],services:['Gestação','Puerpério','Luto perinatal']},
   {slug:'larissa-souza',name:'Larissa Souza',specialty:'Nutricionista materno-infantil',registration:'CRN-3 54321',city:'Santos, SP',neighborhood:'Gonzaga',rating:4.7,reviews:38,mode:'Presencial e online',price:'A partir de R$ 210',available:'Sex, 09:00',initials:'LS',tone:'blue',verified:false,insurances:['Hapvida'],services:['Gestação','Amamentação','Introdução alimentar']},
+  {slug:'aline-moraes',name:'Aline Moraes',specialty:'Consultora de Amamentação',registration:'Certificação profissional',city:'São Paulo, SP',neighborhood:'Tatuapé',rating:4.9,reviews:53,mode:'Presencial e online',price:'A partir de R$ 170',available:'Hoje, 19:00',initials:'AM',tone:'sage',verified:true,insurances:[],services:['Pega e posicionamento','Baixa produção de leite','Desmame gradual']},
+  {slug:'renata-vieira',name:'Renata Vieira',specialty:'Nutricionista Infantil',registration:'CRN-3 67890',city:'Campinas, SP',neighborhood:'Taquaral',rating:4.8,reviews:71,mode:'Presencial e online',price:'A partir de R$ 240',available:'Amanhã, 10:00',initials:'RV',tone:'gold',verified:true,insurances:['Unimed','Amil'],services:['Seletividade alimentar','Introdução alimentar','Nutrição pediátrica']},
+  {slug:'lucas-andrade',name:'Lucas Andrade',specialty:'Neuropsicólogo Infantil',registration:'CRP 06/234567',city:'São Paulo, SP',neighborhood:'Santana',rating:4.9,reviews:46,mode:'Presencial',price:'A partir de R$ 350',available:'Seg, 13:30',initials:'LA',tone:'blue',verified:true,insurances:['Bradesco Saúde','SulAmérica'],services:['Avaliação neuropsicológica','Desenvolvimento infantil','Orientação familiar']},
 ]
 
 export function Marketplace(){
@@ -18,11 +22,11 @@ export function Marketplace(){
   const [mode,setMode]=useState('Todos')
   const [insurance,setInsurance]=useState('Todos')
   const [verifiedOnly,setVerifiedOnly]=useState(false)
-  const specialties=useMemo(()=>['Todas',...Array.from(new Set(professionals.map(p=>p.specialty))).sort()],[ ])
+  const specialties=useMemo(()=>['Todas',...maternalChildSpecialties],[ ])
   const cities=useMemo(()=>Array.from(new Set(professionals.map(p=>p.city))).sort(),[])
   const neighborhoods=useMemo(()=>city?Array.from(new Set(professionals.filter(p=>p.city===city).map(p=>p.neighborhood))).sort():[],[city])
   const visible=useMemo(()=>professionals.filter(p=>{
-    return (specialty==='Todas'||p.specialty===specialty)&&(!city||p.city===city)&&(!neighborhood||p.neighborhood===neighborhood)&&(mode==='Todos'||p.mode.includes(mode))&&(insurance==='Todos'||p.insurances.includes(insurance))&&(!verifiedOnly||p.verified)
+    return (specialty==='Todas'||p.specialty.toLocaleLowerCase('pt-BR')===specialty.toLocaleLowerCase('pt-BR'))&&(!city||p.city===city)&&(!neighborhood||p.neighborhood===neighborhood)&&(mode==='Todos'||p.mode.includes(mode))&&(insurance==='Todos'||p.insurances.includes(insurance))&&(!verifiedOnly||p.verified)
   }),[specialty,city,neighborhood,mode,insurance,verifiedOnly])
   function trackWhatsApp(name:string){
     const key='rede-maternar:whatsapp-clicks'
