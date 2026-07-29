@@ -4,7 +4,7 @@ import {
   CircleDollarSign, Copy, FileCheck2, FileText, Landmark, Link2, MessageCircle, Plus, ReceiptText, Users, Wallet,
 } from 'lucide-react'
 
-type FinanceView = 'overview'|'payable'|'receivable'|'costs'|'taxes'|'payroll'|'invoices'
+type FinanceView = 'overview'|'cashier'|'dre'|'payable'|'receivable'|'costs'|'taxes'|'payroll'|'invoices'
 const money = new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'})
 
 const payable = [
@@ -54,7 +54,7 @@ const invoices = [
 ]
 
 const tabs: [FinanceView,string][] = [
-  ['overview','Visão geral'],['payable','Contas a pagar'],['receivable','Contas a receber'],
+  ['overview','Visão geral'],['cashier','Caixa'],['dre','DRE'],['payable','Contas a pagar'],['receivable','Contas a receber'],
   ['costs','Custos'],['taxes','Impostos'],['payroll','Folha salarial'],['invoices','Notas fiscais'],
 ]
 
@@ -62,10 +62,13 @@ export function FinanceSuite({ initial='overview' }:{initial?:FinanceView}) {
   const [view,setView]=useState<FinanceView>(initial)
   const [paymentLink,setPaymentLink]=useState(false)
   const [generated,setGenerated]=useState('')
+  const [cashOpen,setCashOpen]=useState(false)
   function generate(){setGenerated('https://pagar.redematernar.com/cob/demo-48291')}
   return <><div className="page-heading"><div><span className="badge">ERP financeiro</span><h1>Gestão financeira</h1><p className="muted">Controle completo da operação financeira da profissional ou clínica.</p></div><div className="heading-actions"><button className="btn btn-secondary" onClick={()=>setPaymentLink(true)}><Link2 size={17}/> Gerar link de pagamento</button><button className="btn btn-primary"><Plus size={17}/> Novo lançamento</button></div></div>
     <div className="finance-tabs">{tabs.map(([id,label])=><button className={view===id?'active':''} onClick={()=>setView(id)} key={id}>{label}</button>)}</div>
     {view==='overview'&&<Overview setView={setView}/>}
+    {view==='cashier'&&<Cashier open={cashOpen} onOpen={()=>setCashOpen(true)}/>}
+    {view==='dre'&&<Dre/>}
     {view==='payable'&&<Payable/>}
     {view==='receivable'&&<Receivable/>}
     {view==='costs'&&<Costs/>}
@@ -74,6 +77,19 @@ export function FinanceSuite({ initial='overview' }:{initial?:FinanceView}) {
     {view==='invoices'&&<Invoices/>}
     {paymentLink&&<div className="modal-backdrop"><div className="modal-card payment-link-modal"><div className="modal-head"><div><span className="badge">Cobrança online</span><h2>Gerar link de pagamento</h2><p className="muted">Crie uma cobrança para enviar à cliente pelo WhatsApp.</p></div><button className="icon-btn" onClick={()=>{setPaymentLink(false);setGenerated('')}}>×</button></div>{!generated?<><div className="form-grid"><label className="field"><span>Cliente</span><select><option>Juliana Martins</option><option>Beatriz Lopes</option><option>Mariana Alves</option></select></label><label className="field"><span>Serviço</span><select><option>Consulta online</option><option>Consulta inicial</option><option>Acompanhamento pós-parto</option></select></label><label className="field"><span>Valor</span><input defaultValue="220,00"/></label><label className="field"><span>Vencimento</span><input type="date" defaultValue="2026-08-05"/></label><label className="field field-span-2"><span>Formas aceitas</span><div className="payment-options"><label><input type="checkbox" defaultChecked/> Pix</label><label><input type="checkbox" defaultChecked/> Cartão</label><label><input type="checkbox"/> Boleto</label></div></label></div><label className="check-row"><input type="checkbox" defaultChecked/><span>Confirmar automaticamente a agenda após o pagamento.</span></label><button className="btn btn-primary full" onClick={generate}>Gerar link seguro</button></>:<div className="generated-link"><CheckCircle2/><h3>Link gerado com sucesso</h3><p>A cobrança foi registrada em Contas a Receber.</p><code>{generated}</code><div className="grid grid-2"><button className="btn btn-secondary" onClick={()=>navigator.clipboard?.writeText(generated)}><Copy/> Copiar link</button><button className="btn whatsapp-btn" onClick={()=>alert('Na versão real, o WhatsApp da cliente será aberto com o link e uma mensagem personalizada.')}><MessageCircle/> Enviar no WhatsApp</button></div><small>Ambiente demonstrativo: nenhum pagamento real será processado.</small></div>}</div></div>}
   </>
+}
+
+function Cashier({open,onOpen}:{open:boolean;onOpen:()=>void}) {
+  return <><div className={`cashier-status card ${open?'is-open':''}`}><div><span className="badge">{open?'Caixa aberto':'Caixa fechado'}</span><h2>{open?'Caixa de 29/07/2026':'Abra o caixa para iniciar o movimento do dia'}</h2><p className="muted">{open?'Aberto às 07:48 por Marina Lopes · saldo inicial R$ 300,00':'Informe o saldo inicial antes de registrar recebimentos presenciais.'}</p></div>{!open&&<button className="btn btn-primary" onClick={onOpen}>Abrir caixa</button>}</div>
+    {open&&<><div className="grid grid-4"><Metric icon={Wallet} label="Saldo atual" value="R$ 1.286"/><Metric icon={CircleDollarSign} label="Entradas" value="R$ 1.140"/><Metric icon={ArrowDownLeft} label="Saídas" value="R$ 154"/><Metric icon={ReceiptText} label="Atendimentos pagos" value="5"/></div><FinanceTable title="Movimento do caixa" subtitle="Todo atendimento marcado como pago entra automaticamente no faturamento diário e mensal." rows={[[ '08:54','Camila Ribeiro','Pix',220,'Atendimento pago'],['10:12','Juliana Martins','Dinheiro',150,'Atendimento pago'],['11:35','Material clínico','Dinheiro',54,'Saída'],['14:02','Beatriz Lopes','Cartão',380,'Atendimento pago']]} headers={['Hora','Descrição','Forma','Valor','Origem']}/></>}
+  </>
+}
+
+function Dre(){
+  const [period,setPeriod]=useState<'day'|'month'|'year'>('month')
+  const data={day:['R$ 1.140','R$ 154','R$ 986','86,5%'],month:['R$ 18.720','R$ 11.846','R$ 6.874','36,7%'],year:['R$ 184.360','R$ 119.420','R$ 64.940','35,2%']}[period]
+  const label={day:'29 de julho',month:'Julho de 2026',year:'Ano de 2026'}[period]
+  return <><div className="dre-toolbar card"><div><h2>Demonstração do Resultado (DRE)</h2><p className="muted">Regime gerencial demonstrativo consolidado por período.</p></div><div className="tabs compact-tabs"><button className={period==='day'?'active':''} onClick={()=>setPeriod('day')}>Diário</button><button className={period==='month'?'active':''} onClick={()=>setPeriod('month')}>Mensal</button><button className={period==='year'?'active':''} onClick={()=>setPeriod('year')}>Anual</button></div></div><div className="grid grid-4"><Metric icon={CircleDollarSign} label={`Receita · ${label}`} value={data[0]}/><Metric icon={ArrowDownLeft} label="Custos e despesas" value={data[1]}/><Metric icon={Wallet} label="Resultado líquido" value={data[2]}/><Metric icon={BadgeDollarSign} label="Margem líquida" value={data[3]}/></div><section className="card dre-card"><h2>Estrutura do resultado</h2>{[['Receita bruta',data[0]],['(-) Taxas e impostos','R$ 1.684'],['= Receita líquida','R$ 17.036'],['(-) Custos variáveis','R$ 3.214'],['(-) Custos fixos','R$ 6.948'],['= Resultado líquido',data[2]]].map(([name,value],i)=><div className={i===5?'dre-total':''} key={name}><span>{name}</span><strong>{value}</strong></div>)}</section></>
 }
 
 function Overview({setView}:{setView:(v:FinanceView)=>void}) {

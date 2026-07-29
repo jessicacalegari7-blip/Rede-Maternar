@@ -1,20 +1,21 @@
 import { useState } from 'react'
 import {
-  ArrowUpRight, BarChart3, CalendarClock, CheckCircle2, CircleDollarSign, Clock3, KanbanSquare,
+  AlertTriangle, ArrowUpRight, BarChart3, Bell, CalendarClock, CheckCircle2, CircleDollarSign, Clock3, KanbanSquare,
   MessageCircle, MoreHorizontal, Plus, Search, TrendingUp, UserRound, Wallet,
 } from 'lucide-react'
 
 const leads = [
   { name: 'Juliana Martins', source: 'Marketplace', service: 'Consulta de amamentação', value: 'R$ 220', stage: 'Novo contato' },
-  { name: 'Beatriz Lopes', source: 'WhatsApp', service: 'Acompanhamento pós-parto', value: 'R$ 380', stage: 'Em conversa' },
-  { name: 'Mariana Alves', source: 'Instagram', service: 'Consulta online', value: 'R$ 180', stage: 'Proposta enviada' },
-  { name: 'Camila Prado', source: 'Indicação orgânica', service: 'Avaliação inicial', value: 'R$ 250', stage: 'Agendado' },
+  { name: 'Beatriz Lopes', source: 'WhatsApp', service: 'Acompanhamento pós-parto', value: 'R$ 380', stage: '1ª tentativa' },
+  { name: 'Mariana Alves', source: 'Instagram', service: 'Consulta online', value: 'R$ 180', stage: '2ª tentativa' },
+  { name: 'Camila Prado', source: 'Indicação orgânica', service: 'Avaliação inicial', value: 'R$ 250', stage: 'Contato futuro' },
+  { name: 'Ana Carolina', source: 'WhatsApp', service: 'Retorno', value: 'R$ 150', stage: 'Agendado' },
 ]
-const stages = ['Novo contato', 'Em conversa', 'Proposta enviada', 'Agendado']
+const stages = ['Novo contato', '1ª tentativa', '2ª tentativa', 'Contato futuro', 'Agendado']
 
 export function CrmPipeline() {
   return <><div className="page-heading"><div><span className="badge">CRM</span><h1>Funil de atendimento</h1><p className="muted">Organize cada oportunidade desde o primeiro contato até o agendamento.</p></div><button className="btn btn-primary"><Plus size={17}/> Nova oportunidade</button></div>
-    <div className="pipeline-board">{stages.map(stage => <section className="pipeline-column" key={stage}><header><strong>{stage}</strong><span>{leads.filter(x => x.stage === stage).length}</span></header>{leads.filter(x => x.stage === stage).map(lead => <article className="lead-card" key={lead.name}><div className="row between"><div className="avatar small-avatar">{lead.name.split(' ').map(x=>x[0]).slice(0,2)}</div><MoreHorizontal size={18}/></div><h3>{lead.name}</h3><p>{lead.service}</p><div className="lead-meta"><span>{lead.source}</span><strong>{lead.value}</strong></div><button className="lead-action">Abrir oportunidade <ArrowUpRight size={15}/></button></article>)}</section>)}</div>
+    <div className="pipeline-board pipeline-five">{stages.map(stage => <section className="pipeline-column" key={stage}><header><strong>{stage}</strong><span>{leads.filter(x => x.stage === stage).length}</span></header>{leads.filter(x => x.stage === stage).map(lead => <article className="lead-card" key={lead.name}><div className="row between"><div className="avatar small-avatar">{lead.name.split(' ').map(x=>x[0]).slice(0,2)}</div><MoreHorizontal size={18}/></div><h3>{lead.name}</h3><p>{lead.service}</p><div className="lead-meta"><span>{lead.source}</span><strong>{lead.value}</strong></div>{stage==='Contato futuro'&&<small className="future-contact">Retomar em 15/08 às 10h</small>}<button className="lead-action">Abrir oportunidade <ArrowUpRight size={15}/></button></article>)}</section>)}</div>
   </>
 }
 
@@ -36,7 +37,8 @@ export function ErpServices() {
   return <><div className="page-heading"><div><span className="badge">Catálogo</span><h1>Serviços e preços</h1><p className="muted">O mesmo catálogo alimenta o Marketplace, a agenda e o financeiro.</p></div><button className="btn btn-primary"><Plus size={17}/> Novo serviço</button></div>
     <div className="grid grid-3">{[
       ['Consulta inicial','60 min','R$ 220,00','Presencial e online'],
-      ['Retorno','40 min','R$ 150,00','Online'],
+          ['Retorno pago','40 min','R$ 150,00','Online'],
+          ['Retorno gratuito','30 min','R$ 0,00','Presencial e online'],
       ['Acompanhamento pós-parto','90 min','R$ 380,00','Domiciliar'],
     ].map(([name,duration,price,mode],i)=><article className="card service-admin-card" key={name}><div className="row between"><span className="badge">{i===0?'Mais contratado':'Ativo'}</span><button className="icon-btn"><MoreHorizontal size={18}/></button></div><h2>{name}</h2><p className="muted">{mode}</p><div className="service-price">{price}</div><div className="row muted"><Clock3 size={16}/>{duration}</div><label className="switch-row"><input type="checkbox" checked={i===0?active:true} onChange={()=>i===0&&setActive(!active)}/><span>Publicado no Marketplace</span></label></article>)}</div>
   </>
@@ -51,8 +53,10 @@ export function ErpReports() {
 
 export function ProfessionalOverview() {
   return <><div className="topbar"><div><span className="badge">Gestão Completa</span><h1>Bom dia, Marina</h1><div className="muted">Sua operação profissional em um só lugar.</div></div><button className="btn btn-primary"><Plus size={17}/> Novo atendimento</button></div>
+    <div className="plan-limit-alert"><AlertTriangle/><div><strong>Plano gratuito: 27 de 30 visitas utilizadas</strong><span>Você será avisada novamente ao atingir o limite. Quando as 30 visitas acabarem, o perfil ficará oculto até a renovação mensal ou mudança de plano.</span></div><button className="btn btn-secondary">Ver planos</button></div>
     <div className="grid grid-4"><Metric label="Receita do mês" value="R$ 12.480"/><Metric label="Agenda hoje" value="6 atendimentos"/><Metric label="Oportunidades abertas" value="14"/><Metric label="Visitas no perfil" value="327"/></div>
-    <div className="grid grid-2" style={{marginTop:18}}><div className="card"><div className="section-heading"><h2>Próximas atividades</h2><CalendarClock/></div>{['09:30 · Consulta com Camila Ribeiro','11:00 · Retornar contato de Juliana','14:30 · Atendimento com Beatriz','17:00 · Enviar proposta para Mariana'].map((x,i)=><div className="list-item" key={x}><span>{x}</span>{i===0?<span className="badge">Agora</span>:<CheckCircle2 size={18} className="muted"/>}</div>)}</div><div className="card"><div className="section-heading"><h2>Central de atendimento</h2><MessageCircle/></div><div className="integration-card"><div className="integration-icon">WA</div><div><strong>WhatsApp Business</strong><p className="muted">Conecte seu número para receber e responder mensagens dentro do CRM.</p></div><button className="btn btn-secondary">Configurar</button></div><div className="list-item"><span>Mensagens aguardando resposta</span><strong>7</strong></div><div className="list-item"><span>Tempo médio de resposta</span><strong>18 min</strong></div></div></div>
+    <div className="card today-agenda"><div className="section-heading"><div><h2>Agenda do dia</h2><p className="muted">Quarta-feira, 29 de julho · 6 consultas marcadas</p></div><CalendarClock/></div><div className="today-slots">{[['08:00','Camila Ribeiro','Consulta inicial','Pago'],['10:30','Juliana Martins','Retorno gratuito','Confirmada'],['14:30','Beatriz Lopes','Teleconsulta','Aguardando pagamento'],['18:00','Mariana Alves','Retorno pago','Pago']].map(([time,name,service,status])=><article key={time}><strong>{time}</strong><span><b>{name}</b><small>{service}</small></span><em>{status}</em><button className="btn btn-secondary btn-small">Abrir</button></article>)}</div></div>
+    <div className="grid grid-2" style={{marginTop:18}}><div className="card"><div className="section-heading"><h2>Próximas atividades</h2><Bell/></div>{['WhatsApp enviado: consulta de Camila amanhã','11:00 · 1ª tentativa de contato com Juliana','12:30 · Lembrete de 2 horas para Beatriz','17:00 · Retomar contato futuro de Mariana'].map((x,i)=><div className="list-item" key={x}><span>{x}</span>{i===0?<span className="badge">Automático</span>:<CheckCircle2 size={18} className="muted"/>}</div>)}</div><div className="card"><div className="section-heading"><h2>Automação de WhatsApp</h2><MessageCircle/></div><div className="integration-card"><div className="integration-icon">WA</div><div><strong>Lembretes automáticos ativos</strong><p className="muted">Mensagem no dia anterior e duas horas antes da consulta.</p></div><button className="btn btn-secondary">Configurar</button></div><div className="list-item"><span>Programados para hoje</span><strong>8</strong></div><div className="list-item"><span>Entregues no mês</span><strong>146</strong></div></div></div>
   </>
 }
 
