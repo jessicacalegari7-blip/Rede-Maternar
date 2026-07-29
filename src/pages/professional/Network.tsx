@@ -6,7 +6,7 @@ import { createReferral, getReferralView } from '../../lib/referrals'
 
 export function ProfessionalNetwork(){
  const {user}=useAuth(); const [refresh,setRefresh]=useState(0); const [query,setQuery]=useState(''); const [selected,setSelected]=useState('professional-1'); const [patient,setPatient]=useState({name:'',email:'',service:'',amount:'390'}); const [message,setMessage]=useState('')
- const professionals=useMemo(()=>getUsers().filter(u=>u.role==='professional'&&u.status==='active'&&u.id!==user?.id&&u.plan==='annual'&&(`${u.name} ${u.specialty}`).toLowerCase().includes(query.toLowerCase())),[query,user?.id,refresh])
+ const professionals=useMemo(()=>getUsers().filter(u=>u.role==='professional'&&u.status==='active'&&u.id!==user?.id&&u.plan!=='free'&&(`${u.name} ${u.specialty}`).toLowerCase().includes(query.toLowerCase())),[query,user?.id,refresh])
  const referrals=user?getReferralView(user.id):[]; const earned=referrals.reduce((s,r)=>s+r.commission,0)
  function submit(e:React.FormEvent){e.preventDefault();if(!user)return;createReferral({referrerId:user.id,receiverId:selected,patientName:patient.name,patientEmail:patient.email,service:patient.service,amount:Number(patient.amount)});setPatient({name:'',email:'',service:'',amount:'390'});setMessage('Indicação registrada. A comissão será liberada quando o pagamento for confirmado.');setRefresh(v=>v+1)}
  return <div><div className="page-heading"><div><span className="badge">Rede profissional</span><h1>Indicações</h1><p className="muted">Indique profissionais do Plano Anual e receba 20% quando a paciente fechar.</p></div></div>

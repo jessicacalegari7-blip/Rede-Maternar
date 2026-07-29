@@ -1,7 +1,41 @@
-export type ProfessionalPlan = 'free' | 'annual'
-export const planLabels:Record<ProfessionalPlan,string>={free:'Plano Comunidade',annual:'Plano Anual'}
-export const planFeatures={
-  free:['Criar perfil básico','Buscar profissionais','Indicar pacientes','Receber 15% do líquido após gateway em indicações convertidas'],
-  annual:['Tudo do Plano Comunidade','Receber indicações','Agenda e portal da paciente','Chat, prontuário e planos de cuidados','Pagamentos, carteira e relatórios'],
+export type ProfessionalPlan = 'free' | 'marketplace' | 'business' | 'annual'
+
+export const planLabels: Record<ProfessionalPlan, string> = {
+  free: 'Marketplace Gratuito',
+  marketplace: 'Marketplace Ilimitado',
+  business: 'Gestão Completa',
+  annual: 'Gestão Completa',
 }
-export function isAnnual(plan?:ProfessionalPlan){return plan==='annual'}
+
+export const planFeatures: Record<ProfessionalPlan, string[]> = {
+  free: [
+    'Perfil profissional verificado',
+    'Até 30 visitas mensais no perfil',
+    'Publicação de até 3 serviços',
+    'Relatório básico de visualizações',
+  ],
+  marketplace: [
+    'Visitas ilimitadas no perfil',
+    'Serviços ilimitados',
+    'Destaque nas buscas por especialidade',
+    'Relatório completo de desempenho',
+  ],
+  business: [
+    'Tudo do Marketplace Ilimitado',
+    'CRM com funil e gestão de clientes',
+    'Agenda, tarefas e automações',
+    'ERP financeiro, serviços e relatórios',
+    'Central de atendimento com WhatsApp Business',
+  ],
+  annual: [
+    'Tudo do Marketplace Ilimitado',
+    'CRM com funil e gestão de clientes',
+    'Agenda, tarefas e automações',
+    'ERP financeiro, serviços e relatórios',
+    'Central de atendimento com WhatsApp Business',
+  ],
+}
+
+export function hasManagement(plan?: ProfessionalPlan) {
+  return plan === 'business'
+}

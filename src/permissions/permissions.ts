@@ -18,5 +18,5 @@ export function can(user: PublicUser | null, capability: Capability) {
   if (!user || user.status !== 'active') return false
   if (user.role === 'admin') return admin.has(capability)
   if (user.role === 'patient') return ['appointments', 'chat', 'medical_records', 'care_plans'].includes(capability)
-  return (user.plan === 'annual' ? annual : community).has(capability)
+  return (user.plan === 'business' ? annual : community).has(capability)
 }

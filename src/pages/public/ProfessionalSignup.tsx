@@ -10,7 +10,8 @@ const specialties = [
 
 export function ProfessionalSignup() {
   const [searchParams] = useSearchParams()
-  const initialPlan = searchParams.get('plano') === 'annual' ? 'annual' : 'free'
+  const requestedPlan = searchParams.get('plano')
+  const initialPlan = requestedPlan === 'business' || requestedPlan === 'marketplace' ? requestedPlan : 'free'
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
 
@@ -33,7 +34,7 @@ export function ProfessionalSignup() {
         city: String(form.get('city')),
         registration: String(form.get('registration') ?? ''),
         password,
-        plan: String(form.get('plan')) === 'annual' ? 'annual' : 'free',
+        plan: String(form.get('plan')) === 'business' ? 'business' : String(form.get('plan')) === 'marketplace' ? 'marketplace' : 'free',
       })
       setSuccess(true)
       event.currentTarget.reset()
@@ -53,7 +54,7 @@ export function ProfessionalSignup() {
         <span className="badge">Cadastro profissional</span>
         <h1>Faça parte da Rede Maternar</h1>
         <p className="muted">Preencha seus dados e escolha como deseja participar da Rede Maternar.</p>
-        <div className="plan-selector"><label><input type="radio" name="plan" value="free" defaultChecked={initialPlan === 'free'} /><span><strong>Plano Comunidade · Gratuito</strong><small>Indique profissionais e receba 20% das indicações convertidas.</small></span></label><label><input type="radio" name="plan" value="annual" defaultChecked={initialPlan === 'annual'} /><span><strong>Plano Anual</strong><small>R$ 179,90 no cartão ou R$ 149,00 à vista. Indique e receba indicações.</small></span></label></div>
+        <div className="plan-selector plan-selector-3"><label><input type="radio" name="plan" value="free" defaultChecked={initialPlan === 'free'} /><span><strong>Marketplace Gratuito</strong><small>Até 30 visitas mensais no perfil.</small></span></label><label><input type="radio" name="plan" value="marketplace" defaultChecked={initialPlan === 'marketplace'} /><span><strong>Marketplace Ilimitado</strong><small>R$ 29,90 por mês, com visitas ilimitadas.</small></span></label><label><input type="radio" name="plan" value="business" defaultChecked={initialPlan === 'business'} /><span><strong>Gestão Completa</strong><small>R$ 159,90 por mês com CRM, ERP e Marketplace.</small></span></label></div>
         {error && <div className="alert alert-error">{error}</div>}
         <div className="form-grid">
           <div className="field field-span-2"><label>Nome completo</label><input name="name" placeholder="Seu nome" required minLength={3} /></div>

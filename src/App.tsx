@@ -7,7 +7,7 @@ import { PatientInvitation } from './pages/public/PatientInvitation'
 import { ProfessionalPatients } from './pages/professional/Patients'
 import { ProfessionalProfilePage } from './pages/professional/Profile'
 import { PortalLayout } from './layouts/PortalLayout'
-import { ProfessionalHome } from './pages/professional/Home'
+import { CrmCustomers, CrmPipeline, ErpReports, ErpServices, ProfessionalOverview } from './pages/professional/Workspace'
 import { PatientHome } from './pages/patient/Home'
 import { PatientAppointments } from './pages/patient/Appointments'
 import { AdminHome } from './pages/admin/Home'
@@ -25,7 +25,6 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { PlanGate } from './components/PlanGate'
 import { ProfessionalNetwork } from './pages/professional/Network'
 import { ProfessionalPlanPage } from './pages/professional/Plan'
-import { ProfessionalRecords } from './pages/professional/Records'
 import { PatientProfile } from './pages/patient/Profile'
 
 export default function App() {
@@ -48,15 +47,18 @@ export default function App() {
 
     <Route element={<ProtectedRoute role="professional" />}>
       <Route path="/profissional" element={<PortalLayout role="professional" />}>
-        <Route index element={<ProfessionalHome />} />
+        <Route index element={<ProfessionalOverview />} />
         <Route path="rede" element={<ProfessionalNetwork />} />
         <Route path="plano" element={<ProfessionalPlanPage />} />
         <Route element={<PlanGate />}>
+          <Route path="funil" element={<CrmPipeline />} />
+          <Route path="clientes" element={<CrmCustomers />} />
           <Route path="pacientes" element={<ProfessionalPatients />} />
           <Route path="conversas" element={<ProfessionalConversations />} />
           <Route path="agenda" element={<ProfessionalAgenda />} />
-          <Route path="prontuarios" element={<ProfessionalRecords />} />
+          <Route path="servicos" element={<ErpServices />} />
           <Route path="financeiro" element={<ProfessionalFinance />} />
+          <Route path="relatorios" element={<ErpReports />} />
           <Route path="perfil" element={<ProfessionalProfilePage />} />
         </Route>
       </Route>

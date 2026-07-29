@@ -41,7 +41,7 @@ const seedUsers: AppUser[] = [
     role: 'professional',
     status: 'active',
     specialty: 'Fonoaudiologia',
-    plan: 'annual',
+    plan: 'business',
     city: 'São Paulo, SP',
     createdAt: '2026-07-24T12:00:00.000Z',
   },
@@ -93,7 +93,12 @@ export function getUsers(): AppUser[] {
     return seedUsers
   }
   try {
-    return JSON.parse(raw) as AppUser[]
+    const parsed = JSON.parse(raw) as AppUser[]
+    const migrated = parsed.map((user) =>
+      (user as AppUser & { plan?: string }).plan === 'annual' ? { ...user, plan: 'business' as ProfessionalPlan } : user,
+    )
+    localStorage.setItem(USERS_KEY, JSON.stringify(migrated))
+    return migrated
   } catch {
     localStorage.setItem(USERS_KEY, JSON.stringify(seedUsers))
     return seedUsers

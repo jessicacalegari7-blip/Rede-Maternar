@@ -8,7 +8,7 @@ function write(value:Referral[]){if(typeof window!=='undefined')localStorage.set
 export function getReferrals(){return read()}
 export function createReferral(input:Omit<Referral,'id'|'commissionRate'|'status'|'createdAt'>){
   const receiver=getUsers().find(user=>user.id===input.receiverId)
-  if(receiver?.role!=='professional'||receiver.plan!=='annual')throw new Error('Somente profissionais do Plano Anual podem receber indicações.')
+  if(receiver?.role!=='professional'||receiver.plan!=='business')throw new Error('Este recurso exige o plano Gestão Completa.')
   const value:Referral={...input,id:crypto.randomUUID(),commissionRate:.15,status:'sent',createdAt:new Date().toISOString()}
   write([value,...read()]);return value
 }
