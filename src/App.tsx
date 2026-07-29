@@ -30,6 +30,7 @@ import { ProfessionalPlanPage } from './pages/professional/Plan'
 import { PatientProfile } from './pages/patient/Profile'
 import { AdminOperations, AdminUsers } from './pages/admin/Backoffice'
 import { SocialIntegrations } from './pages/professional/SocialIntegrations'
+import { ClinicTeam } from './pages/professional/ClinicTeam'
 
 export default function App() {
   return <BrowserRouter><AuthProvider><Routes>
@@ -66,6 +67,7 @@ export default function App() {
           <Route path="servicos" element={<ErpServices />} />
           <Route path="financeiro" element={<FinanceSuite />} />
           <Route path="relatorios" element={<ErpReports />} />
+          <Route path="equipe" element={<ClinicTeam />} />
           <Route path="perfil" element={<ProfessionalProfilePage />} />
         </Route>
       </Route>

@@ -58,6 +58,10 @@ Administra cadastros, planos, assinaturas, suporte, financeiro, permissões, int
 
 - Benefícios do Marketplace Ilimitado.
 - CRM, agenda, mensagens, integrações, teleconsultas, ERP e relatórios.
+- Permite operação individual ou de clínica, com vários profissionais vinculados à mesma organização.
+- Cada profissional possui acesso, agenda, atendimentos e permissões próprios.
+- A clínica pode definir perfis de administradora, profissional, recepção e financeiro.
+- O limite incluído e o preço de profissionais adicionais deverão ser definidos antes do lançamento comercial.
 
 O backoffice deve permitir alterar preços, benefícios, período de teste, status, inadimplência, upgrade, downgrade e cancelamento.
 
@@ -213,4 +217,3 @@ Somente paciente autenticada com atendimento concluído pode avaliar. Uma avalia
 ## 18. Fora do escopo automático
 
 O protótipo não autoriza uso com dados reais. Questões clínicas, fiscais, trabalhistas, pagamentos, publicidade profissional e LGPD devem ser revisadas por especialistas jurídicos, contábeis e de segurança.
-

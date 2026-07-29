@@ -14,6 +14,12 @@
 
 ## CRM e comunicação
 
+## Organização e equipe
+
+`organizations`, `organization_members`, `professional_profiles`, `professional_schedules`.
+
+Uma organização representa uma clínica ou operação individual. Todos os registros operacionais devem conter `organization_id`; atendimentos e agendas também devem conter `professional_id`. O vínculo de equipe guarda função, status e permissões individuais.
+
 `leads`, `pipeline_stages`, `lead_stage_history`, `tasks`, `activities`, `conversations`, `conversation_participants`, `messages`, `message_attachments`, `channels`, `channel_connections`, `webhook_events`, `notification_templates`, `notification_jobs`, `notification_deliveries`.
 
 ## Agenda e atendimento
@@ -29,4 +35,3 @@
 `support_tickets`, `ticket_messages`, `verification_requests`, `verification_documents`, `admin_notes`, `system_settings`, `integration_health`.
 
 Todas as tabelas devem ter identificador, datas, autoria quando aplicável, índices, restrições, política de retenção e RLS.
-

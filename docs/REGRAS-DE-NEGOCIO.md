@@ -14,5 +14,7 @@
 12. Dados clínicos não podem ser usados para marketing sem base legal e consentimento apropriado.
 13. Administradores devem possuir permissões por função e ações sensíveis auditadas.
 14. Mudança de plano não pode excluir dados; deve alterar acesso conforme política documentada.
+15. No plano Gestão Completa, uma organização pode representar uma profissional autônoma ou uma clínica com múltiplos profissionais.
+16. Cada integrante da clínica deve usar acesso individual; contas e senhas não podem ser compartilhadas.
+17. Dados, agenda e permissões devem respeitar a organização e o profissional responsável, com acesso administrativo explicitamente concedido.
 15. Inadimplência deve seguir período de tolerância e comunicação configuráveis.
-

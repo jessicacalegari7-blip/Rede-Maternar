@@ -40,6 +40,7 @@ const management: Item[] = [
   ['Serviços', '/profissional/servicos', BriefcaseBusiness],
   ['Financeiro ERP', '/profissional/financeiro', Wallet],
   ['Relatórios', '/profissional/relatorios', BarChart3],
+  ['Equipe da clínica', '/profissional/equipe', Users],
   ['Perfil no Marketplace', '/profissional/perfil', UserRound],
   ['Meu plano', '/profissional/plano', Sparkles],
 ]

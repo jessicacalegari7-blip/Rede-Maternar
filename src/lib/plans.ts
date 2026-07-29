@@ -26,6 +26,7 @@ export const planFeatures: Record<ProfessionalPlan, string[]> = {
     'Agenda, tarefas e automações',
     'ERP financeiro, serviços e relatórios',
     'Central de atendimento com WhatsApp Business',
+    'Múltiplos profissionais, agendas e acessos para clínicas',
   ],
   annual: [
     'Tudo do Marketplace Ilimitado',
@@ -33,6 +34,7 @@ export const planFeatures: Record<ProfessionalPlan, string[]> = {
     'Agenda, tarefas e automações',
     'ERP financeiro, serviços e relatórios',
     'Central de atendimento com WhatsApp Business',
+    'Múltiplos profissionais, agendas e acessos para clínicas',
   ],
 }
 
