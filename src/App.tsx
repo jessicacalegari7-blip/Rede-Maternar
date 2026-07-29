@@ -28,6 +28,8 @@ import { PlanGate } from './components/PlanGate'
 import { ProfessionalNetwork } from './pages/professional/Network'
 import { ProfessionalPlanPage } from './pages/professional/Plan'
 import { PatientProfile } from './pages/patient/Profile'
+import { AdminOperations, AdminUsers } from './pages/admin/Backoffice'
+import { SocialIntegrations } from './pages/professional/SocialIntegrations'
 
 export default function App() {
   return <BrowserRouter><AuthProvider><Routes>
@@ -58,6 +60,7 @@ export default function App() {
           <Route path="clientes" element={<CrmCustomers />} />
           <Route path="pacientes" element={<ProfessionalPatients />} />
           <Route path="conversas" element={<ProfessionalConversations />} />
+          <Route path="integracoes" element={<SocialIntegrations />} />
           <Route path="agenda" element={<ProfessionalAgenda />} />
           <Route path="teleconsultas" element={<Teleconsultations />} />
           <Route path="servicos" element={<ErpServices />} />
@@ -73,9 +76,10 @@ export default function App() {
         <Route index element={<AdminHome />} />
         <Route path="profissionais" element={<AdminProfessionals />} />
         <Route path="agendamentos" element={<AdminAppointments />} />
-        <Route path="usuarios" element={<Placeholder title="Usuários" description="Pacientes, profissionais e equipe administrativa." />} />
+        <Route path="usuarios" element={<AdminUsers />} />
         <Route path="financeiro" element={<AdminFinance />} />
-        <Route path="configuracoes" element={<Placeholder title="Configurações" description="Planos, taxas, permissões e integrações." />} />
+        <Route path="operacao" element={<AdminOperations />} />
+        <Route path="configuracoes" element={<AdminOperations />} />
       </Route>
     </Route>
 

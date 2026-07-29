@@ -2,7 +2,7 @@ import type { ComponentType } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   BadgeDollarSign, BarChart3, BriefcaseBusiness, CalendarDays, Home, KanbanSquare,
-  LogOut, MessageCircle, Search, Settings, ShieldCheck, Sparkles, UserRound, Users, Video, Wallet,
+  Bell, LogOut, MessageCircle, Search, Settings, ShieldCheck, Sparkles, UserRound, Users, Video, Wallet,
 } from 'lucide-react'
 import { Logo } from '../components/Logo'
 import type { UserRole } from '../lib/types'
@@ -21,9 +21,10 @@ const menus: Partial<Record<UserRole, Item[]>> = {
   admin: [
     ['Dashboard', '/admin', Home],
     ['Profissionais', '/admin/profissionais', ShieldCheck],
-    ['Assinaturas', '/admin/agendamentos', CalendarDays],
-    ['Usuários', '/admin/usuarios', Users],
+    ['Cadastros', '/admin/usuarios', Users],
+    ['Agendamentos', '/admin/agendamentos', CalendarDays],
     ['Financeiro', '/admin/financeiro', BadgeDollarSign],
+    ['Central do backoffice', '/admin/operacao', BriefcaseBusiness],
     ['Configurações', '/admin/configuracoes', Settings],
   ],
 }
@@ -33,6 +34,7 @@ const management: Item[] = [
   ['Funil CRM', '/profissional/funil', KanbanSquare],
   ['Clientes', '/profissional/clientes', Users],
   ['Caixa de entrada', '/profissional/conversas', MessageCircle],
+  ['Integrações e canais', '/profissional/integracoes', Bell],
   ['Agenda', '/profissional/agenda', CalendarDays],
   ['Teleconsultas', '/profissional/teleconsultas', Video],
   ['Serviços', '/profissional/servicos', BriefcaseBusiness],
