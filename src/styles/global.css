@@ -22,8 +22,10 @@ button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
 .shell { min-height: 100vh; display: grid; grid-template-columns: 260px 1fr; }
 .sidebar { background: var(--wine-dark); color: white; padding: 24px 18px; position: sticky; top: 0; height: 100vh; }
-.brand { display:flex; align-items:center; gap:10px; font-weight:700; font-size:1.15rem; margin-bottom:28px; }
-.brand-mark { width:38px; height:38px; border-radius:14px; background:linear-gradient(135deg,var(--gold),#e1c18d); display:grid; place-items:center; color:var(--wine-dark); font-weight:800; }
+.brand { display:flex; align-items:center; margin-bottom:28px; }
+.brand img { display:block; width:190px; max-width:100%; height:auto; object-fit:contain; }
+.sidebar .brand { background:var(--cream); border-radius:16px; padding:8px; }
+.sidebar .brand img { width:100%; }
 .nav { display:flex; flex-direction:column; gap:8px; }
 .nav a { display:flex; gap:12px; align-items:center; padding:11px 12px; border-radius:12px; color:#f5e9ed; }
 .nav a.active, .nav a:hover { background:rgba(255,255,255,.12); }
@@ -180,6 +182,7 @@ button { cursor: pointer; }
 .public-profile-page { min-height:100vh; background:#f8f4f1; }
 .public-header { height:74px; padding:0 28px; display:flex; align-items:center; justify-content:space-between; background:white; border-bottom:1px solid var(--border); }
 .public-header .brand { margin:0; }
+.public-header .brand img { width:184px; }
 .public-profile-shell { max-width:1120px; margin:auto; padding:28px 24px 70px; }
 .back-link { display:inline-flex; align-items:center; gap:6px; color:var(--muted); font-size:.9rem; margin-bottom:20px; }
 .public-profile-hero { display:grid; grid-template-columns:110px 1fr 310px; gap:24px; align-items:start; margin-bottom:22px; }
@@ -251,6 +254,9 @@ button { cursor: pointer; }
 .invite-page { min-height:100vh; display:grid; grid-template-columns:1fr 1fr; background:white; }
 .invite-welcome { padding:54px clamp(28px,7vw,90px); background:linear-gradient(145deg,var(--wine-dark),var(--wine)); color:white; display:flex; flex-direction:column; justify-content:space-between; gap:50px; }
 .invite-welcome .brand { margin:0; }
+.auth-card .brand,.success-card .brand { justify-content:center; }
+.auth-card .brand img,.success-card .brand img { width:220px; }
+.landing-footer .brand { margin:0; }
 .invite-welcome h1 { font-size:clamp(2.5rem,5vw,4.8rem); line-height:1; letter-spacing:-.05em; margin:18px 0; max-width:620px; }
 .invite-welcome p { color:#eadce1; max-width:620px; font-size:1.08rem; line-height:1.65; }
 .invite-welcome .badge { background:rgba(255,255,255,.14); color:white; }
