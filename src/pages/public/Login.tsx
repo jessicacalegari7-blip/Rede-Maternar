@@ -5,7 +5,8 @@ import { useAuth } from '../../lib/AuthContext'
 
 const demoAccounts = [
   { label: 'Paciente', email: 'paciente@redematernar.com' },
-  { label: 'Profissional', email: 'profissional@redematernar.com' },
+  { label: 'Clínica', email: 'profissional@redematernar.com' },
+  { label: 'Profissional independente', email: 'independente@redematernar.com' },
   { label: 'Administrador', email: 'admin@redematernar.com' },
 ]
 

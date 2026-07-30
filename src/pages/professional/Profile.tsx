@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Check, ExternalLink, Eye, Plus, Save, Trash2 } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
 import { getUsers } from '../../lib/auth'
+import { isClinicPlan } from '../../lib/plans'
 import {
   getProfileByUserId,
   makeDefaultProfile,
@@ -22,6 +23,7 @@ export function ProfessionalProfilePage() {
   const [profile, setProfile] = useState<ProfessionalProfile | null>(null)
   const [tab, setTab] = useState<'profile' | 'services' | 'availability'>('profile')
   const [message, setMessage] = useState('')
+  const clinicAccount = isClinicPlan(user?.plan)
 
   useEffect(() => {
     if (!user) return
@@ -60,7 +62,7 @@ export function ProfessionalProfilePage() {
 
   return <>
     <div className="page-heading profile-heading">
-      <div><h1>Perfil profissional</h1><p className="muted">Mantenha sua apresentação, serviços e disponibilidade sempre atualizados.</p></div>
+      <div><h1>{clinicAccount ? 'Perfis da clínica no Marketplace' : 'Meu perfil no Marketplace'}</h1><p className="muted">{clinicAccount ? 'Gerencie todos os profissionais publicados pela clínica.' : 'Mantenha seus dados, especialidades e disponibilidade atualizados.'}</p></div>
       <div className="heading-actions">
         <a className="btn btn-secondary" href={`/perfil/${profile.slug}`} target="_blank" rel="noreferrer"><Eye size={17}/> Ver perfil público</a>
         <button className="btn btn-primary" onClick={persist}><Save size={17}/> Salvar alterações</button>
@@ -68,6 +70,10 @@ export function ProfessionalProfilePage() {
     </div>
 
     {message && <div className="alert alert-success"><Check size={17}/>{message}</div>}
+
+    {clinicAccount && <section className="card clinic-marketplace-profiles"><div className="section-heading"><div><h2>Profissionais publicados</h2><p className="muted">No Marketplace, o nome da profissional aparece em destaque e a clínica logo abaixo.</p></div><button className="btn btn-primary"><Plus size={17}/> Cadastrar profissional</button></div><div className="grid grid-3">{[['Dra. Marina Lopes','Consultoria em amamentação'],['Dra. Camila Rocha','Pediatria'],['Fernanda Alves','Psicologia perinatal']].map(([name,specialty])=><article className="marketplace-profile-mini" key={name}><div className="avatar">{name.split(' ').slice(0,2).map(x=>x[0])}</div><div><strong>{name}</strong><span>Clínica Cuidar Materno</span><small>{specialty}</small></div><button className="btn btn-secondary btn-small">Editar</button></article>)}</div></section>}
+
+    {!clinicAccount && <div className="specialty-limit-note"><strong>Perfil individual · até 3 especialidades</strong><span>Você utiliza 1 de 3 especialidades disponíveis. Esta conta não permite cadastrar outros profissionais.</span></div>}
 
     <div className="profile-progress card">
       <div><strong>Seu perfil está {completion}% completo</strong><p className="muted">Perfis completos transmitem mais confiança para pacientes e parceiros.</p></div>
@@ -86,7 +92,7 @@ export function ProfessionalProfilePage() {
         <div className="field"><label>Nome profissional</label><input value={profile.displayName} onChange={(event) => update('displayName', event.target.value)} /></div>
         <div className="field"><label>Título de apresentação</label><textarea rows={3} value={profile.headline} onChange={(event) => update('headline', event.target.value)} placeholder="Uma frase clara sobre seu trabalho e diferencial." /></div>
         <div className="form-grid">
-          <div className="field"><label>Especialidade</label><input value={profile.specialty} onChange={(event) => update('specialty', event.target.value)} /></div>
+          <div className="field"><label>{clinicAccount ? 'Especialidade principal' : 'Especialidade 1 de 3'}</label><input value={profile.specialty} onChange={(event) => update('specialty', event.target.value)} /></div>
           <div className="field"><label>Registro profissional</label><input value={profile.registration} onChange={(event) => update('registration', event.target.value)} /></div>
           <div className="field"><label>Cidade</label><input value={profile.city} onChange={(event) => update('city', event.target.value)} /></div>
           <div className="field"><label>Anos de experiência</label><input type="number" min="0" value={profile.yearsExperience} onChange={(event) => update('yearsExperience', Number(event.target.value))} /></div>

@@ -1,5 +1,8 @@
 import { useState } from 'react'
 import { CalendarDays, Mail, Plus, ShieldCheck, UserCog, Users, X } from 'lucide-react'
+import { Navigate } from 'react-router-dom'
+import { useAuth } from '../../lib/AuthContext'
+import { isClinicPlan } from '../../lib/plans'
 
 type TeamMember = { name:string; specialty:string; role:string; email:string; agenda:string; status:string }
 
@@ -10,8 +13,10 @@ const initialTeam: TeamMember[] = [
 ]
 
 export function ClinicTeam() {
+  const { user } = useAuth()
   const [members,setMembers] = useState(initialTeam)
   const [open,setOpen] = useState(false)
+  if (!isClinicPlan(user?.plan)) return <Navigate to="/profissional" replace/>
   function submit(event:React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const data = new FormData(event.currentTarget)
@@ -26,7 +31,7 @@ export function ClinicTeam() {
       <div className="card team-metric"><ShieldCheck/><span><strong>Por função</strong><small>Permissões de acesso</small></span></div>
     </div>
     <section className="card backoffice-table-card clinic-team-card">
-      <div className="section-heading"><div><h2>Profissionais vinculados</h2><p className="muted">Cada profissional utiliza seu próprio acesso e visualiza somente o que sua função permite.</p></div><span className="badge">Plano Gestão Completa</span></div>
+      <div className="section-heading"><div><h2>Profissionais vinculados</h2><p className="muted">Cadastre profissionais ilimitados, cada um com acesso, agenda e permissões próprias.</p></div><span className="badge">Plano para Clínicas</span></div>
       <div className="table-wrap"><table><thead><tr><th>Profissional</th><th>Especialidade</th><th>Função</th><th>Agenda</th><th>Status</th><th>Acesso</th></tr></thead><tbody>
         {members.map(member=><tr key={member.email}><td><strong>{member.name}</strong><small className="table-subtitle">{member.email}</small></td><td>{member.specialty}</td><td>{member.role}</td><td>{member.agenda}</td><td><span className="badge">{member.status}</span></td><td><button className="icon-btn" title="Gerenciar acesso"><UserCog size={18}/></button></td></tr>)}
       </tbody></table></div>

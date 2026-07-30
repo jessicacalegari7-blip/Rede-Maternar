@@ -31,6 +31,7 @@ import { PatientProfile } from './pages/patient/Profile'
 import { AdminOperations, AdminUsers } from './pages/admin/Backoffice'
 import { SocialIntegrations } from './pages/professional/SocialIntegrations'
 import { ClinicTeam } from './pages/professional/ClinicTeam'
+import { MyProduction } from './pages/professional/MyProduction'
 
 export default function App() {
   return <BrowserRouter><AuthProvider><Routes>
@@ -68,6 +69,7 @@ export default function App() {
           <Route path="financeiro" element={<FinanceSuite />} />
           <Route path="relatorios" element={<ErpReports />} />
           <Route path="equipe" element={<ClinicTeam />} />
+          <Route path="minha-producao" element={<MyProduction />} />
           <Route path="perfil" element={<ProfessionalProfilePage />} />
         </Route>
       </Route>

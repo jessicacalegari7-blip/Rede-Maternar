@@ -20,6 +20,8 @@
 
 Uma organização representa uma clínica ou operação individual. Todos os registros operacionais devem conter `organization_id`; atendimentos e agendas também devem conter `professional_id`. O vínculo de equipe guarda função, status e permissões individuais.
 
+Leads e agendamentos devem registrar `requested_professional_id` e `assigned_professional_id`. O primeiro preserva a escolha da paciente; o segundo identifica quem efetivamente realizará o atendimento.
+
 `leads`, `pipeline_stages`, `lead_stage_history`, `tasks`, `activities`, `conversations`, `conversation_participants`, `messages`, `message_attachments`, `channels`, `channel_connections`, `webhook_events`, `notification_templates`, `notification_jobs`, `notification_deliveries`.
 
 ## Agenda e atendimento
@@ -29,6 +31,8 @@ Uma organização representa uma clínica ou operação individual. Todos os reg
 ## ERP e pagamentos
 
 `plans`, `subscriptions`, `charges`, `payments`, `refunds`, `payment_webhook_events`, `cash_sessions`, `cash_entries`, `accounts_payable`, `accounts_receivable`, `cost_categories`, `cost_entries`, `tax_provisions`, `payroll_entries`, `invoices`, `dre_snapshots`.
+
+Adicionar `professional_settlements` e `settlement_items` para demonstrar valor bruto, taxa do meio de pagamento, taxa da clínica, retenções, ajustes e repasse líquido por profissional e atendimento.
 
 ## Backoffice
 

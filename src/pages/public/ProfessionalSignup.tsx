@@ -7,7 +7,7 @@ import { maternalChildSpecialties } from '../../data/specialties'
 export function ProfessionalSignup() {
   const [searchParams] = useSearchParams()
   const requestedPlan = searchParams.get('plano')
-  const initialPlan = requestedPlan === 'business' || requestedPlan === 'marketplace' ? requestedPlan : 'free'
+  const initialPlan = ['marketplace','independent','clinic'].includes(requestedPlan ?? '') ? requestedPlan : 'free'
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
   const [acceptsInsurance, setAcceptsInsurance] = useState(false)
@@ -31,7 +31,7 @@ export function ProfessionalSignup() {
         city: String(form.get('city')),
         registration: String(form.get('registration') ?? ''),
         password,
-        plan: String(form.get('plan')) === 'business' ? 'business' : String(form.get('plan')) === 'marketplace' ? 'marketplace' : 'free',
+        plan: (['marketplace','independent','clinic'].includes(String(form.get('plan'))) ? String(form.get('plan')) : 'free') as 'free'|'marketplace'|'independent'|'clinic',
       })
       setSuccess(true)
       event.currentTarget.reset()
@@ -51,7 +51,7 @@ export function ProfessionalSignup() {
         <span className="badge">Cadastro profissional</span>
         <h1>Faça parte da Rede Maternar</h1>
         <p className="muted">Preencha seus dados e escolha como deseja participar da Rede Maternar.</p>
-        <div className="plan-selector plan-selector-3"><label><input type="radio" name="plan" value="free" defaultChecked={initialPlan === 'free'} /><span><strong>Marketplace Gratuito</strong><small>Até 30 visitas mensais no perfil, sem selo verificado.</small></span></label><label><input type="radio" name="plan" value="marketplace" defaultChecked={initialPlan === 'marketplace'} /><span><strong>Marketplace Ilimitado</strong><small>R$ 29,90 por mês, visitas ilimitadas e selo verificado.</small></span></label><label><input type="radio" name="plan" value="business" defaultChecked={initialPlan === 'business'} /><span><strong>Gestão Completa</strong><small>R$ 159,90 por mês com CRM, ERP, Marketplace e equipe para clínicas.</small></span></label></div>
+        <div className="plan-selector plan-selector-4"><label><input type="radio" name="plan" value="free" defaultChecked={initialPlan === 'free'} /><span><strong>Marketplace Gratuito</strong><small>Até 30 visitas mensais no perfil.</small></span></label><label><input type="radio" name="plan" value="marketplace" defaultChecked={initialPlan === 'marketplace'} /><span><strong>Marketplace Ilimitado</strong><small>R$ 29,90 por mês.</small></span></label><label><input type="radio" name="plan" value="independent" defaultChecked={initialPlan === 'independent'} /><span><strong>Profissional Independente</strong><small>R$ 99,99 por mês, uma profissional e até 3 especialidades.</small></span></label><label><input type="radio" name="plan" value="clinic" defaultChecked={initialPlan === 'clinic'} /><span><strong>Plano para Clínicas</strong><small>R$ 179,99 por mês, profissionais e especialidades ilimitados.</small></span></label></div>
         {error && <div className="alert alert-error">{error}</div>}
         <div className="form-grid">
           <div className="field field-span-2"><label>Nome completo</label><input name="name" placeholder="Seu nome" required minLength={3} /></div>

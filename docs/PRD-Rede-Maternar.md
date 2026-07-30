@@ -54,14 +54,21 @@ Administra cadastros, planos, assinaturas, suporte, financeiro, permissões, int
 - Destaque nas buscas.
 - Relatório completo do perfil.
 
-### Gestão Completa — R$ 159,90/mês
+### Profissional Independente — R$ 99,99/mês
 
-- Benefícios do Marketplace Ilimitado.
-- CRM, agenda, mensagens, integrações, teleconsultas, ERP e relatórios.
-- Permite operação individual ou de clínica, com vários profissionais vinculados à mesma organização.
-- Cada profissional possui acesso, agenda, atendimentos e permissões próprios.
+- Marketplace Ilimitado, CRM, agenda, mensagens, integrações, teleconsultas, ERP e relatórios.
+- Conta exclusiva para uma profissional; não permite cadastrar outros profissionais.
+- Até 3 especialidades vinculadas ao perfil público.
+- No editor do Marketplace, exibe somente os dados da titular.
+
+### Plano para Clínicas — R$ 179,99/mês
+
+- Marketplace, CRM, ERP e todos os recursos de gestão.
+- Profissionais e especialidades ilimitados.
+- Cada profissional possui acesso, agenda, atendimentos, produção e permissões próprios.
 - A clínica pode definir perfis de administradora, profissional, recepção e financeiro.
-- O limite incluído e o preço de profissionais adicionais deverão ser definidos antes do lançamento comercial.
+- No Marketplace, cada card destaca primeiro o nome da profissional e exibe o nome da clínica logo abaixo.
+- No editor de perfis do Marketplace, a clínica visualiza e administra todos os profissionais cadastrados.
 
 O backoffice deve permitir alterar preços, benefícios, período de teste, status, inadimplência, upgrade, downgrade e cancelamento.
 
@@ -113,6 +120,8 @@ Nome, e-mail, telefone, senha, data de nascimento, consentimentos e vínculos pr
 - Agenda do dia na visão geral.
 - Indicador privado e objetivo de comparecimento.
 - Alertas de novas mensagens com sino, contador, não lidas e destaque visual.
+- Todo lead deve registrar e exibir no card a profissional solicitada pela paciente, inclusive a opção “sem preferência”.
+- A recepção deve conseguir filtrar o funil por profissional e agendar diretamente na agenda correspondente.
 
 ## 8. Comunicação omnichannel
 
@@ -120,7 +129,9 @@ Centralizar mensagens permitidas pelas APIs oficiais de WhatsApp Business, Insta
 
 Cada conversa deve registrar canal, conta, campanha, origem, horário, responsável, status de leitura e consentimento. Implementar webhooks idempotentes, filas, tentativas, logs e tratamento de desconexões.
 
-Notificações de consulta: dia anterior e 2 horas antes, com preferências, consentimento e registro de entrega.
+Notificações para pacientes: dia anterior e 2 horas antes, com preferências, consentimento e registro de entrega.
+
+Notificações para profissionais: resumo diário via WhatsApp com os pacientes agendados no dia e novo aviso 1 hora antes de cada consulta. Registrar envio, entrega, falha e nova tentativa.
 
 ## 9. Agenda e atendimento
 
@@ -132,6 +143,7 @@ Notificações de consulta: dia anterior e 2 horas antes, com preferências, con
 - Forma de pagamento e status “Atendimento pago”.
 - Prevenção de conflito de horário.
 - Fuso horário configurável.
+- A profissional vinculada à clínica possui login individual e visualiza somente sua agenda, seus atendimentos e seus dados autorizados.
 
 ## 10. Teleconsulta
 
@@ -152,6 +164,7 @@ Sala segura, link temporário, controle de acesso, estado de espera, registro de
 - Notas fiscais por integração com provedor ou prefeitura.
 - DRE diário, mensal e anual, com regime definido.
 - Exportações e conciliação.
+- Extrato individual da profissional com quantidade de atendimentos, valor bruto das consultas, taxa do meio de pagamento, taxa da clínica, retenções e repasse líquido.
 
 ## 12. Pagamentos e assinaturas
 

@@ -1,10 +1,12 @@
-export type ProfessionalPlan = 'free' | 'marketplace' | 'business' | 'annual'
+export type ProfessionalPlan = 'free' | 'marketplace' | 'independent' | 'clinic' | 'business' | 'annual'
 
 export const planLabels: Record<ProfessionalPlan, string> = {
   free: 'Marketplace Gratuito',
   marketplace: 'Marketplace Ilimitado',
-  business: 'Gestão Completa',
-  annual: 'Gestão Completa',
+  independent: 'Profissional Independente',
+  clinic: 'Plano para Clínicas',
+  business: 'Plano para Clínicas',
+  annual: 'Plano para Clínicas',
 }
 
 export const planFeatures: Record<ProfessionalPlan, string[]> = {
@@ -19,6 +21,18 @@ export const planFeatures: Record<ProfessionalPlan, string[]> = {
     'Serviços ilimitados',
     'Destaque nas buscas por especialidade',
     'Relatório completo de desempenho',
+  ],
+  independent: [
+    'Marketplace Ilimitado, CRM e ERP',
+    'Conta exclusiva para uma profissional',
+    'Até 3 especialidades no perfil',
+    'Agenda, atendimentos, financeiro e WhatsApp',
+  ],
+  clinic: [
+    'Marketplace, CRM e ERP completos',
+    'Profissionais e especialidades ilimitados',
+    'Agendas, acessos e repasses individuais',
+    'Gestão de equipe, recepção e financeiro',
   ],
   business: [
     'Tudo do Marketplace Ilimitado',
@@ -39,5 +53,9 @@ export const planFeatures: Record<ProfessionalPlan, string[]> = {
 }
 
 export function hasManagement(plan?: ProfessionalPlan) {
-  return plan === 'business'
+  return plan === 'independent' || plan === 'clinic' || plan === 'business'
+}
+
+export function isClinicPlan(plan?: ProfessionalPlan) {
+  return plan === 'clinic' || plan === 'business' || plan === 'annual'
 }

@@ -7,6 +7,7 @@ import {
 import { Logo } from '../components/Logo'
 import type { UserRole } from '../lib/types'
 import { useAuth } from '../lib/AuthContext'
+import { hasManagement, isClinicPlan, planLabels } from '../lib/plans'
 
 type Item = [string, string, ComponentType<{ size?: string | number }>]
 
@@ -36,11 +37,11 @@ const management: Item[] = [
   ['Caixa de entrada', '/profissional/conversas', MessageCircle],
   ['Integrações e canais', '/profissional/integracoes', Bell],
   ['Agenda', '/profissional/agenda', CalendarDays],
+  ['Meus atendimentos', '/profissional/minha-producao', BadgeDollarSign],
   ['Teleconsultas', '/profissional/teleconsultas', Video],
   ['Serviços', '/profissional/servicos', BriefcaseBusiness],
   ['Financeiro ERP', '/profissional/financeiro', Wallet],
   ['Relatórios', '/profissional/relatorios', BarChart3],
-  ['Equipe da clínica', '/profissional/equipe', Users],
   ['Perfil no Marketplace', '/profissional/perfil', UserRound],
   ['Meu plano', '/profissional/plano', Sparkles],
 ]
@@ -62,11 +63,9 @@ export function PortalLayout({ role }: { role: UserRole }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const items = role === 'professional'
-    ? (user?.plan === 'business' ? management : marketplace)
+    ? (hasManagement(user?.plan) ? (isClinicPlan(user?.plan) ? [...management.slice(0,-2), ['Equipe da clínica', '/profissional/equipe', Users] as Item, ...management.slice(-2)] : management) : marketplace)
     : (menus[role] ?? [])
-  const planLabel = user?.plan === 'business'
-    ? 'Gestão Completa'
-    : user?.plan === 'marketplace' ? 'Marketplace Ilimitado' : 'Marketplace Gratuito'
+  const planLabel = user?.plan ? planLabels[user.plan] : 'Marketplace Gratuito'
 
   function signOut() {
     logout()

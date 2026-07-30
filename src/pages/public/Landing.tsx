@@ -5,7 +5,8 @@ import { Logo } from '../../components/Logo'
 const plans = [
   { name:'Marketplace Gratuito', price:'R$ 0', note:'Para começar a divulgar seu trabalho.', features:['Perfil profissional básico','Até 30 visitas por mês','Até 3 serviços publicados','Relatório básico'], action:'Criar perfil gratuito', plan:'free' },
   { name:'Marketplace Ilimitado', price:'R$ 29,90/mês', note:'Para ampliar sua presença e ser encontrada.', features:['Selo de perfil verificado','Visitas e serviços ilimitados','Destaque nas buscas','Relatório completo do perfil'], action:'Quero visitas ilimitadas', plan:'marketplace' },
-  { name:'Gestão Completa', price:'R$ 159,90/mês', note:'Marketplace + CRM + ERP para profissionais e clínicas.', features:['Selo de perfil verificado','Marketplace Ilimitado incluso','Funil CRM, agenda e WhatsApp','ERP financeiro e relatórios','Equipe com múltiplos profissionais e agendas'], action:'Quero profissionalizar minha gestão', plan:'business', featured:true },
+  { name:'Profissional Independente', price:'R$ 99,99/mês', note:'Marketplace + CRM + ERP para uma profissional.', features:['Marketplace Ilimitado incluso','Até 3 especialidades','CRM, agenda e WhatsApp','ERP financeiro e relatórios'], action:'Quero minha gestão completa', plan:'independent', featured:true },
+  { name:'Plano para Clínicas', price:'R$ 179,99/mês', note:'Gestão completa para clínicas materno-infantis.', features:['Profissionais ilimitados','Especialidades ilimitadas','Agendas e repasses individuais','CRM, ERP e equipe com permissões'], action:'Quero gerenciar minha clínica', plan:'clinic', featured:false },
 ]
 
 export function Landing() {

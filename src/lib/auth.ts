@@ -41,9 +41,21 @@ const seedUsers: AppUser[] = [
     role: 'professional',
     status: 'active',
     specialty: 'Fonoaudiologia',
-    plan: 'business',
+    plan: 'clinic',
     city: 'São Paulo, SP',
     createdAt: '2026-07-24T12:00:00.000Z',
+  },
+  {
+    id: 'professional-independent',
+    name: 'Paula Nascimento',
+    email: 'independente@redematernar.com',
+    password: '123456',
+    role: 'professional',
+    status: 'active',
+    plan: 'independent',
+    specialty: 'Consultoria de amamentação',
+    city: 'São Paulo, SP',
+    createdAt: '2026-07-28T12:00:00.000Z',
   },
   {
     id: 'professional-free',
@@ -95,7 +107,7 @@ export function getUsers(): AppUser[] {
   try {
     const parsed = JSON.parse(raw) as AppUser[]
     const migrated = parsed.map((user) =>
-      (user as AppUser & { plan?: string }).plan === 'annual' ? { ...user, plan: 'business' as ProfessionalPlan } : user,
+      ['annual','business'].includes(String((user as AppUser & { plan?: string }).plan)) ? { ...user, plan: 'clinic' as ProfessionalPlan } : user,
     )
     localStorage.setItem(USERS_KEY, JSON.stringify(migrated))
     return migrated
