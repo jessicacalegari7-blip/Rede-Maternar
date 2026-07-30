@@ -3,6 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { Logo } from '../../components/Logo'
 import { registerProfessional } from '../../lib/auth'
 import { maternalChildSpecialties } from '../../data/specialties'
+import { isSupabaseConfigured } from '../../lib/supabase'
+import { registerProfessionalWithSupabase } from '../../lib/supabaseAuth'
 
 export function ProfessionalSignup() {
   const [searchParams] = useSearchParams()
@@ -11,8 +13,9 @@ export function ProfessionalSignup() {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
   const [acceptsInsurance, setAcceptsInsurance] = useState(false)
+  const [loading, setLoading] = useState(false)
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError('')
     const form = new FormData(event.currentTarget)
@@ -22,8 +25,9 @@ export function ProfessionalSignup() {
       setError('As senhas precisam ser iguais.')
       return
     }
+    setLoading(true)
     try {
-      registerProfessional({
+      const input = {
         name: String(form.get('name')),
         email: String(form.get('email')),
         phone: String(form.get('phone')),
@@ -32,11 +36,15 @@ export function ProfessionalSignup() {
         registration: String(form.get('registration') ?? ''),
         password,
         plan: (['marketplace','independent','clinic'].includes(String(form.get('plan'))) ? String(form.get('plan')) : 'free') as 'free'|'marketplace'|'independent'|'clinic',
-      })
+      }
+      if (isSupabaseConfigured) await registerProfessionalWithSupabase(input)
+      else registerProfessional(input)
       setSuccess(true)
       event.currentTarget.reset()
     } catch (signupError) {
       setError(signupError instanceof Error ? signupError.message : 'Não foi possível enviar o cadastro.')
+    } finally {
+      setLoading(false)
     }
   }
 

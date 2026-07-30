@@ -1,10 +1,15 @@
 # Rede Maternar v0.8
 
+## Banco de dados
+
+O banco real é definido por migrações na pasta `supabase/`. Consulte
+`supabase/README.md` antes de configurar ou alterar o projeto Supabase.
+
 MVP local consolidado da plataforma de coordenação do cuidado materno-infantil.
 
 ## Executar
 
-Requer Node.js 20 ou superior.
+Requer Node.js 22 ou superior.
 
 ```bash
 npm install
