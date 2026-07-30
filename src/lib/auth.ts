@@ -106,9 +106,10 @@ export function getUsers(): AppUser[] {
   }
   try {
     const parsed = JSON.parse(raw) as AppUser[]
-    const migrated = parsed.map((user) =>
+    const migratedUsers = parsed.map((user) =>
       ['annual','business'].includes(String((user as AppUser & { plan?: string }).plan)) ? { ...user, plan: 'clinic' as ProfessionalPlan } : user,
     )
+    const migrated = [...migratedUsers, ...seedUsers.filter((seed) => !migratedUsers.some((user) => user.id === seed.id))]
     localStorage.setItem(USERS_KEY, JSON.stringify(migrated))
     return migrated
   } catch {
