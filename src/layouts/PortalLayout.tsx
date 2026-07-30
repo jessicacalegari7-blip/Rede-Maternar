@@ -67,8 +67,8 @@ export function PortalLayout({ role }: { role: UserRole }) {
     : (menus[role] ?? [])
   const planLabel = user?.plan ? planLabels[user.plan] : 'Marketplace Gratuito'
 
-  function signOut() {
-    logout()
+  async function signOut() {
+    await logout()
     navigate('/login', { replace: true })
   }
 

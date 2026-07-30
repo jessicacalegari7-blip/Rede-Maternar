@@ -19,12 +19,12 @@ export function Login() {
   const nav = useNavigate()
   const location = useLocation()
 
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault()
     setError('')
     setLoading(true)
     try {
-      const user = login(email, password)
+      const user = await login(email, password)
       const requestedPath = (location.state as { from?: string } | null)?.from
       const home = user.role === 'patient' ? '/paciente' : user.role === 'professional' ? '/profissional' : '/admin'
       nav(requestedPath?.startsWith(home) ? requestedPath : home, { replace: true })
