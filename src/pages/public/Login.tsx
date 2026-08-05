@@ -3,16 +3,9 @@ import { useLocation, useNavigate, Link } from 'react-router-dom'
 import { Logo } from '../../components/Logo'
 import { useAuth } from '../../lib/AuthContext'
 
-const demoAccounts = [
-  { label: 'Paciente', email: 'paciente@redematernar.com' },
-  { label: 'Clínica', email: 'profissional@redematernar.com' },
-  { label: 'Profissional independente', email: 'independente@redematernar.com' },
-  { label: 'Administrador', email: 'admin@redematernar.com' },
-]
-
 export function Login() {
-  const [email, setEmail] = useState('profissional@redematernar.com')
-  const [password, setPassword] = useState('123456')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const { login } = useAuth()
@@ -52,6 +45,7 @@ export function Login() {
           <label htmlFor="password">Senha</label>
           <input id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required minLength={6} />
         </div>
+        <p className="auth-recovery-link"><Link to="/recuperar-senha">Esqueci minha senha</Link></p>
         <button className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
           {loading ? 'Entrando...' : 'Entrar'}
         </button>
@@ -62,18 +56,6 @@ export function Login() {
           <Link className="btn btn-secondary" to="/cadastro-profissional" style={{ width: '100%' }}>
             Criar cadastro
           </Link>
-        </div>
-
-        <div className="demo-box">
-          <strong>Acessos para aprovação</strong>
-          <p className="muted">Senha de todos: 123456</p>
-          <div className="demo-list">
-            {demoAccounts.map((account) => (
-              <button key={account.email} type="button" onClick={() => { setEmail(account.email); setPassword('123456') }}>
-                <span>{account.label}</span><small>{account.email}</small>
-              </button>
-            ))}
-          </div>
         </div>
 
         <p className="muted auth-footer"><Link to="/">Voltar para a página inicial</Link></p>
