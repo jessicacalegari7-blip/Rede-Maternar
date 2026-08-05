@@ -34,6 +34,7 @@ import { SocialIntegrations } from './pages/professional/SocialIntegrations'
 import { ClinicTeam } from './pages/professional/ClinicTeam'
 import { MyProduction } from './pages/professional/MyProduction'
 import { SetPassword } from './pages/public/SetPassword'
+import { AdminNewsPortal } from './pages/admin/NewsPortal'
 
 function PublicHome() {
   const authType = new URLSearchParams(window.location.hash.slice(1)).get('type')
@@ -94,6 +95,7 @@ export default function App() {
         <Route path="agendamentos" element={<AdminAppointments />} />
         <Route path="usuarios" element={<AdminUsers />} />
         <Route path="financeiro" element={<AdminFinance />} />
+        <Route path="noticias" element={<AdminNewsPortal />} />
         <Route path="operacao" element={<AdminOperations />} />
         <Route path="configuracoes" element={<AdminOperations />} />
       </Route>
