@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { authenticate, getSession, setSession, type PublicUser } from './auth'
+import type { PublicUser } from './auth'
 import { acceptInvitation } from './invitations'
 import { getRemotePublicUser, loginWithSupabase } from './supabaseAuth'
 import { supabase } from './supabase'
@@ -15,12 +15,11 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [initialLocalSession] = useState(() => getSession())
-  const [user, setUser] = useState<PublicUser | null>(initialLocalSession)
-  const [loading, setLoading] = useState(Boolean(supabase && !initialLocalSession))
+  const [user, setUser] = useState<PublicUser | null>(null)
+  const [loading, setLoading] = useState(Boolean(supabase))
 
   useEffect(() => {
-    if (!supabase || initialLocalSession) {
+    if (!supabase) {
       setLoading(false)
       return
     }
@@ -43,30 +42,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       active = false
       listener.subscription.unsubscribe()
     }
-  }, [initialLocalSession])
+  }, [])
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
       loading,
       async login(email: string, password: string) {
-        const isDemoAccount = email.trim().toLowerCase().endsWith('@redematernar.com')
-        const authenticatedUser = isDemoAccount
-          ? authenticate(email, password)
-          : await loginWithSupabase(email, password)
-        setSession(isDemoAccount ? authenticatedUser : null)
+        const authenticatedUser = await loginWithSupabase(email, password)
         setUser(authenticatedUser)
         return authenticatedUser
       },
       registerPatient(token: string, input: { name: string; email: string; phone: string; password: string }) {
         const newUser = acceptInvitation(token, input)
-        setSession(newUser)
         setUser(newUser)
         return newUser
       },
       async logout() {
         if (supabase) await supabase.auth.signOut()
-        setSession(null)
         setUser(null)
       },
     }),
