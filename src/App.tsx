@@ -33,13 +33,23 @@ import { AdminOperations, AdminUsers } from './pages/admin/Backoffice'
 import { SocialIntegrations } from './pages/professional/SocialIntegrations'
 import { ClinicTeam } from './pages/professional/ClinicTeam'
 import { MyProduction } from './pages/professional/MyProduction'
+import { SetPassword } from './pages/public/SetPassword'
+
+function PublicHome() {
+  const authType = new URLSearchParams(window.location.hash.slice(1)).get('type')
+  if (authType === 'invite' || authType === 'recovery') {
+    return <Navigate to={`/definir-senha${window.location.hash}`} replace />
+  }
+  return <PortalHome />
+}
 
 export default function App() {
   return <BrowserRouter><AuthProvider><Routes>
-    <Route path="/" element={<PortalHome />} />
+    <Route path="/" element={<PublicHome />} />
     <Route path="/para-profissionais" element={<Landing />} />
     <Route path="/profissionais" element={<Marketplace />} />
     <Route path="/login" element={<Login />} />
+    <Route path="/definir-senha" element={<SetPassword />} />
     <Route path="/cadastro-profissional" element={<ProfessionalSignup />} />
     <Route path="/perfil/:slug" element={<PublicProfessionalProfile />} />
     <Route path="/convite/:token" element={<PatientInvitation />} />
