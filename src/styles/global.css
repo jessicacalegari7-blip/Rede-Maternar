@@ -420,6 +420,7 @@ button { cursor: pointer; }
 .production-notice{margin-top:18px}.production-notice p{margin-bottom:0}
 .plan-selector-4{grid-template-columns:repeat(2,1fr)}
 .pricing-grid-4{grid-template-columns:repeat(4,minmax(0,1fr));max-width:1320px}
+.auth-signup-callout{margin:20px 0;padding:18px;border:1px solid var(--border);border-radius:16px;background:var(--cream);text-align:center}.auth-signup-callout p{margin:7px 0 14px}
 @media(max-width:1100px){.pricing-grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){.plan-selector-4,.pricing-grid-4{grid-template-columns:1fr}}
 .clinic-marketplace-profiles{margin-bottom:18px}.marketplace-profile-mini{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:14px;border:1px solid var(--border);border-radius:16px}.marketplace-profile-mini span,.marketplace-profile-mini small{display:block;color:var(--muted);margin-top:3px}.specialty-limit-note{display:flex;justify-content:space-between;gap:12px;background:#faf0f3;border:1px solid #efd9df;color:var(--wine);padding:13px 16px;border-radius:14px;margin-bottom:18px}.specialty-limit-note span{font-size:.82rem}

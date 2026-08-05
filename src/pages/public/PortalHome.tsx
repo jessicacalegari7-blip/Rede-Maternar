@@ -11,6 +11,7 @@ import {
   Sparkles,
   Users,
 } from 'lucide-react'
+import { LegalFooter } from './Legal'
 import { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Logo } from '../../components/Logo'
@@ -148,5 +149,6 @@ export function PortalHome() {
         <Link className="btn btn-primary" to="/para-profissionais">Conhecer a plataforma <ChevronRight /></Link>
       </section>
     </main>
+    <LegalFooter />
   </div>
 }

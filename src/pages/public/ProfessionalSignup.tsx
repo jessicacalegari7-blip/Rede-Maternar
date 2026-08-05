@@ -9,7 +9,7 @@ import { registerProfessionalWithSupabase } from '../../lib/supabaseAuth'
 export function ProfessionalSignup() {
   const [searchParams] = useSearchParams()
   const requestedPlan = searchParams.get('plano')
-  const initialPlan = ['marketplace','independent','clinic'].includes(requestedPlan ?? '') ? requestedPlan : 'free'
+  const initialPlan = ['marketplace','independent','clinic'].includes(requestedPlan ?? '') ? requestedPlan : 'marketplace'
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
   const [acceptsInsurance, setAcceptsInsurance] = useState(false)
@@ -29,13 +29,15 @@ export function ProfessionalSignup() {
     try {
       const input = {
         name: String(form.get('name')),
+        organizationName: String(form.get('organizationName') || form.get('name')),
         email: String(form.get('email')),
         phone: String(form.get('phone')),
         specialty: String(form.get('specialty')),
         city: String(form.get('city')),
         registration: String(form.get('registration') ?? ''),
         password,
-        plan: (['marketplace','independent','clinic'].includes(String(form.get('plan'))) ? String(form.get('plan')) : 'free') as 'free'|'marketplace'|'independent'|'clinic',
+        plan: (['marketplace','independent','clinic'].includes(String(form.get('plan'))) ? String(form.get('plan')) : 'marketplace') as 'free'|'marketplace'|'independent'|'clinic',
+        insurances: form.getAll('insurances').map(String),
       }
       if (isSupabaseConfigured) await registerProfessionalWithSupabase(input)
       else registerProfessional(input)
@@ -59,10 +61,11 @@ export function ProfessionalSignup() {
         <span className="badge">Cadastro profissional</span>
         <h1>Faça parte da Rede Maternar</h1>
         <p className="muted">Preencha seus dados e escolha como deseja participar da Rede Maternar.</p>
-        <div className="plan-selector plan-selector-4"><label><input type="radio" name="plan" value="free" defaultChecked={initialPlan === 'free'} /><span><strong>Marketplace Gratuito</strong><small>Até 30 visitas mensais no perfil.</small></span></label><label><input type="radio" name="plan" value="marketplace" defaultChecked={initialPlan === 'marketplace'} /><span><strong>Marketplace Ilimitado</strong><small>R$ 29,90 por mês.</small></span></label><label><input type="radio" name="plan" value="independent" defaultChecked={initialPlan === 'independent'} /><span><strong>Profissional Independente</strong><small>R$ 99,99 por mês, uma profissional e até 3 especialidades.</small></span></label><label><input type="radio" name="plan" value="clinic" defaultChecked={initialPlan === 'clinic'} /><span><strong>Plano para Clínicas</strong><small>R$ 179,99 por mês, profissionais e especialidades ilimitados.</small></span></label></div>
+        <div className="plan-selector plan-selector-3"><label><input type="radio" name="plan" value="marketplace" defaultChecked={initialPlan === 'marketplace' || initialPlan === 'free'} /><span><strong>Marketplace Ilimitado</strong><small>R$ 59,90 por ano.</small></span></label><label><input type="radio" name="plan" value="independent" defaultChecked={initialPlan === 'independent'} /><span><strong>Profissional Individual</strong><small>R$ 99,99 por mês, uma profissional e até 3 especialidades.</small></span></label><label><input type="radio" name="plan" value="clinic" defaultChecked={initialPlan === 'clinic'} /><span><strong>Plano para Clínicas</strong><small>R$ 199,99 por mês, com profissionais ilimitados.</small></span></label></div>
         {error && <div className="alert alert-error">{error}</div>}
         <div className="form-grid">
-          <div className="field field-span-2"><label>Nome completo</label><input name="name" placeholder="Seu nome" required minLength={3} /></div>
+          <div className="field"><label>Nome da responsável</label><input name="name" placeholder="Seu nome" required minLength={3} /></div>
+          <div className="field"><label>Nome da clínica ou perfil</label><input name="organizationName" placeholder="Nome que será exibido" required minLength={3} /></div>
           <div className="field"><label>E-mail profissional</label><input name="email" type="email" placeholder="voce@email.com" required /></div>
           <div className="field"><label>WhatsApp</label><input name="phone" placeholder="(11) 99999-9999" required /></div>
           <div className="field"><label>Especialidade</label><select name="specialty" required><option value="">Selecione</option>{maternalChildSpecialties.map((specialty) => <option key={specialty}>{specialty}</option>)}<option>Outra especialidade materno-infantil</option></select></div>
@@ -72,8 +75,8 @@ export function ProfessionalSignup() {
           <div className="field"><label>Crie uma senha</label><input name="password" type="password" minLength={6} required /></div>
           <div className="field"><label>Confirme a senha</label><input name="passwordConfirmation" type="password" minLength={6} required /></div>
         </div>
-        <label className="check-row"><input type="checkbox" required /> <span>Confirmo que os dados informados são verdadeiros e aceito a análise cadastral.</span></label>
-        <button className="btn btn-primary" style={{ width: '100%' }}>Enviar para análise</button>
+        <label className="check-row"><input type="checkbox" required /> <span>Confirmo que os dados são verdadeiros e aceito os <Link to="/termos" target="_blank">Termos de Uso</Link> e a <Link to="/privacidade" target="_blank">Política de Privacidade</Link>.</span></label>
+        <button className="btn btn-primary" disabled={loading} style={{ width: '100%' }}>{loading?'Enviando cadastro…':'Enviar para análise'}</button>
         <p className="muted auth-footer">Já possui cadastro? <Link to="/login"><strong>Entrar</strong></Link></p>
       </form>
     </div>

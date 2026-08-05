@@ -23,75 +23,7 @@ export type PublicUser = Omit<AppUser, 'password'>
 const USERS_KEY = 'rede-maternar:users'
 const SESSION_KEY = 'rede-maternar:session'
 
-const seedUsers: AppUser[] = [
-  {
-    id: 'admin-1',
-    name: 'Jéssica Calegari',
-    email: 'admin@redematernar.com',
-    password: '123456',
-    role: 'admin',
-    status: 'active',
-    createdAt: '2026-07-28T09:00:00.000Z',
-  },
-  {
-    id: 'professional-1',
-    name: 'Dra. Marina Lopes',
-    email: 'profissional@redematernar.com',
-    password: '123456',
-    role: 'professional',
-    status: 'active',
-    specialty: 'Fonoaudiologia',
-    plan: 'clinic',
-    city: 'São Paulo, SP',
-    createdAt: '2026-07-24T12:00:00.000Z',
-  },
-  {
-    id: 'professional-independent',
-    name: 'Paula Nascimento',
-    email: 'independente@redematernar.com',
-    password: '123456',
-    role: 'professional',
-    status: 'active',
-    plan: 'independent',
-    specialty: 'Consultoria de amamentação',
-    city: 'São Paulo, SP',
-    createdAt: '2026-07-28T12:00:00.000Z',
-  },
-  {
-    id: 'professional-free',
-    name: 'Paula Nascimento',
-    email: 'gratuito@redematernar.com',
-    password: '123456',
-    role: 'professional',
-    status: 'active',
-    plan: 'free',
-    specialty: 'Doula',
-    city: 'São Paulo, SP',
-    createdAt: '2026-07-28T12:00:00.000Z',
-  },
-  {
-    id: 'patient-1',
-    name: 'Camila Ribeiro',
-    email: 'paciente@redematernar.com',
-    password: '123456',
-    role: 'patient',
-    status: 'active',
-    createdAt: '2026-07-25T14:30:00.000Z',
-  },
-  {
-    id: 'professional-pending',
-    name: 'Ana Paula Mendes',
-    plan: 'free',
-    email: 'ana@exemplo.com',
-    password: '123456',
-    role: 'professional',
-    status: 'pending',
-    specialty: 'Nutrição materno-infantil',
-    city: 'Campinas, SP',
-    registration: 'CRN 00000',
-    createdAt: '2026-07-27T16:20:00.000Z',
-  },
-]
+const seedUsers: AppUser[] = []
 
 function canUseStorage() {
   return typeof window !== 'undefined' && Boolean(window.localStorage)
@@ -158,6 +90,7 @@ export function authenticate(email: string, password: string) {
 
 export interface RegisterProfessionalInput {
   name: string
+  organizationName?: string
   email: string
   password: string
   specialty: string
@@ -165,6 +98,7 @@ export interface RegisterProfessionalInput {
   phone: string
   registration?: string
   plan?: ProfessionalPlan
+  insurances?: string[]
 }
 
 export function registerProfessional(input: RegisterProfessionalInput) {
