@@ -1,38 +1,132 @@
-import { ArrowLeft, CalendarDays, CheckCircle2, Clock3, ExternalLink, MapPin, MessageCircle, Star } from 'lucide-react'
+import {
+  Baby,
+  Bell,
+  Building2,
+  Camera,
+  CheckCircle2,
+  Clock3,
+  CreditCard,
+  Heart,
+  Instagram,
+  Mail,
+  MapPin,
+  Menu,
+  Search,
+  Share2,
+  Star,
+  Stethoscope,
+  Users,
+} from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { Logo } from '../../components/Logo'
-import { getProfileBySlug, modeLabels } from '../../lib/professionalProfile'
+import { getProfileBySlug } from '../../lib/professionalProfile'
 
-const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+const clinicServices = [
+  ['Consulta Pediátrica', 'Avaliação completa da saúde da criança', '🩺'],
+  ['Puericultura', 'Acompanhamento do crescimento e desenvolvimento', '👶'],
+  ['Vacinas', 'Calendário vacinal completo e personalizado', '💉'],
+  ['Alergia e Imunologia', 'Diagnóstico e tratamento de alergias', '🧸'],
+  ['Disfunções Alimentares', 'Orientação e acompanhamento nutricional', '🥣'],
+]
+
+const team = [
+  ['Dra. Marina Lopes', 'Pediatria e Puericultura', 'ML'],
+  ['Dra. Fernanda Alves', 'Alergia e Imunologia', 'FA'],
+  ['Dra. Camila Rocha', 'Nutrição Infantil', 'CR'],
+]
 
 export function PublicProfessionalProfile() {
   const { slug = '' } = useParams()
-  const profile = getProfileBySlug(slug)
+  const storedProfile = getProfileBySlug(slug)
+  const clinicDemo = slug === 'clinica-crescer-pediatria'
+  const displayName = clinicDemo ? 'Clínica Crescer Pediatria' : storedProfile?.displayName
 
-  if (!profile) return <div className="auth-page"><div className="auth-card success-card"><Logo/><h1>Perfil não encontrado</h1><p className="muted">Este endereço pode ter sido alterado ou ainda não foi publicado.</p><Link className="btn btn-primary" to="/">Voltar ao início</Link></div></div>
+  if (!displayName) return <div className="auth-page"><div className="auth-card success-card"><Logo /><h1>Perfil não encontrado</h1><p className="muted">Este endereço pode ter sido alterado ou ainda não foi publicado.</p><Link className="btn btn-primary" to="/profissionais">Voltar para a busca</Link></div></div>
 
-  return <div className="public-profile-page">
-    <header className="public-header"><Logo/><Link to="/login" className="btn btn-secondary">Entrar</Link></header>
-    <main className="public-profile-shell">
-      <Link className="back-link" to="/"><ArrowLeft size={16}/> Rede Maternar</Link>
-      <section className="public-profile-hero">
-        <div className="public-avatar">{profile.displayName.split(' ').filter(Boolean).slice(0,2).map((part) => part[0]).join('')}</div>
-        <div className="public-identity"><div className="verified-line"><span className="badge">Perfil verificado</span>{profile.acceptsNewPatients && <span className="availability-badge"><CheckCircle2 size={15}/> Novas pacientes</span>}</div><h1>{profile.displayName}</h1><h2>{profile.specialty}</h2><div className="profile-rating"><Star fill="currentColor"/><strong>4,9</strong><span>87 avaliações verificadas</span></div><p>{profile.headline}</p><div className="public-meta"><span><MapPin size={17}/>{profile.city}</span>{profile.registration && <span>{profile.registration}</span>}{profile.yearsExperience > 0 && <span>{profile.yearsExperience} anos de experiência</span>}</div></div>
-        <aside className="contact-card"><h3>Fale com a profissional</h3><p className="muted">Agendamentos são feitos por convite ou vínculo com a profissional.</p><button className="btn btn-primary"><CalendarDays size={17}/> Solicitar agendamento</button><button className="btn btn-secondary"><MessageCircle size={17}/> Enviar mensagem</button></aside>
+  const specialty = clinicDemo ? 'Pediatria · Puericultura' : storedProfile?.specialty
+  const city = clinicDemo ? 'Cambuí · Campinas, SP' : storedProfile?.city
+  const phone = clinicDemo ? '(19) 99988-7766' : storedProfile?.phone
+  const description = clinicDemo
+    ? 'Cuidado que acompanha cada fase do seu filho.'
+    : storedProfile?.headline || 'Atendimento materno-infantil acolhedor, seguro e baseado em evidências.'
+  const about = clinicDemo
+    ? 'A Clínica Crescer Pediatria oferece atendimento humanizado e completo para crianças e adolescentes. Nossa missão é cuidar da saúde dos pequenos com carinho, atenção e excelência em cada detalhe.'
+    : storedProfile?.about
+
+  return <div className="clinic-profile-page">
+    <header className="portal-topbar compact">
+      <Link to="/"><Logo /></Link>
+      <Link className="professional-access" to="/login"><span><Users /></span><strong>Profissional de Saúde<small>Login na plataforma</small></strong></Link>
+      <div className="portal-header-actions"><button aria-label="Buscar"><Search /></button><button aria-label="Notificações"><Bell /></button><button aria-label="Menu"><Menu /></button></div>
+    </header>
+
+    <section className="profile-search-strip">
+      <p><Heart /> Paciente, insira seu nome e telefone e faça sua consulta gratuitamente.</p>
+      <form>
+        <label><span>Nome da paciente</span><input defaultValue="Maria Silva" /></label>
+        <label><span>Telefone com DDD</span><input defaultValue="(19) 99876-5432" /></label>
+        <label><span>Especialidade</span><select defaultValue="Pediatria"><option>Pediatria</option><option>Fonoaudiologia</option><option>Nutrição Infantil</option></select></label>
+        <label><span>Cidade</span><select defaultValue="Campinas, SP"><option>Campinas, SP</option><option>São Paulo, SP</option></select></label>
+        <button><Search />Buscar agora</button>
+      </form>
+    </section>
+
+    <nav className="portal-categories profile-nav"><Link to="/">Início</Link><a href="#sobre"><Heart />Gestação</a><a href="#servicos"><Baby />Bebê</a><a href="#equipe"><Users />Profissionais</a><a href="#avaliacoes"><Star />Avaliações</a></nav>
+
+    <main className="clinic-profile-shell">
+      <div className="profile-breadcrumbs"><Link to="/">Início</Link><span>›</span><Link to="/profissionais">Buscar</Link><span>›</span><strong>{displayName}</strong></div>
+
+      <section className="clinic-cover">
+        <div className="clinic-cover-art"><span>Perfil Premium</span><div className="cover-shapes"><i /><i /><i /></div></div>
+        <div className="clinic-profile-main">
+          <div className="clinic-logo">{clinicDemo ? <><Baby /><b>CRESCER<small>pediatria</small></b></> : displayName.split(' ').slice(0, 2).map(part => part[0]).join('')}</div>
+          <div className="clinic-identity">
+            <h1>{displayName}<CheckCircle2 /></h1>
+            <p>{description}</p>
+            <div className="clinic-rating"><strong>5,0</strong>{[1, 2, 3, 4, 5].map(n => <Star key={n} fill="currentColor" />)}<span>(124 avaliações)</span></div>
+            <div className="service-tags">{String(specialty).split(' · ').map(tag => <span key={tag}>{tag}</span>)}</div>
+            {!clinicDemo && <small className="clinic-caption">Profissional vinculada à Rede Maternar</small>}
+          </div>
+          <div className="clinic-profile-actions"><button><Share2 />Compartilhar perfil</button><button><Heart />Salvar profissional</button><button><Star />Avaliar profissional</button></div>
+        </div>
+
+        <div className="clinic-contact-grid">
+          <div><Stethoscope /><span><b>Telefone / WhatsApp</b><strong>{phone || 'Disponível após contato'}</strong></span></div>
+          <div><Mail /><span><b>E-mail</b><strong>contato@redematernar.com.br</strong></span></div>
+          <div><MapPin /><span><b>Localização</b><strong>{city}</strong><small>Endereço completo compartilhado no contato</small></span></div>
+          <div><Clock3 /><span><b>Horário de atendimento</b><strong>Segunda a Sexta: 8h às 18h</strong><small>Sábado: 8h às 12h</small></span></div>
+        </div>
+        <div className="clinic-cta-row"><button className="whatsapp">Falar no WhatsApp</button><button><Mail />Enviar e-mail</button><button className="instagram"><Instagram />Seguir no Instagram</button></div>
       </section>
 
-      <div className="public-content-grid">
-        <div className="public-main-column">
-          <section className="card public-section"><h2>Sobre</h2><p className="about-text">{profile.about || 'Esta profissional ainda não adicionou uma apresentação.'}</p></section>
-          <section className="card public-section"><h2>Serviços</h2><div className="public-services">{profile.services.filter((service) => service.active).map((service) => <article className="public-service" key={service.id}><div><h3>{service.name}</h3><p>{service.description}</p><div className="service-tags"><span><Clock3 size={15}/>{service.durationMinutes} min</span>{service.modes.map((mode) => <span key={mode}>{modeLabels[mode]}</span>)}</div></div><strong>{currency.format(service.price)}</strong></article>)}{profile.services.filter((service) => service.active).length === 0 && <p className="muted">Nenhum serviço publicado no momento.</p>}</div></section>
-          <section className="card public-section" id="avaliacoes"><div className="section-heading"><div><h2>Avaliações da profissional</h2><p className="muted">Somente pacientes com atendimento concluído podem avaliar.</p></div><div className="review-summary"><Star fill="currentColor"/><strong>4,9</strong><span>87 avaliações</span></div></div>{[['Carolina M.','5,0','Atendimento muito cuidadoso e explicações claras.'],['Fernanda A.','5,0','Senti segurança desde o primeiro contato.'],['Juliana R.','4,8','Pontual, acolhedora e muito atenciosa.']].map(([name,note,text])=><article className="review-item" key={name}><div><strong>{name}</strong><span><Star fill="currentColor"/>{note}</span></div><p>{text}</p><small>Atendimento verificado · identidade protegida</small></article>)}</section>
-        </div>
-        <aside className="public-side-column">
-          <section className="card public-section"><h2>Disponibilidade</h2><div className="availability-summary">{profile.availability.filter((day) => day.enabled).slice(0,5).map((day) => <div key={day.weekday}><span>{['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][day.weekday]}</span><strong>{day.start}–{day.end}</strong></div>)}</div><p className="small-note">Os horários exibidos são uma referência e dependem de confirmação.</p></section>
-          <section className="card public-section"><h2>Convênios atendidos</h2><div className="insurance-profile-tags"><span>Unimed</span><span>Bradesco Saúde</span><span>SulAmérica</span></div><p className="small-note">Confirme cobertura, reembolso e elegibilidade diretamente com a profissional e a operadora.</p></section>
-          {(profile.instagram || profile.website) && <section className="card public-section"><h2>Links</h2>{profile.instagram && <div className="external-row"><span>Instagram</span><strong>{profile.instagram}</strong></div>}{profile.website && <a className="external-row" href={profile.website} target="_blank" rel="noreferrer"><span>Site</span><ExternalLink size={16}/></a>}</section>}
-        </aside>
-      </div>
+      <section className="clinic-info-grid" id="sobre">
+        <article><h2>Sobre {clinicDemo ? 'a clínica' : 'a profissional'}</h2><p>{about || 'Apresentação profissional em atualização.'}</p><ul><li>Atendimento acolhedor e individualizado</li><li>Equipe especializada e atualizada</li><li>Ambiente seguro para mães, bebês e crianças</li><li>Atendimento particular e por convênios</li></ul></article>
+        <article><h2>Formas de pagamento</h2><p><CreditCard /> Dinheiro</p><p><CreditCard /> Cartão de Débito</p><p><CreditCard /> Cartão de Crédito</p><p><CreditCard /> PIX</p></article>
+        <article><h2>Convênios atendidos</h2><div className="insurance-logo-grid">{['Unimed', 'SulAmérica', 'Bradesco Saúde', 'Amil', 'NotreDame', 'Amil One'].map(item => <strong key={item}>{item}</strong>)}</div><button className="outline-small">Ver todos os convênios</button></article>
+      </section>
+
+      <section className="clinic-section-card" id="servicos">
+        <h2><Stethoscope /> Serviços oferecidos</h2>
+        <div className="clinic-service-cards">{clinicServices.map(([name, copy, icon]) => <article key={name}><div>{icon}</div><h3>{name}</h3><p>{copy}</p></article>)}</div>
+      </section>
+
+      {clinicDemo && <section className="clinic-section-card" id="equipe">
+        <h2><Users /> Profissionais da clínica</h2>
+        <p className="section-intro">Conheça as profissionais que realizam os atendimentos. O nome de cada profissional permanece em destaque no marketplace.</p>
+        <div className="clinic-team-cards">{team.map(([name, role, initials]) => <article key={name}><div>{initials}</div><span><h3>{name}</h3><p>{role}</p><button>Ver perfil profissional</button></span></article>)}</div>
+      </section>}
+
+      <section className="clinic-section-card">
+        <h2><Camera /> Fotos {clinicDemo ? 'da clínica' : 'do consultório'}</h2>
+        <div className="clinic-gallery">{['Recepção', 'Espaço infantil', 'Consultório', 'Sala de atendimento', 'Ver todas as fotos'].map((label, index) => <div key={label} className={`gallery-${index + 1}`}><span>{label}</span></div>)}</div>
+      </section>
+
+      <section className="clinic-reviews" id="avaliacoes">
+        <div><h2>Avaliações de pacientes</h2><strong>5,0</strong><span>{[1, 2, 3, 4, 5].map(n => <Star key={n} fill="currentColor" />)}</span><small>Com base em 124 avaliações</small></div>
+        {[['Juliana M.', 'Ótimo atendimento! Muito atenciosa e meu filho se sente à vontade.'], ['Ricardo A.', 'Ambiente impecável e equipe maravilhosa.'], ['Fernanda L.', 'Acompanhamos desde o nascimento do meu bebê. Super indico!']].map(([name, copy]) => <article key={name}><b>{name}</b><span>{[1, 2, 3, 4, 5].map(n => <Star key={n} fill="currentColor" />)}</span><p>{copy}</p><small>Atendimento verificado</small></article>)}
+      </section>
+
+      <section className="newsletter-card profile-newsletter"><div><Building2 /><span><strong>Receba conteúdos exclusivos para uma maternidade mais leve</strong><small>Artigos, dicas e novidades direto no seu e-mail.</small></span></div><form><input type="email" placeholder="Seu melhor e-mail" /><button>Quero receber</button></form></section>
     </main>
   </div>
 }

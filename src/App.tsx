@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Landing } from './pages/public/Landing'
+import { PortalHome } from './pages/public/PortalHome'
 import { Marketplace } from './pages/public/Marketplace'
 import { Login } from './pages/public/Login'
 import { ProfessionalSignup } from './pages/public/ProfessionalSignup'
@@ -35,7 +36,8 @@ import { MyProduction } from './pages/professional/MyProduction'
 
 export default function App() {
   return <BrowserRouter><AuthProvider><Routes>
-    <Route path="/" element={<Landing />} />
+    <Route path="/" element={<PortalHome />} />
+    <Route path="/para-profissionais" element={<Landing />} />
     <Route path="/profissionais" element={<Marketplace />} />
     <Route path="/login" element={<Login />} />
     <Route path="/cadastro-profissional" element={<ProfessionalSignup />} />
