@@ -2,7 +2,7 @@ import type { ComponentType } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   BadgeDollarSign, BarChart3, BriefcaseBusiness, CalendarDays, Home, KanbanSquare,
-  Bell, LogOut, MessageCircle, Search, Settings, ShieldCheck, Sparkles, UserRound, Users, Video, Wallet,
+  Bell, LogOut, MessageCircle, Newspaper, Search, Settings, ShieldCheck, Sparkles, UserRound, Users, Video, Wallet,
 } from 'lucide-react'
 import { Logo } from '../components/Logo'
 import type { UserRole } from '../lib/types'
@@ -25,6 +25,7 @@ const menus: Partial<Record<UserRole, Item[]>> = {
     ['Cadastros', '/admin/usuarios', Users],
     ['Agendamentos', '/admin/agendamentos', CalendarDays],
     ['Financeiro', '/admin/financeiro', BadgeDollarSign],
+    ['Notícias do portal', '/admin/noticias', Newspaper],
     ['Central do backoffice', '/admin/operacao', BriefcaseBusiness],
     ['Configurações', '/admin/configuracoes', Settings],
   ],

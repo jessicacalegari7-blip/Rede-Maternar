@@ -56,6 +56,14 @@ export function Login() {
           {loading ? 'Entrando...' : 'Entrar'}
         </button>
 
+        <div className="auth-signup-callout">
+          <strong>Ainda não possui cadastro?</strong>
+          <p className="muted">Crie o perfil da sua clínica ou o seu cadastro como profissional independente.</p>
+          <Link className="btn btn-secondary" to="/cadastro-profissional" style={{ width: '100%' }}>
+            Criar cadastro
+          </Link>
+        </div>
+
         <div className="demo-box">
           <strong>Acessos para aprovação</strong>
           <p className="muted">Senha de todos: 123456</p>
