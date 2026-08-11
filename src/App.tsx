@@ -28,6 +28,7 @@ import { SetPassword } from './pages/public/SetPassword'
 import { AdminNewsPortal } from './pages/admin/NewsPortal'
 import { RecoverPassword } from './pages/public/RecoverPassword'
 import { ContactPage, CookiePolicy, LgpdPage, PrivacyPolicy, TermsOfUse } from './pages/public/Legal'
+import { PortalArticlePage } from './pages/public/PortalArticle'
 
 function ProfessionalEntry() {
   const { user } = useAuth()
@@ -49,6 +50,7 @@ export default function App() {
     <Route path="/" element={<PublicHome />} />
     <Route path="/para-profissionais" element={<Landing />} />
     <Route path="/profissionais" element={<Marketplace />} />
+    <Route path="/noticias/:id" element={<PortalArticlePage />} />
     <Route path="/login" element={<Login />} />
     <Route path="/definir-senha" element={<SetPassword />} />
     <Route path="/recuperar-senha" element={<RecoverPassword />} />

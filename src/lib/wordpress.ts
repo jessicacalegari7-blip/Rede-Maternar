@@ -16,3 +16,15 @@ export async function listPortalArticles(limit=10):Promise<PortalArticle[]> {
     category:post._embedded?.['wp:term']?.[0]?.[0]?.name||'MaterPlace',
   }))
 }
+
+export async function getPortalArticle(id:string):Promise<PortalArticle> {
+  const response=await fetch(`${WORDPRESS_API}/posts/${encodeURIComponent(id)}?_embed=1`)
+  if(!response.ok)throw new Error('Não foi possível carregar esta notícia.')
+  const post=await response.json() as WordPressPost
+  return {
+    id:post.id,title:text(post.title.rendered),excerpt:text(post.excerpt.rendered),content:post.content.rendered,
+    date:post.date,url:post.link,
+    image:post._embedded?.['wp:featuredmedia']?.[0]?.source_url||null,
+    category:post._embedded?.['wp:term']?.[0]?.[0]?.name||'MaterPlace',
+  }
+}
