@@ -49,13 +49,14 @@ export function SetPassword() {
       return
     }
 
-    navigate('/admin', { replace: true })
+    await supabase.auth.signOut()
+    navigate('/login', { replace: true })
   }
 
   return <div className="auth-page">
     <form className="auth-card" onSubmit={submit}>
       <Logo />
-      <h1>Crie sua senha</h1>
+      <h1>Crie sua nova senha</h1>
       <p className="muted">Defina a senha que será usada para acessar a administração da MaterPlace.</p>
       {error && <div className="alert alert-error">{error}</div>}
       <label className="field">

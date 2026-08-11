@@ -4,7 +4,7 @@ import { Logo } from '../../components/Logo'
 import { supabase } from '../../lib/supabase'
 
 export function RecoverPassword() {
-  const [email, setEmail] = useState('jessica.calegari7@gmail.com')
+  const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
 
@@ -13,7 +13,7 @@ export function RecoverPassword() {
     if (!supabase) return setError('A autenticação não está disponível.')
     setError('')
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-      redirectTo: window.location.origin,
+      redirectTo: `${window.location.origin}/definir-senha`,
     })
     if (resetError) return setError(resetError.message)
     setSent(true)
