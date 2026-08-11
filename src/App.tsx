@@ -35,6 +35,8 @@ import { ClinicTeam } from './pages/professional/ClinicTeam'
 import { MyProduction } from './pages/professional/MyProduction'
 import { SetPassword } from './pages/public/SetPassword'
 import { AdminNewsPortal } from './pages/admin/NewsPortal'
+import { RecoverPassword } from './pages/public/RecoverPassword'
+import { ContactPage, CookiePolicy, LgpdPage, PrivacyPolicy, TermsOfUse } from './pages/public/Legal'
 
 function PublicHome() {
   const authType = new URLSearchParams(window.location.hash.slice(1)).get('type')
@@ -51,7 +53,13 @@ export default function App() {
     <Route path="/profissionais" element={<Marketplace />} />
     <Route path="/login" element={<Login />} />
     <Route path="/definir-senha" element={<SetPassword />} />
+    <Route path="/recuperar-senha" element={<RecoverPassword />} />
     <Route path="/cadastro-profissional" element={<ProfessionalSignup />} />
+    <Route path="/privacidade" element={<PrivacyPolicy />} />
+    <Route path="/termos" element={<TermsOfUse />} />
+    <Route path="/lgpd" element={<LgpdPage />} />
+    <Route path="/cookies" element={<CookiePolicy />} />
+    <Route path="/contato" element={<ContactPage />} />
     <Route path="/perfil/:slug" element={<PublicProfessionalProfile />} />
     <Route path="/convite/:token" element={<PatientInvitation />} />
 

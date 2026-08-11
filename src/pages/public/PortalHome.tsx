@@ -11,6 +11,7 @@ import {
   Sparkles,
   Users,
 } from 'lucide-react'
+import { LegalFooter } from './Legal'
 import { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Logo } from '../../components/Logo'
@@ -66,6 +67,7 @@ export function PortalHome() {
     </header>
 
     <section className="portal-search">
+      <span className="brand-manifesto">Conecta · Acolhe · Transforma</span>
       <h1>Encontre a profissional <em>materno-infantil mais próxima de você</em></h1>
       <p>Busque por especialidade e localização.</p>
       <form onSubmit={searchProfessionals}>
@@ -144,9 +146,10 @@ export function PortalHome() {
       </div>
 
       <section className="professional-cta">
-        <div><span>Para profissionais</span><h2>Quer divulgar seu trabalho e organizar sua clínica?</h2><p>Conheça o Marketplace + CRM + ERP da Rede Maternar.</p></div>
+        <div><span>Para profissionais</span><h2>Quer divulgar seu trabalho e organizar sua clínica?</h2><p>Conheça o Marketplace + CRM + ERP da MaterPlace.</p></div>
         <Link className="btn btn-primary" to="/para-profissionais">Conhecer a plataforma <ChevronRight /></Link>
       </section>
     </main>
+    <LegalFooter />
   </div>
 }

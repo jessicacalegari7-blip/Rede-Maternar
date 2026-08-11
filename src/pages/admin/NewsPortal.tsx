@@ -7,7 +7,7 @@ export function AdminNewsPortal() {
     <div className="page-heading">
       <div>
         <h1>Notícias do portal</h1>
-        <p className="muted">Publique e gerencie os conteúdos exibidos no portal da Rede Maternar.</p>
+        <p className="muted">Publique e gerencie os conteúdos exibidos no portal da MaterPlace.</p>
       </div>
     </div>
     <section className="card empty-state">

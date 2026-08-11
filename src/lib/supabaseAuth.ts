@@ -78,7 +78,8 @@ export async function registerProfessionalWithSupabase(input: RegisterProfession
         city: cityParts[0],
         state_code: (cityParts[1] || 'SP').slice(0, 2).toUpperCase(),
         plan,
-        organization_name: input.name.trim(),
+        organization_name: input.organizationName?.trim() || input.name.trim(),
+        insurances: input.insurances || [],
       },
     },
   })

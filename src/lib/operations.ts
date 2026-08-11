@@ -180,3 +180,181 @@ export async function prepareWhatsAppConnection(provider:WhatsAppConnection['pro
   if (error) throw new Error(error.message)
   return data as WhatsAppConnection
 }
+
+export interface RealAppointment {
+  id:string; starts_at:string; ends_at:string; status:'scheduled'|'confirmed'|'in_service'|'completed'|'cancelled'|'no_show'
+  is_return:boolean; is_paid_return:boolean; is_online:boolean; price_cents:number; payment_method:string|null; notes:string|null
+  patient_id:string; professional_id:string
+  patient_profiles:{full_name:string;phone:string|null}|null
+  professional_profiles:{full_name:string}|null
+}
+
+export async function listAppointments() {
+  const db=client(); const {organizationId}=await getCurrentOrganization()
+  const {data,error}=await db.from('appointments')
+    .select('*, patient_profiles(full_name,phone), professional_profiles(full_name)')
+    .eq('organization_id',organizationId).order('starts_at')
+  if(error) throw new Error(error.message)
+  return (data??[]) as unknown as RealAppointment[]
+}
+
+export async function createAppointment(input:{patientId:string;professionalId:string;startsAt:string;endsAt:string;price:number;isOnline:boolean;isReturn:boolean;isPaidReturn:boolean;notes?:string}) {
+  const db=client(); const {organizationId,userId}=await getCurrentOrganization()
+  const {error}=await db.from('appointments').insert({
+    organization_id:organizationId,patient_id:input.patientId,professional_id:input.professionalId,
+    starts_at:input.startsAt,ends_at:input.endsAt,price_cents:Math.round(input.price*100),
+    is_online:input.isOnline,is_return:input.isReturn,is_paid_return:input.isPaidReturn,
+    notes:input.notes?.trim()||null,created_by:userId,
+  })
+  if(error) throw new Error(error.message)
+}
+
+export async function updateAppointment(id:string, changes:Partial<Pick<RealAppointment,'status'|'payment_method'|'notes'|'starts_at'|'ends_at'>>) {
+  const {error}=await client().from('appointments').update(changes).eq('id',id)
+  if(error) throw new Error(error.message)
+}
+
+export async function markAppointmentPaid(appointment:RealAppointment,paymentMethod:string) {
+  const db=client()
+  await updateAppointment(appointment.id,{status:'completed',payment_method:paymentMethod})
+  if(appointment.price_cents>0) {
+    await createFinancialEntry({
+      type:'income',category:'Atendimento',description:`Atendimento — ${appointment.patient_profiles?.full_name||'Paciente'}`,
+      amount:appointment.price_cents/100,status:'paid',paymentMethod,
+    })
+  }
+}
+
+export async function listOrganizationProfessionals() {
+  const db=client(); const {organizationId}=await getCurrentOrganization()
+  const {data,error}=await db.from('professional_profiles').select('id,full_name').eq('organization_id',organizationId).order('full_name')
+  if(error) throw new Error(error.message)
+  return data??[]
+}
+
+export interface RealConversation {
+  id:string;contact_name:string;contact_phone:string|null;channel:'internal'|'whatsapp_evolution'|'whatsapp_meta'
+  unread_count:number;last_message_at:string|null
+}
+export interface RealConversationMessage {
+  id:string;conversation_id:string;direction:'inbound'|'outbound';body:string
+  status:'queued'|'sent'|'delivered'|'read'|'failed';created_at:string
+}
+
+export async function listConversations() {
+  const db=client(); const {organizationId}=await getCurrentOrganization()
+  const {data,error}=await db.from('conversations').select('*').eq('organization_id',organizationId)
+    .order('last_message_at',{ascending:false,nullsFirst:false})
+  if(error) throw new Error(error.message)
+  return (data??[]) as RealConversation[]
+}
+
+export async function listConversationMessages(conversationId:string) {
+  const {data,error}=await client().from('conversation_messages').select('*').eq('conversation_id',conversationId).order('created_at')
+  if(error) throw new Error(error.message)
+  return (data??[]) as RealConversationMessage[]
+}
+
+export async function createConversation(input:{name:string;phone:string;channel:RealConversation['channel'];patientId?:string;leadId?:string}) {
+  const db=client(); const {organizationId,userId}=await getCurrentOrganization()
+  const {data,error}=await db.from('conversations').insert({
+    organization_id:organizationId,patient_id:input.patientId||null,lead_id:input.leadId||null,
+    channel:input.channel,contact_name:input.name.trim(),contact_phone:input.phone.trim(),created_by:userId,
+  }).select('*').single()
+  if(error) throw new Error(error.message)
+  return data as RealConversation
+}
+
+export async function queueConversationMessage(conversation:RealConversation,body:string) {
+  const db=client(); const {organizationId,userId}=await getCurrentOrganization()
+  const connection=conversation.channel==='internal'?null:await getWhatsAppConnection()
+  if(conversation.channel!=='internal'&&connection?.status!=='connected') {
+    throw new Error('Conecte o WhatsApp desta organização antes de enviar mensagens por esse canal.')
+  }
+  const {error}=await db.from('conversation_messages').insert({
+    organization_id:organizationId,conversation_id:conversation.id,sender_user_id:userId,
+    direction:'outbound',body:body.trim(),status:conversation.channel==='internal'?'sent':'queued',
+    sent_at:conversation.channel==='internal'?new Date().toISOString():null,
+  })
+  if(error) throw new Error(error.message)
+  await db.from('conversations').update({last_message_at:new Date().toISOString()}).eq('id',conversation.id)
+}
+
+export async function updateFinancialEntryStatus(id:string,status:RealFinancialEntry['status']) {
+  const {error}=await client().from('financial_entries').update({
+    status,paid_at:status==='paid'?new Date().toISOString():null,
+  }).eq('id',id)
+  if(error) throw new Error(error.message)
+}
+
+export async function closeCashSession(id:string,closingBalance:number) {
+  const db=client(); const {userId}=await getCurrentOrganization()
+  const {error}=await db.from('cash_sessions').update({
+    closed_by:userId,closed_at:new Date().toISOString(),closing_balance_cents:Math.round(closingBalance*100),
+  }).eq('id',id)
+  if(error) throw new Error(error.message)
+}
+
+export async function getPlatformSummary() {
+  const {data,error}=await client().rpc('admin_platform_summary')
+  if(error) throw new Error(error.message)
+  return data as {organizations:number;active_organizations:number;pending_organizations:number;professionals:number;patients:number;appointments:number;prospects:number;pending_notifications:number}
+}
+
+export async function listAdminProspects() {
+  const {data,error}=await client().rpc('admin_list_prospects')
+  if(error) throw new Error(error.message)
+  return data??[]
+}
+
+export async function listMarketplaceProfessionals() {
+  const {data,error}=await client().from('marketplace_professionals').select('*').order('verified',{ascending:false}).order('full_name')
+  if(error) throw new Error(error.message)
+  return data??[]
+}
+
+export interface RealProfessionalProfile {
+  id:string;full_name:string;professional_registration:string|null;bio:string|null
+  whatsapp:string|null;email:string|null;city:string;state_code:string;neighborhood:string|null
+  clinic_name:string|null;accepts_online:boolean;marketplace_visible:boolean;verified:boolean
+  website_url:string|null;instagram_handle:string|null;accepted_insurances:string[]
+  payment_methods:string[];profile_completed:boolean
+}
+
+export async function getMyProfessionalProfile() {
+  const db=client(); const {organizationId,userId}=await getCurrentOrganization()
+  let query=db.from('professional_profiles').select('*').eq('organization_id',organizationId)
+  const {data,error}=await query.eq('user_id',userId).maybeSingle()
+  if(error) throw new Error(error.message)
+  if(data) return data as RealProfessionalProfile
+  const fallback=await db.from('professional_profiles').select('*').eq('organization_id',organizationId).limit(1).maybeSingle()
+  if(fallback.error) throw new Error(fallback.error.message)
+  return fallback.data as RealProfessionalProfile|null
+}
+
+export async function updateMyProfessionalProfile(id:string,changes:Partial<RealProfessionalProfile>) {
+  const allowed={
+    full_name:changes.full_name,professional_registration:changes.professional_registration,
+    bio:changes.bio,whatsapp:changes.whatsapp,email:changes.email,city:changes.city,
+    state_code:changes.state_code,neighborhood:changes.neighborhood,clinic_name:changes.clinic_name,
+    accepts_online:changes.accepts_online,marketplace_visible:changes.marketplace_visible,
+    website_url:changes.website_url,instagram_handle:changes.instagram_handle,
+    accepted_insurances:changes.accepted_insurances,payment_methods:changes.payment_methods,
+    profile_completed:changes.profile_completed,
+  }
+  const {error}=await client().from('professional_profiles').update(allowed).eq('id',id)
+  if(error) throw new Error(error.message)
+}
+
+export async function getMarketplaceProfessional(id:string) {
+  const {data,error}=await client().from('marketplace_professionals').select('*').eq('id',id).maybeSingle()
+  if(error) throw new Error(error.message)
+  return data
+}
+
+export async function listPublicServices(professionalId:string) {
+  const {data,error}=await client().from('services').select('id,name,description,duration_minutes,price_cents,is_online')
+    .eq('professional_id',professionalId).eq('active',true).order('name')
+  if(error) throw new Error(error.message)
+  return data??[]
+}
