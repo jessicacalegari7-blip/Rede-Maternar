@@ -79,6 +79,7 @@ grant execute on function public.create_clinic_professional(text,text,text,text)
 
 revoke update(marketplace_visible,verified) on public.professional_profiles from authenticated;
 drop policy if exists "professional profiles members update" on public.professional_profiles;
+drop policy if exists "professional profiles owner manager update" on public.professional_profiles;
 create policy "professional profiles owner manager update" on public.professional_profiles for update to authenticated
 using (user_id=auth.uid() or public.can_manage_organization(organization_id) or public.is_platform_admin())
 with check (user_id=auth.uid() or public.can_manage_organization(organization_id) or public.is_platform_admin());
