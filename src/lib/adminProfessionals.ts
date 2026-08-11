@@ -18,6 +18,7 @@ export interface AdminProfessional {
   marketplaceVisible: boolean
   verified: boolean
   createdAt: string
+  viewCount: number
 }
 
 function requireSupabase() {
@@ -26,8 +27,11 @@ function requireSupabase() {
 }
 
 export async function listAdminProfessionals(): Promise<AdminProfessional[]> {
-  const { data, error } = await requireSupabase().rpc('admin_list_professionals')
+  const db=requireSupabase()
+  const [{data,error},{data:views,error:viewsError}]=await Promise.all([db.rpc('admin_list_professionals'),db.rpc('admin_list_profile_views')])
   if (error) throw new Error(error.message)
+  if (viewsError) throw new Error(viewsError.message)
+  const counts=new Map((views??[]).map((item:Record<string,unknown>)=>[String(item.professional_id),Number(item.view_count??0)]))
   return (data ?? []).map((row: Record<string, unknown>) => ({
     userId: String(row.user_id),
     professionalProfileId: String(row.professional_profile_id),
@@ -45,6 +49,7 @@ export async function listAdminProfessionals(): Promise<AdminProfessional[]> {
     marketplaceVisible: Boolean(row.marketplace_visible),
     verified: Boolean(row.verified),
     createdAt: String(row.created_at),
+    viewCount: counts.get(String(row.professional_profile_id))??0,
   }))
 }
 
@@ -52,6 +57,14 @@ export async function setAdminProfessionalStatus(userId: string, status: UserSta
   const { error } = await requireSupabase().rpc('admin_set_professional_status', {
     target_user_id: userId,
     new_status: status,
+  })
+  if (error) throw new Error(error.message)
+}
+
+export async function setAdminProfessionalPlan(organizationId: string, plan: AdminProfessional['plan']) {
+  const { error } = await requireSupabase().rpc('admin_set_organization_plan', {
+    target_organization_id: organizationId,
+    new_plan: plan,
   })
   if (error) throw new Error(error.message)
 }

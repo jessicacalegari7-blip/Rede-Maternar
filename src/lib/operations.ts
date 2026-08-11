@@ -232,6 +232,36 @@ export async function listOrganizationProfessionals() {
   return data??[]
 }
 
+export interface RealTeamMember {
+  id:string; full_name:string; email:string|null; professional_registration:string|null
+  city:string; state_code:string; created_at:string
+  professional_specialties:{specialties:{name:string}|{name:string}[]|null}[]
+}
+
+export async function listClinicTeam() {
+  const db=client(); const {organizationId}=await getCurrentOrganization()
+  const {data,error}=await db.from('professional_profiles')
+    .select('id,full_name,email,professional_registration,city,state_code,created_at,professional_specialties(specialties(name))')
+    .eq('organization_id',organizationId).order('full_name')
+  if(error) throw new Error(error.message)
+  return (data??[]) as unknown as RealTeamMember[]
+}
+
+export async function createClinicTeamMember(input:{name:string;email:string;specialty:string;registration?:string}) {
+  const {data,error}=await client().rpc('create_clinic_professional',{
+    professional_name:input.name.trim(),professional_email:input.email.trim().toLowerCase(),
+    specialty_name:input.specialty.trim(),registration:input.registration?.trim()||null,
+  })
+  if(error) throw new Error(error.message)
+  return data as string
+}
+
+export async function listActiveSpecialties() {
+  const {data,error}=await client().from('specialties').select('name').eq('active',true).order('name')
+  if(error) throw new Error(error.message)
+  return (data??[]) as {name:string}[]
+}
+
 export interface RealConversation {
   id:string;contact_name:string;contact_phone:string|null;channel:'internal'|'whatsapp_evolution'|'whatsapp_meta'
   unread_count:number;last_message_at:string|null
@@ -313,6 +343,17 @@ export async function listMarketplaceProfessionals() {
   return data??[]
 }
 
+export async function recordProfessionalProfileView(professionalId:string) {
+  const {error}=await client().rpc('record_professional_profile_view',{target_professional_id:professionalId})
+  if(error) throw new Error(error.message)
+}
+
+export async function listMyProfileViewCounts() {
+  const {data,error}=await client().rpc('my_profile_view_counts')
+  if(error) throw new Error(error.message)
+  return (data??[]) as {professional_id:string;full_name:string;view_count:number}[]
+}
+
 export interface RealProfessionalProfile {
   id:string;full_name:string;professional_registration:string|null;bio:string|null
   whatsapp:string|null;email:string|null;city:string;state_code:string;neighborhood:string|null
@@ -337,7 +378,7 @@ export async function updateMyProfessionalProfile(id:string,changes:Partial<Real
     full_name:changes.full_name,professional_registration:changes.professional_registration,
     bio:changes.bio,whatsapp:changes.whatsapp,email:changes.email,city:changes.city,
     state_code:changes.state_code,neighborhood:changes.neighborhood,clinic_name:changes.clinic_name,
-    accepts_online:changes.accepts_online,marketplace_visible:changes.marketplace_visible,
+    accepts_online:changes.accepts_online,
     website_url:changes.website_url,instagram_handle:changes.instagram_handle,
     accepted_insurances:changes.accepted_insurances,payment_methods:changes.payment_methods,
     profile_completed:changes.profile_completed,

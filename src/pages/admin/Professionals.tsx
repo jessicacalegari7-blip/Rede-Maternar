@@ -3,6 +3,7 @@ import { Check, RefreshCw, Search, ShieldBan, X } from 'lucide-react'
 import type { UserStatus } from '../../lib/auth'
 import {
   listAdminProfessionals,
+  setAdminProfessionalPlan,
   setAdminProfessionalStatus,
   type AdminProfessional,
 } from '../../lib/adminProfessionals'
@@ -62,6 +63,14 @@ export function AdminProfessionals() {
     }
   }
 
+  async function changePlan(organizationId:string,plan:AdminProfessional['plan']) {
+    setChangingId(organizationId)
+    setError('')
+    try { await setAdminProfessionalPlan(organizationId,plan); await loadProfessionals() }
+    catch (planError) { setError(planError instanceof Error?planError.message:'Não foi possível alterar o plano.') }
+    finally { setChangingId('') }
+  }
+
   return <div>
     <div className="page-heading">
       <div>
@@ -100,8 +109,12 @@ export function AdminProfessionals() {
         <div className="professional-meta">
           <span className={`status status-${professional.status}`}>{statusLabels[professional.status]}</span>
           <small>Cadastro em {new Date(professional.createdAt).toLocaleDateString('pt-BR')}</small>
+          <strong>{professional.viewCount} visualizações do perfil</strong>
         </div>
         <div className="action-buttons">
+          <select value={professional.plan} disabled={changingId===professional.organizationId} onChange={event=>void changePlan(professional.organizationId,event.target.value as AdminProfessional['plan'])} aria-label="Alterar plano">
+            <option value="free">Gratuito</option><option value="marketplace">Marketplace</option><option value="independent">Individual CRM + ERP</option><option value="clinic">Clínicas</option>
+          </select>
           {professional.status !== 'active' && <button disabled={changingId === professional.userId} className="icon-btn approve" title="Aprovar" onClick={() => void changeStatus(professional.userId, 'active')}><Check size={18}/></button>}
           {professional.status !== 'rejected' && <button disabled={changingId === professional.userId} className="icon-btn reject" title="Rejeitar" onClick={() => void changeStatus(professional.userId, 'rejected')}><X size={18}/></button>}
           {professional.status === 'active' && <button disabled={changingId === professional.userId} className="icon-btn suspend" title="Suspender" onClick={() => void changeStatus(professional.userId, 'suspended')}><ShieldBan size={18}/></button>}

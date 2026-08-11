@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react'
 import { CheckCircle2, Clock3, CreditCard, MapPin, Star } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { Logo } from '../../components/Logo'
-import { getMarketplaceProfessional, listPublicServices } from '../../lib/operations'
+import { getMarketplaceProfessional, listPublicServices, recordProfessionalProfileView } from '../../lib/operations'
 import { LegalFooter } from './Legal'
 
 export function PublicProfessionalProfile() {
   const {slug=''}=useParams(); const [profile,setProfile]=useState<any>(); const [services,setServices]=useState<any[]>([]); const [loaded,setLoaded]=useState(false)
-  useEffect(()=>{void getMarketplaceProfessional(slug).then(async p=>{setProfile(p);if(p)setServices(await listPublicServices(p.id))}).finally(()=>setLoaded(true))},[slug])
+  useEffect(()=>{void getMarketplaceProfessional(slug).then(async p=>{setProfile(p);if(p){await recordProfessionalProfileView(p.id);setServices(await listPublicServices(p.id))}}).finally(()=>setLoaded(true))},[slug])
   if(!loaded)return <div className="auth-page"><div className="auth-card">Carregando perfil...</div></div>
   if(!profile)return <div className="auth-page"><div className="auth-card"><Logo/><h1>Perfil não encontrado</h1><p>O perfil não está publicado ou não existe.</p><Link className="btn btn-primary" to="/profissionais">Voltar à busca</Link></div></div>
   const whats=String(profile.whatsapp||'').replace(/\D/g,'')
