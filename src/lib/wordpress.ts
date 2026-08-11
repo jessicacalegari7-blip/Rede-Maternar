@@ -1,4 +1,4 @@
-const WORDPRESS_API='https://materplaceportal.wordpress.com/wp-json/wp/v2'
+const WORDPRESS_API='https://public-api.wordpress.com/wp/v2/sites/materplaceportal.wordpress.com'
 
 type WordPressPost={id:number;date:string;link:string;title:{rendered:string};excerpt:{rendered:string};content:{rendered:string};_embedded?:Record<string,any[]>}
 export interface PortalArticle {id:number;title:string;excerpt:string;content:string;date:string;url:string;image:string|null;category:string}
