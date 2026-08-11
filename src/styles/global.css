@@ -559,3 +559,9 @@ body { overflow-x:hidden; }
   .clinic-cover-art { height:205px; }
   .clinic-profile-main { padding-inline:16px; }
 }
+
+.specialty-picker { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:8px; max-height:290px; overflow:auto; padding:10px; border:1px solid var(--border); border-radius:14px; background:#f7f4ee; }
+.specialty-choice { display:flex; align-items:center; gap:9px; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:white; cursor:pointer; font-size:.92rem; }
+.specialty-choice.selected { border-color:var(--wine); background:#f3eee2; }
+.specialty-choice input { width:auto; margin:0; }
+.specialty-choice:has(input:disabled) { opacity:.5; cursor:not-allowed; }

@@ -23,7 +23,8 @@ import { PatientPayments } from './pages/patient/Payments'
 import { FinanceSuite } from './pages/professional/FinanceSuite'
 import { Teleconsultations } from './pages/professional/Teleconsultations'
 import { AdminFinance } from './pages/admin/Finance'
-import { AuthProvider } from './lib/AuthContext'
+import { AuthProvider, useAuth } from './lib/AuthContext'
+import { hasManagement } from './lib/plans'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { PlanGate } from './components/PlanGate'
 import { ProfessionalNetwork } from './pages/professional/Network'
@@ -37,6 +38,13 @@ import { SetPassword } from './pages/public/SetPassword'
 import { AdminNewsPortal } from './pages/admin/NewsPortal'
 import { RecoverPassword } from './pages/public/RecoverPassword'
 import { ContactPage, CookiePolicy, LgpdPage, PrivacyPolicy, TermsOfUse } from './pages/public/Legal'
+
+function ProfessionalEntry() {
+  const { user } = useAuth()
+  return hasManagement(user?.plan)
+    ? <ProfessionalOverview />
+    : <Navigate to="/profissional/perfil" replace />
+}
 
 function PublicHome() {
   const authType = new URLSearchParams(window.location.hash.slice(1)).get('type')
@@ -75,10 +83,12 @@ export default function App() {
 
     <Route element={<ProtectedRoute role="professional" />}>
       <Route path="/profissional" element={<PortalLayout role="professional" />}>
-        <Route index element={<ProfessionalOverview />} />
-        <Route path="rede" element={<ProfessionalNetwork />} />
+        <Route index element={<ProfessionalEntry />} />
+        <Route path="perfil" element={<ProfessionalProfilePage />} />
+        <Route path="servicos" element={<ErpServices />} />
         <Route path="plano" element={<ProfessionalPlanPage />} />
-        <Route element={<PlanGate />}>
+        <Route element={<PlanGate requires="management" />}>
+          <Route path="rede" element={<ProfessionalNetwork />} />
           <Route path="funil" element={<CrmPipeline />} />
           <Route path="clientes" element={<CrmCustomers />} />
           <Route path="pacientes" element={<ProfessionalPatients />} />
@@ -86,12 +96,12 @@ export default function App() {
           <Route path="integracoes" element={<SocialIntegrations />} />
           <Route path="agenda" element={<ProfessionalAgenda />} />
           <Route path="teleconsultas" element={<Teleconsultations />} />
-          <Route path="servicos" element={<ErpServices />} />
           <Route path="financeiro" element={<FinanceSuite />} />
           <Route path="relatorios" element={<ErpReports />} />
-          <Route path="equipe" element={<ClinicTeam />} />
           <Route path="minha-producao" element={<MyProduction />} />
-          <Route path="perfil" element={<ProfessionalProfilePage />} />
+        </Route>
+        <Route element={<PlanGate requires="clinic" />}>
+          <Route path="equipe" element={<ClinicTeam />} />
         </Route>
       </Route>
     </Route>
