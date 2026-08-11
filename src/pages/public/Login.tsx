@@ -32,7 +32,7 @@ export function Login() {
     <div className="auth-page">
       <form className="auth-card" onSubmit={submit}>
         <Logo />
-        <h1>Entrar na Rede Maternar</h1>
+        <h1>Entrar na MaterPlace</h1>
         <p className="muted">Use seu e-mail e senha. O sistema identifica automaticamente o seu ambiente.</p>
 
         {error && <div className="alert alert-error">{error}</div>}

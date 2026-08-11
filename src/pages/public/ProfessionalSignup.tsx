@@ -51,7 +51,7 @@ export function ProfessionalSignup() {
   }
 
   if (success) {
-    return <div className="auth-page"><div className="auth-card success-card"><Logo /><div className="success-icon">✓</div><h1>Cadastro recebido</h1><p>Seus dados foram enviados para análise da equipe Rede Maternar.</p><p className="muted">Assim que o cadastro for aprovado, você poderá entrar usando o e-mail e a senha informados.</p><Link className="btn btn-primary" to="/login">Ir para o login</Link></div></div>
+    return <div className="auth-page"><div className="auth-card success-card"><Logo /><div className="success-icon">✓</div><h1>Cadastro recebido</h1><p>Seus dados foram enviados para análise da equipe MaterPlace.</p><p className="muted">Assim que o cadastro for aprovado, você poderá entrar usando o e-mail e a senha informados.</p><Link className="btn btn-primary" to="/login">Ir para o login</Link></div></div>
   }
 
   return (
@@ -59,8 +59,8 @@ export function ProfessionalSignup() {
       <form className="auth-card auth-card-wide" onSubmit={submit}>
         <Logo />
         <span className="badge">Cadastro profissional</span>
-        <h1>Faça parte da Rede Maternar</h1>
-        <p className="muted">Preencha seus dados e escolha como deseja participar da Rede Maternar.</p>
+        <h1>Faça parte da MaterPlace</h1>
+        <p className="muted">Preencha seus dados e escolha como deseja participar da MaterPlace.</p>
         <div className="plan-selector plan-selector-3"><label><input type="radio" name="plan" value="marketplace" defaultChecked={initialPlan === 'marketplace' || initialPlan === 'free'} /><span><strong>Marketplace Ilimitado</strong><small>R$ 59,90 por ano.</small></span></label><label><input type="radio" name="plan" value="independent" defaultChecked={initialPlan === 'independent'} /><span><strong>Profissional Individual</strong><small>R$ 99,99 por mês, uma profissional e até 3 especialidades.</small></span></label><label><input type="radio" name="plan" value="clinic" defaultChecked={initialPlan === 'clinic'} /><span><strong>Plano para Clínicas</strong><small>R$ 199,99 por mês, com profissionais ilimitados.</small></span></label></div>
         {error && <div className="alert alert-error">{error}</div>}
         <div className="form-grid">

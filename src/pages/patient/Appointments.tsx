@@ -20,7 +20,7 @@ export function PatientAppointments(){
   const slots = service && date ? getAvailableSlots(professionalId,service,date) : []
   function selectService(item:ProfessionalService){ setService(item); setMode(item.modes[0]||null); setStep('date'); setDate(''); setStart('') }
   function submit(){ if(!user||!service||!mode||!date||!start)return; try{ createAppointment({professionalId,patientId:user.id,service,date,start,mode,patientNote:note}); setError(''); setStep('success'); refresh(v=>v+1) }catch(err){ setError(err instanceof Error?err.message:'Não foi possível agendar.') } }
-  if(!relationship||!profile) return <div className="card"><h2>Nenhuma profissional vinculada</h2><p className="muted">Você precisa acessar a Rede Maternar por um convite profissional antes de agendar.</p></div>
+  if(!relationship||!profile) return <div className="card"><h2>Nenhuma profissional vinculada</h2><p className="muted">Você precisa acessar a MaterPlace por um convite profissional antes de agendar.</p></div>
   return <>
     <div className="topbar"><div><h1>Agendamentos</h1><div className="muted">Escolha um serviço e encontre o melhor horário.</div></div>{step!=='list'&&<button className="btn btn-secondary" onClick={()=>setStep('list')}><ChevronLeft size={17}/> Voltar</button>}</div>
     {step==='list'&&<><div className="card booking-intro"><div><span className="badge">Agenda on-line</span><h2>Agende com {profile.displayName}</h2><p className="muted">Os horários exibidos respeitam a disponibilidade real da profissional.</p></div><button className="btn btn-primary" onClick={()=>setStep('service')}><CalendarDays size={18}/> Novo agendamento</button></div>

@@ -56,7 +56,7 @@ export function SetPassword() {
     <form className="auth-card" onSubmit={submit}>
       <Logo />
       <h1>Crie sua senha</h1>
-      <p className="muted">Defina a senha que será usada para acessar a administração da Rede Maternar.</p>
+      <p className="muted">Defina a senha que será usada para acessar a administração da MaterPlace.</p>
       {error && <div className="alert alert-error">{error}</div>}
       <label className="field">
         <span>Nova senha</span>

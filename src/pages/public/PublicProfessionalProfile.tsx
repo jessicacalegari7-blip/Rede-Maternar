@@ -16,7 +16,7 @@ export function PublicProfessionalProfile() {
     <main className="clinic-profile-shell">
       <section className="clinic-cover"><div className="clinic-profile-main"><div className="clinic-logo">{profile.full_name.split(' ').slice(0,2).map((x:string)=>x[0]).join('')}</div><div className="clinic-identity">
         <h1>{profile.full_name}{profile.verified&&<CheckCircle2/>}</h1>{profile.clinic_name&&<strong>{profile.clinic_name}</strong>}
-        <p>{profile.bio||'Perfil profissional cadastrado na Rede Maternar.'}</p>
+        <p>{profile.bio||'Perfil profissional cadastrado na MaterPlace.'}</p>
         <div className="clinic-rating"><strong>{Number(profile.rating).toFixed(1)}</strong><Star fill="currentColor"/><span>({profile.review_count} avaliações)</span></div>
         <div className="service-tags">{profile.specialties.map((x:string)=><span key={x}>{x}</span>)}</div>
       </div></div>
