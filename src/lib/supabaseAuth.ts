@@ -18,12 +18,24 @@ function normalizePlan(value: unknown): ProfessionalPlan {
 
 export async function getRemotePublicUser(authUser: User): Promise<PublicUser> {
   const client = requireSupabase()
-  const [{ data: profile, error: profileError }, { data: memberships }, { data: patient }] = await Promise.all([
-    client.from('profiles').select('full_name, phone, status, is_platform_admin').eq('id', authUser.id).single(),
+  let { data: profile, error: profileError } = await client
+    .from('profiles')
+    .select('full_name, phone, status, is_platform_admin')
+    .eq('id', authUser.id)
+    .maybeSingle()
+
+  if (!profileError && !profile) {
+    const { data: repairedProfile, error: repairError } = await client.rpc('ensure_current_user_profile')
+    if (repairError) throw new Error('Seu acesso existe, mas o perfil ainda precisa ser vinculado pela administração.')
+    profile = repairedProfile
+  }
+
+  if (profileError || !profile) throw new Error('Não foi possível carregar o perfil deste usuário.')
+
+  const [{ data: memberships }, { data: patient }] = await Promise.all([
     client.from('organization_members').select('role, organizations(plan, type)').eq('user_id', authUser.id).eq('active', true),
     client.from('patient_profiles').select('full_name, phone').eq('user_id', authUser.id).limit(1).maybeSingle(),
   ])
-  if (profileError) throw new Error('Não foi possível carregar o perfil deste usuário.')
 
   const membership = memberships?.[0] as {
     role?: string
@@ -51,7 +63,13 @@ export async function loginWithSupabase(email: string, password: string) {
   const { data, error } = await client.auth.signInWithPassword({ email: email.trim().toLowerCase(), password })
   if (error || !data.user) throw new Error('E-mail ou senha incorretos.')
 
-  const user = await getRemotePublicUser(data.user)
+  let user: PublicUser
+  try {
+    user = await getRemotePublicUser(data.user)
+  } catch (profileError) {
+    await client.auth.signOut()
+    throw profileError
+  }
   if (user.status !== 'active') {
     await client.auth.signOut()
     if (user.status === 'pending') throw new Error('Seu cadastro ainda está aguardando aprovação.')
