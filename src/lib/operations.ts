@@ -346,6 +346,37 @@ export async function updateMyProfessionalProfile(id:string,changes:Partial<Real
   if(error) throw new Error(error.message)
 }
 
+export async function getProfessionalSpecialtyEditor(professionalId:string) {
+  const db=client()
+  const [{data:options,error:optionsError},{data:assigned,error:assignedError}]=await Promise.all([
+    db.from('specialties').select('id,name').eq('active',true).order('name'),
+    db.from('professional_specialties').select('specialty_id,specialties(name)').eq('professional_id',professionalId),
+  ])
+  if(optionsError) throw new Error(optionsError.message)
+  if(assignedError) throw new Error(assignedError.message)
+  return {
+    options:(options??[]) as {id:string;name:string}[],
+    selected:(assigned??[]).map((item:any)=>Array.isArray(item.specialties)?item.specialties[0]?.name:item.specialties?.name).filter(Boolean) as string[],
+  }
+}
+
+export async function saveProfessionalSpecialties(professionalId:string,names:string[],limit:number|null) {
+  const db=client()
+  const unique=[...new Set(names.map(name=>name.trim()).filter(Boolean))]
+  if(limit!==null&&unique.length>limit) throw new Error(`Este plano permite até ${limit} especialidades.`)
+  const {data:rows,error:lookupError}=unique.length
+    ? await db.from('specialties').select('id,name').in('name',unique).eq('active',true)
+    : {data:[],error:null}
+  if(lookupError) throw new Error(lookupError.message)
+  if((rows??[]).length!==unique.length) throw new Error('Uma das especialidades selecionadas não está disponível.')
+  const {error:deleteError}=await db.from('professional_specialties').delete().eq('professional_id',professionalId)
+  if(deleteError) throw new Error(deleteError.message)
+  if(rows?.length){
+    const {error:insertError}=await db.from('professional_specialties').insert(rows.map((row,index)=>({professional_id:professionalId,specialty_id:row.id,is_primary:index===0})))
+    if(insertError) throw new Error(insertError.message)
+  }
+}
+
 export async function getMarketplaceProfessional(id:string) {
   const {data,error}=await client().from('marketplace_professionals').select('*').eq('id',id).maybeSingle()
   if(error) throw new Error(error.message)

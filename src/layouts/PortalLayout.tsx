@@ -2,7 +2,7 @@ import type { ComponentType } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   BadgeDollarSign, BarChart3, BriefcaseBusiness, CalendarDays, Home, KanbanSquare,
-  Bell, LogOut, MessageCircle, Newspaper, Search, Settings, ShieldCheck, Sparkles, UserRound, Users, Video, Wallet,
+  Bell, LogOut, MessageCircle, Newspaper, Settings, ShieldCheck, Sparkles, UserRound, Users, Video, Wallet,
 } from 'lucide-react'
 import { Logo } from '../components/Logo'
 import type { UserRole } from '../lib/types'
@@ -48,9 +48,8 @@ const management: Item[] = [
 ]
 
 const marketplace: Item[] = [
-  ['Desempenho do perfil', '/profissional', Home],
-  ['Explorar Marketplace', '/profissional/rede', Search],
-  ['Meu perfil', '/profissional/perfil', UserRound],
+  ['Perfil no Marketplace', '/profissional/perfil', UserRound],
+  ['Serviços do perfil', '/profissional/servicos', BriefcaseBusiness],
   ['Meu plano', '/profissional/plano', Sparkles],
 ]
 
