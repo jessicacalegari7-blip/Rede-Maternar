@@ -1,6 +1,6 @@
 import { ExternalLink, Newspaper } from 'lucide-react'
 
-const wordpressAdminUrl = import.meta.env.VITE_WORDPRESS_ADMIN_URL?.trim()
+const wordpressAdminUrl = import.meta.env.VITE_WORDPRESS_ADMIN_URL?.trim() || 'https://materplaceportal.wordpress.com/wp-admin/edit.php'
 
 export function AdminNewsPortal() {
   return <div>

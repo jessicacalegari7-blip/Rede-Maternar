@@ -9,31 +9,21 @@ import { PatientInvitation } from './pages/public/PatientInvitation'
 import { ProfessionalPatients } from './pages/professional/Patients'
 import { ProfessionalProfilePage } from './pages/professional/Profile'
 import { PortalLayout } from './layouts/PortalLayout'
-import { CrmCustomers, CrmPipeline, ErpReports, ErpServices, ProfessionalOverview } from './pages/professional/Workspace'
-import { PatientHome } from './pages/patient/Home'
-import { PatientAppointments } from './pages/patient/Appointments'
+import { CrmCustomers, CrmPipeline, ErpServices } from './pages/professional/Workspace'
 import { AdminHome } from './pages/admin/Home'
 import { AdminProfessionals } from './pages/admin/Professionals'
-import { AdminAppointments } from './pages/admin/Appointments'
 import { ProfessionalAgenda } from './pages/professional/Agenda'
 import { Placeholder } from './pages/Placeholder'
 import { ProfessionalConversations } from './pages/professional/Conversations'
-import { PatientConversations } from './pages/patient/Conversations'
-import { PatientPayments } from './pages/patient/Payments'
 import { FinanceSuite } from './pages/professional/FinanceSuite'
-import { Teleconsultations } from './pages/professional/Teleconsultations'
-import { AdminFinance } from './pages/admin/Finance'
 import { AuthProvider, useAuth } from './lib/AuthContext'
 import { hasManagement } from './lib/plans'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { PlanGate } from './components/PlanGate'
-import { ProfessionalNetwork } from './pages/professional/Network'
 import { ProfessionalPlanPage } from './pages/professional/Plan'
-import { PatientProfile } from './pages/patient/Profile'
 import { AdminOperations, AdminUsers } from './pages/admin/Backoffice'
 import { SocialIntegrations } from './pages/professional/SocialIntegrations'
 import { ClinicTeam } from './pages/professional/ClinicTeam'
-import { MyProduction } from './pages/professional/MyProduction'
 import { SetPassword } from './pages/public/SetPassword'
 import { AdminNewsPortal } from './pages/admin/NewsPortal'
 import { RecoverPassword } from './pages/public/RecoverPassword'
@@ -42,7 +32,7 @@ import { ContactPage, CookiePolicy, LgpdPage, PrivacyPolicy, TermsOfUse } from '
 function ProfessionalEntry() {
   const { user } = useAuth()
   return hasManagement(user?.plan)
-    ? <ProfessionalOverview />
+    ? <Navigate to="/profissional/funil" replace />
     : <Navigate to="/profissional/perfil" replace />
 }
 
@@ -73,11 +63,11 @@ export default function App() {
 
     <Route element={<ProtectedRoute role="patient" />}>
       <Route path="/paciente" element={<PortalLayout role="patient" />}>
-        <Route index element={<PatientHome />} />
-        <Route path="conversas" element={<PatientConversations />} />
-        <Route path="agendamentos" element={<PatientAppointments />} />
-        <Route path="pagamentos" element={<PatientPayments />} />
-        <Route path="perfil" element={<PatientProfile />} />
+        <Route index element={<Placeholder title="Área da paciente" description="O cadastro de pacientes será liberado em uma etapa posterior." />} />
+        <Route path="conversas" element={<Placeholder title="Conversas" description="Nenhuma conversa demonstrativa é exibida." />} />
+        <Route path="agendamentos" element={<Placeholder title="Agendamentos" description="Nenhum agendamento demonstrativo é exibido." />} />
+        <Route path="pagamentos" element={<Placeholder title="Pagamentos" description="Aguardando integração real de pagamentos." />} />
+        <Route path="perfil" element={<Placeholder title="Perfil da paciente" description="O cadastro de pacientes será liberado em uma etapa posterior." />} />
       </Route>
     </Route>
 
@@ -88,17 +78,16 @@ export default function App() {
         <Route path="servicos" element={<ErpServices />} />
         <Route path="plano" element={<ProfessionalPlanPage />} />
         <Route element={<PlanGate requires="management" />}>
-          <Route path="rede" element={<ProfessionalNetwork />} />
           <Route path="funil" element={<CrmPipeline />} />
           <Route path="clientes" element={<CrmCustomers />} />
           <Route path="pacientes" element={<ProfessionalPatients />} />
           <Route path="conversas" element={<ProfessionalConversations />} />
           <Route path="integracoes" element={<SocialIntegrations />} />
           <Route path="agenda" element={<ProfessionalAgenda />} />
-          <Route path="teleconsultas" element={<Teleconsultations />} />
+          <Route path="teleconsultas" element={<Placeholder title="Teleconsultas" description="Aguardando provedor seguro de videoconferência." />} />
           <Route path="financeiro" element={<FinanceSuite />} />
-          <Route path="relatorios" element={<ErpReports />} />
-          <Route path="minha-producao" element={<MyProduction />} />
+          <Route path="relatorios" element={<FinanceSuite initial="dre" />} />
+          <Route path="minha-producao" element={<Navigate to="/profissional/agenda" replace />} />
         </Route>
         <Route element={<PlanGate requires="clinic" />}>
           <Route path="equipe" element={<ClinicTeam />} />
@@ -110,9 +99,9 @@ export default function App() {
       <Route path="/admin" element={<PortalLayout role="admin" />}>
         <Route index element={<AdminHome />} />
         <Route path="profissionais" element={<AdminProfessionals />} />
-        <Route path="agendamentos" element={<AdminAppointments />} />
+        <Route path="agendamentos" element={<Placeholder title="Agendamentos da plataforma" description="A consolidação administrativa será ligada às agendas reais." />} />
         <Route path="usuarios" element={<AdminUsers />} />
-        <Route path="financeiro" element={<AdminFinance />} />
+        <Route path="financeiro" element={<Placeholder title="Financeiro administrativo" description="Aguardando integração real de pagamentos e assinaturas." />} />
         <Route path="noticias" element={<AdminNewsPortal />} />
         <Route path="operacao" element={<AdminOperations />} />
         <Route path="configuracoes" element={<AdminOperations />} />

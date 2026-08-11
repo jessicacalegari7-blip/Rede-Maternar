@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Eye, Save } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
-import { getMyProfessionalProfile, getProfessionalSpecialtyEditor, saveProfessionalSpecialties, updateMyProfessionalProfile, type RealProfessionalProfile } from '../../lib/operations'
+import { getMyProfessionalProfile, getProfessionalSpecialtyEditor, listMyProfileViewCounts, saveProfessionalSpecialties, updateMyProfessionalProfile, type RealProfessionalProfile } from '../../lib/operations'
 import { isClinicPlan } from '../../lib/plans'
 
 export function ProfessionalProfilePage() {
@@ -9,6 +9,7 @@ export function ProfessionalProfilePage() {
   const [profile,setProfile]=useState<RealProfessionalProfile|null>(null)
   const [specialtyOptions,setSpecialtyOptions]=useState<string[]>([])
   const [selectedSpecialties,setSelectedSpecialties]=useState<string[]>([])
+  const [viewCount,setViewCount]=useState(0)
   const [notice,setNotice]=useState('')
   const [error,setError]=useState('')
   const specialtyLimit=isClinicPlan(user?.plan)?null:3
@@ -18,6 +19,8 @@ export function ProfessionalProfilePage() {
     const specialties=await getProfessionalSpecialtyEditor(loaded.id)
     setSpecialtyOptions(specialties.options.map(item=>item.name))
     setSelectedSpecialties(specialties.selected)
+    const counts=await listMyProfileViewCounts()
+    setViewCount(Number(counts.find(item=>item.professional_id===loaded.id)?.view_count??0))
   }).catch(e=>setError(e.message))},[])
 
   if(error) return <div className="card"><h2>Não foi possível carregar o perfil</h2><p>{error}</p></div>
@@ -34,7 +37,7 @@ export function ProfessionalProfilePage() {
   }
 
   return <div>
-    <div className="page-heading"><div><h1>Perfil no Marketplace</h1><p>Estas informações são gravadas no Supabase e exibidas no perfil público.</p></div><a className="btn btn-secondary" href={`/perfil/${profile.id}`} target="_blank" rel="noreferrer"><Eye size={17}/>Ver perfil</a></div>
+    <div className="page-heading"><div><h1>Perfil no Marketplace</h1><p>Estas informações são gravadas no Supabase e exibidas no perfil público.</p><strong>{viewCount} visualizações deste perfil</strong></div><a className="btn btn-secondary" href={`/perfil/${profile.id}`} target="_blank" rel="noreferrer"><Eye size={17}/>Ver perfil</a></div>
     {notice&&<div className="notice">{notice}</div>}
     <section className="card grid grid-2 profile-editor-grid">
       <div className="field"><label>Nome da profissional</label><input value={profile.full_name} onChange={e=>set('full_name',e.target.value)}/></div>
@@ -64,7 +67,7 @@ export function ProfessionalProfilePage() {
       <div className="field"><label>Convênios (separados por vírgula)</label><input value={profile.accepted_insurances.join(', ')} onChange={e=>set('accepted_insurances',list(e.target.value))}/></div>
       <div className="field"><label>Formas de pagamento</label><input value={profile.payment_methods.join(', ')} onChange={e=>set('payment_methods',list(e.target.value))}/></div>
       <label className="switch-card"><span><strong>Aceita atendimento online</strong></span><input type="checkbox" checked={profile.accepts_online} onChange={e=>set('accepts_online',e.target.checked)}/></label>
-      <label className="switch-card"><span><strong>Publicar no Marketplace</strong></span><input type="checkbox" checked={profile.marketplace_visible} onChange={e=>set('marketplace_visible',e.target.checked)}/></label>
+      <div className="switch-card"><span><strong>Publicação no Marketplace</strong><small>{profile.marketplace_visible?'Perfil aprovado e publicado.':'Aguardando aprovação da administração.'}</small></span></div>
       <button className="btn btn-primary grid-span-2" onClick={()=>void save()}><Save size={17}/>Salvar perfil real</button>
     </section>
   </div>

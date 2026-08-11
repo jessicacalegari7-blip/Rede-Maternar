@@ -3,6 +3,7 @@ import type { PublicUser } from './auth'
 import { acceptInvitation } from './invitations'
 import { getRemotePublicUser, loginWithSupabase } from './supabaseAuth'
 import { supabase } from './supabase'
+import { clearLegacyDemoData } from './cleanupLegacyDemo'
 
 interface AuthContextValue {
   user: PublicUser | null
@@ -19,6 +20,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(Boolean(supabase))
 
   useEffect(() => {
+    clearLegacyDemoData()
     if (!supabase) {
       setLoading(false)
       return
