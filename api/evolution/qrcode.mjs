@@ -1,0 +1,4 @@
+import { allowMethods,json } from '../_lib/http.mjs'
+import { requireOrganization } from '../_lib/supabase-admin.mjs'
+import { evolution } from '../_lib/evolution.mjs'
+export default async function handler(req,res){if(!allowMethods(req,res,['GET']))return;try{const {db,organizationId}=await requireOrganization(req,{manager:true});const id=String(req.query?.id||'');const {data:c,error}=await db.from('whatsapp_connections').select('*').eq('id',id).eq('organization_id',organizationId).single();if(error)throw Object.assign(new Error('Instância não encontrada.'),{status:404});const qr=await evolution(`/instance/connect/${encodeURIComponent(c.instance_name)}`);json(res,200,{code:qr?.base64||qr?.qrcode?.base64||qr?.code||null,pairingCode:qr?.pairingCode||null,raw:qr})}catch(error){json(res,error.status||500,{error:error.message})}}

@@ -166,6 +166,14 @@ export interface WhatsAppConnection {
   status:'disconnected'|'connecting'|'connected'|'error'; connected_at:string|null; last_error:string|null
 }
 
+async function internalApi(path:string,init?:RequestInit) {
+  const db=client(); const [{data:session},{organizationId}]=await Promise.all([db.auth.getSession(),getCurrentOrganization()])
+  const response=await fetch(path,{...init,headers:{'content-type':'application/json','authorization':`Bearer ${session.session?.access_token||''}`,'x-organization-id':organizationId,...init?.headers}})
+  const data=await response.json().catch(()=>({}))
+  if(!response.ok)throw new Error(data.error||'Falha na integração.')
+  return data
+}
+
 export async function getWhatsAppConnection() {
   const db = client()
   const { organizationId } = await getCurrentOrganization()
@@ -175,15 +183,14 @@ export async function getWhatsAppConnection() {
 }
 
 export async function prepareWhatsAppConnection(provider:WhatsAppConnection['provider']) {
-  const db = client()
-  const { organizationId, userId } = await getCurrentOrganization()
-  const { data, error } = await db.from('whatsapp_connections').upsert({
-    organization_id: organizationId, provider, instance_name: `rede-maternar-${organizationId.slice(0, 8)}`,
-    status: 'disconnected', created_by: userId,
-  }, { onConflict:'organization_id' }).select('*').single()
-  if (error) throw new Error(error.message)
-  return data as WhatsAppConnection
+  if(provider!=='evolution')throw new Error('A API oficial da Meta será configurada separadamente.')
+  const data=await internalApi('/api/evolution/instances',{method:'POST',body:JSON.stringify({})})
+  return data.instance as WhatsAppConnection
 }
+
+export async function listWhatsAppConnections(){const data=await internalApi('/api/evolution/instances');return data.instances as WhatsAppConnection[]}
+export async function getWhatsAppQrCode(id:string){return internalApi(`/api/evolution/qrcode?id=${encodeURIComponent(id)}`)}
+export async function refreshWhatsAppStatus(id:string){return internalApi(`/api/evolution/status?id=${encodeURIComponent(id)}`)}
 
 export interface RealAppointment {
   id:string; starts_at:string; ends_at:string; status:'scheduled'|'confirmed'|'in_service'|'completed'|'cancelled'|'no_show'
@@ -304,6 +311,10 @@ export async function queueConversationMessage(conversation:RealConversation,bod
   const connection=conversation.channel==='internal'?null:await getWhatsAppConnection()
   if(conversation.channel!=='internal'&&connection?.status!=='connected') {
     throw new Error('Conecte o WhatsApp desta organização antes de enviar mensagens por esse canal.')
+  }
+  if(conversation.channel!=='internal'){
+    await internalApi('/api/evolution/send',{method:'POST',body:JSON.stringify({conversationId:conversation.id,connectionId:connection?.id,body})})
+    return
   }
   const {error}=await db.from('conversation_messages').insert({
     organization_id:organizationId,conversation_id:conversation.id,sender_user_id:userId,
