@@ -19,6 +19,8 @@ export interface PortalArticle {
   views: number
 }
 
+export interface PortalVideo { id:string; title:string; description:string; youtubeId:string; published:boolean; featured:boolean; createdAt:string }
+
 export type NewsInput = Pick<PortalArticle, 'title' | 'slug' | 'excerpt' | 'content' | 'category' | 'coverImageUrl' | 'authorName' | 'status' | 'featured'> & { id?: string }
 
 const demoContent = {
@@ -137,3 +139,39 @@ export async function removeArticle(id: string): Promise<void> {
   const { error } = await supabase.from('news_articles').delete().eq('id', id)
   if (error) throw error
 }
+
+export function youtubeIdFrom(value:string) {
+  const match=value.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/) || value.match(/^([A-Za-z0-9_-]{11})$/)
+  return match?.[1] || ''
+}
+
+export async function uploadNewsImage(file:File):Promise<string> {
+  if(!supabase) throw new Error('Supabase não configurado.')
+  if(!file.type.startsWith('image/')) throw new Error('Escolha um arquivo de imagem.')
+  if(file.size>5*1024*1024) throw new Error('A imagem deve ter no máximo 5 MB.')
+  const extension=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')
+  const path=`${new Date().toISOString().slice(0,10)}/${crypto.randomUUID()}.${extension}`
+  const {error}=await supabase.storage.from('news-media').upload(path,file,{contentType:file.type,upsert:false})
+  if(error) throw error
+  return supabase.storage.from('news-media').getPublicUrl(path).data.publicUrl
+}
+
+export async function listPortalVideos(admin=false):Promise<PortalVideo[]> {
+  if(!supabase) return []
+  let query=supabase.from('portal_videos').select('*').order('featured',{ascending:false}).order('created_at',{ascending:false})
+  if(!admin) query=query.eq('published',true)
+  const {data,error}=await query
+  if(error) return []
+  return (data||[]).map(row=>({id:String(row.id),title:String(row.title),description:String(row.description||''),youtubeId:String(row.youtube_id),published:Boolean(row.published),featured:Boolean(row.featured),createdAt:String(row.created_at)}))
+}
+
+export async function savePortalVideo(input:{id?:string;title:string;description:string;youtubeUrl:string;published:boolean;featured:boolean}) {
+  if(!supabase) throw new Error('Supabase não configurado.')
+  const youtubeId=youtubeIdFrom(input.youtubeUrl)
+  if(!youtubeId) throw new Error('Informe um link ou código de incorporação válido do YouTube.')
+  const payload={title:input.title,description:input.description,youtube_id:youtubeId,published:input.published,featured:input.featured}
+  const result=input.id?await supabase.from('portal_videos').update(payload).eq('id',input.id):await supabase.from('portal_videos').insert(payload)
+  if(result.error) throw result.error
+}
+
+export async function removePortalVideo(id:string) { if(!supabase) return; const {error}=await supabase.from('portal_videos').delete().eq('id',id); if(error) throw error }

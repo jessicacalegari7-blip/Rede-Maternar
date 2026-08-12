@@ -19,6 +19,8 @@ export function PortalArticlePage() {
       .catch(error => setError(error instanceof Error ? error.message : 'Não foi possível carregar esta notícia.'))
   }, [slug])
 
+  function renderBlock(block:string,index:number){const image=block.match(/^!\[(.*?)\]\((https?:\/\/[^)]+)\)$/);if(image)return <figure key={index}><img src={image[2]} alt={image[1]}/>{image[1]&&<figcaption>{image[1]}</figcaption>}</figure>;const youtube=block.match(/^\[youtube:([A-Za-z0-9_-]{11})\]$/);if(youtube)return <div className="article-youtube" key={index}><iframe src={`https://www.youtube-nocookie.com/embed/${youtube[1]}`} title="Vídeo do YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen/></div>;return <p key={index}>{block}</p>}
+
   return <div className="portal-home">
     <header className="portal-topbar article-topbar">
       <Link to="/" aria-label="Início"><Logo /></Link>
@@ -33,7 +35,7 @@ export function PortalArticlePage() {
         {article && <article>
           <header className="article-heading"><span>{article.category}</span><h1>{article.title}</h1><p>{article.excerpt}</p><small><CalendarDays /> {new Date(article.publishedAt || article.createdAt).toLocaleDateString('pt-BR')} · {article.authorName}</small></header>
           {article.coverImageUrl && <img className="article-cover" src={article.coverImageUrl} alt="" />}
-          <div className="article-content">{article.content.split(/\n\s*\n/).map((paragraph, index) => <p key={index}>{paragraph}</p>)}</div>
+          <div className="article-content">{article.content.split(/\n\s*\n/).filter(Boolean).map(renderBlock)}</div>
           {article.isDemo && <div className="demo-content-note">Conteúdo demonstrativo para composição inicial do portal. Será substituído gradualmente por publicações editoriais da MaterPlace.</div>}
         </article>}
         <aside className="article-marketplace-cta"><div><strong>Precisa de apoio materno-infantil?</strong><p>Encontre profissionais e clínicas na sua região.</p></div><Link className="btn btn-primary" to="/profissionais">Buscar profissionais</Link></aside>
