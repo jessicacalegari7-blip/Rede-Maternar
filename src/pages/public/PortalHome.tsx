@@ -3,7 +3,7 @@ import { Baby, Bell, BookOpen, ChevronRight, Heart, Menu, Mic2, Play, Search, Sp
 import { Link, useNavigate } from 'react-router-dom'
 import { Logo } from '../../components/Logo'
 import { maternalChildSpecialties } from '../../data/specialties'
-import { listPortalArticles, type PortalArticle } from '../../lib/wordpress'
+import { listPortalArticles, type PortalArticle } from '../../lib/news'
 import { LegalFooter } from './Legal'
 
 const categories = [
@@ -22,7 +22,7 @@ const fallbackMostRead = [
   ['Sono do bebê: como criar uma rotina saudável', 'Bem-estar'],
   ['Sinais de alerta na gestação que você não deve ignorar', 'Gestação'],
 ]
-const articleDate = (article: PortalArticle) => new Date(article.date).toLocaleDateString('pt-BR')
+const articleDate = (article: PortalArticle) => new Date(article.publishedAt || article.createdAt).toLocaleDateString('pt-BR')
 
 export function PortalHome() {
   const navigate = useNavigate()
@@ -73,19 +73,19 @@ export function PortalHome() {
       <section className="sponsor-strip"><span>Apoiam uma maternidade mais leve</span>{['Pampers', 'Mustela', 'Philips Avent', 'Unimed', "Johnson's"].map(name => <strong key={name}>{name}</strong>)}<button>Seja um patrocinador</button></section>
 
       <div className="portal-lead-grid">
-        <article className={`lead-story${featured?.image ? ' has-real-image' : ''}`} style={featured?.image ? { backgroundImage: `linear-gradient(90deg, rgba(7,30,24,.9), rgba(7,30,24,.12)), url(${featured.image})` } : undefined}>
+        <article className={`lead-story${featured?.coverImageUrl ? ' has-real-image' : ''}`} style={featured?.coverImageUrl ? { backgroundImage: `linear-gradient(90deg, rgba(7,30,24,.9), rgba(7,30,24,.12)), url(${featured.coverImageUrl})` } : undefined}>
           <span>{featured?.category || 'Gestação'}</span>
-          <div><h2>{featured?.title || 'Pré-natal: por que cada consulta é essencial para a saúde da mãe e do bebê'}</h2><p>{featured?.excerpt || 'Acompanhamento regular reduz riscos e garante mais segurança durante toda a gestação.'}</p>{featured ? <Link className="story-link" to={`/noticias/${featured.id}`}>Ler notícia · {articleDate(featured)}</Link> : <small>5 min de leitura</small>}</div>
-          {!featured?.image && <div className="story-illustration">🤰</div>}
+          <div><h2>{featured?.title || 'Pré-natal: por que cada consulta é essencial para a saúde da mãe e do bebê'}</h2><p>{featured?.excerpt || 'Acompanhamento regular reduz riscos e garante mais segurança durante toda a gestação.'}</p>{featured ? <Link className="story-link" to={`/noticias/${featured.slug}`}>Ler notícia · {articleDate(featured)}</Link> : <small>5 min de leitura</small>}</div>
+          {!featured?.coverImageUrl && <div className="story-illustration">🤰</div>}
         </article>
         <section className="headline-list">
-          {[0, 1, 2].map(index => { const real = headlineArticles[index]; const fallback = fallbackHeadlines[index]; return <article key={real?.id || fallback.title}>{real?.image ? <img className="news-thumb-image" src={real.image} alt="" /> : <div className={`news-thumb ${fallback.tone}`}>{fallback.category === 'Desenvolvimento' ? '🧸' : fallback.category === 'Saúde infantil' ? '🩺' : '🤱'}</div>}<div><span>{real?.category || fallback.category}</span><h3>{real?.title || fallback.title}</h3><small>{real ? articleDate(real) : `${fallback.meta} de leitura`}</small>{real && <Link to={`/noticias/${real.id}`}>Ler notícia</Link>}</div></article> })}
+          {[0, 1, 2].map(index => { const real = headlineArticles[index]; const fallback = fallbackHeadlines[index]; return <article key={real?.id || fallback.title}>{real?.coverImageUrl ? <img className="news-thumb-image" src={real.coverImageUrl} alt="" /> : <div className={`news-thumb ${fallback.tone}`}>{fallback.category === 'Desenvolvimento' ? '🧸' : fallback.category === 'Saúde infantil' ? '🩺' : '🤱'}</div>}<div><span>{real?.category || fallback.category}</span><h3>{real?.title || fallback.title}</h3><small>{real ? articleDate(real) : `${fallback.meta} de leitura`}</small>{real && <Link to={`/noticias/${real.slug}`}>Ler notícia</Link>}</div></article> })}
         </section>
         <aside className="portal-ad"><span>Espaço de cuidado</span><h3>Conteúdo que acolhe cada fase.</h3><Baby /><button>Conheça agora</button></aside>
       </div>
 
       <section className="most-read-section"><div className="portal-section-title"><h2>Mais lidas</h2><a href="#noticias">Ver todas</a></div><div className="most-read-grid">
-        {[0, 1, 2, 3].map(index => { const real = mostReadArticles[index]; const [title, category] = fallbackMostRead[index]; return <article key={real?.id || title}><span>{index + 1}</span>{real?.image ? <img className="most-read-image" src={real.image} alt="" /> : <div className={`most-read-art art-${index + 1}`}>{['🤰', '🥣', '👶', '💗'][index]}</div>}<small>{real?.category || category}</small><h3>{real?.title || title}</h3><p>{real?.excerpt || 'Leitura rápida e orientação confiável para a sua jornada.'}</p>{real && <Link to={`/noticias/${real.id}`}>Ler notícia</Link>}</article> })}
+        {[0, 1, 2, 3].map(index => { const real = mostReadArticles[index]; const [title, category] = fallbackMostRead[index]; return <article key={real?.id || title}><span>{index + 1}</span>{real?.coverImageUrl ? <img className="most-read-image" src={real.coverImageUrl} alt="" /> : <div className={`most-read-art art-${index + 1}`}>{['🤰', '🥣', '👶', '💗'][index]}</div>}<small>{real?.category || category}</small><h3>{real?.title || title}</h3><p>{real?.excerpt || 'Leitura rápida e orientação confiável para a sua jornada.'}</p>{real && <Link to={`/noticias/${real.slug}`}>Ler notícia</Link>}</article> })}
       </div></section>
 
       <section className="newsletter-card"><div><BookOpen /><span><strong>Receba conteúdos exclusivos para uma maternidade mais leve</strong><small>Artigos, dicas e novidades direto no seu e-mail.</small></span></div><form onSubmit={event => event.preventDefault()}><input type="email" placeholder="Seu melhor e-mail" /><button>Quero receber</button></form></section>

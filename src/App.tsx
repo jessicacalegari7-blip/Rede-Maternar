@@ -50,7 +50,7 @@ export default function App() {
     <Route path="/" element={<PublicHome />} />
     <Route path="/para-profissionais" element={<Landing />} />
     <Route path="/profissionais" element={<Marketplace />} />
-    <Route path="/noticias/:id" element={<PortalArticlePage />} />
+    <Route path="/noticias/:slug" element={<PortalArticlePage />} />
     <Route path="/login" element={<Login />} />
     <Route path="/definir-senha" element={<SetPassword />} />
     <Route path="/recuperar-senha" element={<RecoverPassword />} />
