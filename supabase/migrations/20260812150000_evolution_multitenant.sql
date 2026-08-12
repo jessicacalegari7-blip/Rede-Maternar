@@ -33,6 +33,7 @@ create table if not exists public.contacts (
 alter table public.contacts enable row level security;
 drop trigger if exists contacts_set_updated_at on public.contacts;
 create trigger contacts_set_updated_at before update on public.contacts for each row execute function public.set_updated_at();
+drop policy if exists "contacts organization manage" on public.contacts;
 create policy "contacts organization manage" on public.contacts for all to authenticated
   using (public.is_organization_member(organization_id) or public.is_platform_admin())
   with check (public.is_organization_member(organization_id) or public.is_platform_admin());
@@ -71,6 +72,7 @@ create table if not exists public.evolution_webhook_events (
   unique(connection_id, event_key)
 );
 alter table public.evolution_webhook_events enable row level security;
+drop policy if exists "webhook events admin read" on public.evolution_webhook_events;
 create policy "webhook events admin read" on public.evolution_webhook_events
   for select to authenticated using (public.is_platform_admin());
 revoke all on public.evolution_webhook_events from anon, authenticated;
