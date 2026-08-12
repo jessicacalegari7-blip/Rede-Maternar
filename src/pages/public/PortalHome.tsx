@@ -3,7 +3,7 @@ import { Baby, Bell, BookOpen, ChevronRight, Heart, Menu, Mic2, Play, Search, Sp
 import { Link, useNavigate } from 'react-router-dom'
 import { Logo } from '../../components/Logo'
 import { maternalChildSpecialties } from '../../data/specialties'
-import { listPortalArticles, type PortalArticle } from '../../lib/news'
+import { listPortalArticles, listPortalVideos, type PortalArticle, type PortalVideo } from '../../lib/news'
 import { LegalFooter } from './Legal'
 
 const categories = [
@@ -27,7 +27,8 @@ const articleDate = (article: PortalArticle) => new Date(article.publishedAt || 
 export function PortalHome() {
   const navigate = useNavigate()
   const [articles, setArticles] = useState<PortalArticle[]>([])
-  useEffect(() => { void listPortalArticles().then(setArticles).catch(() => setArticles([])) }, [])
+  const [videos,setVideos]=useState<PortalVideo[]>([])
+  useEffect(() => { void listPortalArticles().then(setArticles).catch(() => setArticles([]));void listPortalVideos().then(setVideos) }, [])
 
   function searchProfessionals(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -91,7 +92,7 @@ export function PortalHome() {
       <section className="newsletter-card"><div><BookOpen /><span><strong>Receba conteúdos exclusivos para uma maternidade mais leve</strong><small>Artigos, dicas e novidades direto no seu e-mail.</small></span></div><form onSubmit={event => event.preventDefault()}><input type="email" placeholder="Seu melhor e-mail" /><button>Quero receber</button></form></section>
       <div className="portal-bottom-grid">
         <section id="podcasts" className="portal-media-section"><div className="portal-section-title"><h2>Podcasts</h2><a href="#podcasts">Ver todos</a></div><article className="podcast-card"><div><Mic2 /><b>Materna em pauta</b><small>EP. 23</small></div><span><strong>Como lidar com a ansiedade na gestação com informação</strong><small>com Psicóloga Juliana Martins</small><button><Play /> Ouvir agora</button></span></article></section>
-        <section id="videos" className="portal-media-section"><div className="portal-section-title"><h2>Vídeos em destaque</h2><a href="#videos">Ver todos</a></div><div className="video-cards">{['Alongamento na gravidez', 'Como escolher a melhor chupeta', 'Banho de ofurô'].map((title, index) => <article key={title}><div>{index === 0 ? '🤰' : index === 1 ? '👶' : '🛁'}<Play /></div><strong>{title}</strong></article>)}</div></section>
+        <section id="videos" className="portal-media-section"><div className="portal-section-title"><h2>Vídeos em destaque</h2><a href="#videos">Ver todos</a></div><div className="video-cards">{videos.length?videos.slice(0,3).map(video=><article key={video.id}><a href={`https://youtube.com/watch?v=${video.youtubeId}`} target="_blank" rel="noreferrer"><img src={`https://img.youtube.com/vi/${video.youtubeId}/hqdefault.jpg`} alt=""/><Play/></a><strong>{video.title}</strong></article>):['Alongamento na gravidez','Como escolher a melhor chupeta','Banho de ofurô'].map((title,index)=><article key={title}><div>{index===0?'🤰':index===1?'👶':'🛁'}<Play/></div><strong>{title}</strong></article>)}</div></section>
       </div>
       <section className="professional-cta"><div><span>Para profissionais</span><h2>Quer divulgar seu trabalho e organizar sua clínica?</h2><p>Conheça o Marketplace + CRM + ERP da MaterPlace.</p></div><Link className="btn btn-primary" to="/para-profissionais">Conhecer a plataforma <ChevronRight /></Link></section>
     </main><LegalFooter />
