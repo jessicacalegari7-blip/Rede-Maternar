@@ -80,6 +80,8 @@ export async function listPatients() {
 export interface RealService {
   id: string; name: string; description: string | null; duration_minutes: number
   price_cents: number; attendance_modes: string[]; marketplace_visible: boolean; active: boolean
+  professional_name:string|null; specialty:string|null; professional_registration:string|null
+  city:string|null; neighborhood:string|null; professional_id:string|null
 }
 
 export async function listServices() {
@@ -90,13 +92,15 @@ export async function listServices() {
   return (data ?? []) as RealService[]
 }
 
-export async function createService(input: { name:string; description?:string; durationMinutes:number; price:number; attendanceModes:string[]; marketplaceVisible:boolean }) {
+export async function createService(input: { name:string; description?:string; durationMinutes:number; price:number; attendanceModes:string[]; marketplaceVisible:boolean; professionalName:string; specialty:string; professionalRegistration:string; city:string; neighborhood:string; professionalId?:string }) {
   const db = client()
   const { organizationId, userId } = await getCurrentOrganization()
   const { error } = await db.from('services').insert({
     organization_id: organizationId, name: input.name.trim(), description: input.description?.trim() || null,
     duration_minutes: input.durationMinutes, price_cents: Math.round(input.price * 100),
     attendance_modes: input.attendanceModes, marketplace_visible: input.marketplaceVisible, created_by: userId,
+    professional_id:input.professionalId||null, professional_name:input.professionalName.trim(), specialty:input.specialty.trim(),
+    professional_registration:input.professionalRegistration.trim(), city:input.city.trim(), neighborhood:input.neighborhood.trim(),
   })
   if (error) throw new Error(error.message)
 }
@@ -162,6 +166,14 @@ export interface WhatsAppConnection {
   status:'disconnected'|'connecting'|'connected'|'error'; connected_at:string|null; last_error:string|null
 }
 
+async function internalApi(path:string,init?:RequestInit) {
+  const db=client(); const [{data:session},{organizationId}]=await Promise.all([db.auth.getSession(),getCurrentOrganization()])
+  const response=await fetch(path,{...init,headers:{'content-type':'application/json','authorization':`Bearer ${session.session?.access_token||''}`,'x-organization-id':organizationId,...init?.headers}})
+  const data=await response.json().catch(()=>({}))
+  if(!response.ok)throw new Error(data.error||'Falha na integração.')
+  return data
+}
+
 export async function getWhatsAppConnection() {
   const db = client()
   const { organizationId } = await getCurrentOrganization()
@@ -171,15 +183,14 @@ export async function getWhatsAppConnection() {
 }
 
 export async function prepareWhatsAppConnection(provider:WhatsAppConnection['provider']) {
-  const db = client()
-  const { organizationId, userId } = await getCurrentOrganization()
-  const { data, error } = await db.from('whatsapp_connections').upsert({
-    organization_id: organizationId, provider, instance_name: `rede-maternar-${organizationId.slice(0, 8)}`,
-    status: 'disconnected', created_by: userId,
-  }, { onConflict:'organization_id' }).select('*').single()
-  if (error) throw new Error(error.message)
-  return data as WhatsAppConnection
+  if(provider!=='evolution')throw new Error('A API oficial da Meta será configurada separadamente.')
+  const data=await internalApi('/api/evolution/instances',{method:'POST',body:JSON.stringify({})})
+  return data.instance as WhatsAppConnection
 }
+
+export async function listWhatsAppConnections(){const data=await internalApi('/api/evolution/instances');return data.instances as WhatsAppConnection[]}
+export async function getWhatsAppQrCode(id:string){return internalApi(`/api/evolution/qrcode?id=${encodeURIComponent(id)}`)}
+export async function refreshWhatsAppStatus(id:string){return internalApi(`/api/evolution/status?id=${encodeURIComponent(id)}`)}
 
 export interface RealAppointment {
   id:string; starts_at:string; ends_at:string; status:'scheduled'|'confirmed'|'in_service'|'completed'|'cancelled'|'no_show'
@@ -301,6 +312,10 @@ export async function queueConversationMessage(conversation:RealConversation,bod
   if(conversation.channel!=='internal'&&connection?.status!=='connected') {
     throw new Error('Conecte o WhatsApp desta organização antes de enviar mensagens por esse canal.')
   }
+  if(conversation.channel!=='internal'){
+    await internalApi('/api/evolution/send',{method:'POST',body:JSON.stringify({conversationId:conversation.id,connectionId:connection?.id,body})})
+    return
+  }
   const {error}=await db.from('conversation_messages').insert({
     organization_id:organizationId,conversation_id:conversation.id,sender_user_id:userId,
     direction:'outbound',body:body.trim(),status:conversation.channel==='internal'?'sent':'queued',
@@ -360,6 +375,9 @@ export interface RealProfessionalProfile {
   clinic_name:string|null;accepts_online:boolean;marketplace_visible:boolean;verified:boolean
   website_url:string|null;instagram_handle:string|null;accepted_insurances:string[]
   payment_methods:string[];profile_completed:boolean
+  profile_image_url:string|null;cover_image_url:string|null;office_video_url:string|null
+  gallery_urls:string[];clinic_description:string|null;opening_hours:string|null
+  postal_code:string|null;address_line:string|null;address_number:string|null;address_complement:string|null
 }
 
 export async function getMyProfessionalProfile() {
@@ -382,9 +400,23 @@ export async function updateMyProfessionalProfile(id:string,changes:Partial<Real
     website_url:changes.website_url,instagram_handle:changes.instagram_handle,
     accepted_insurances:changes.accepted_insurances,payment_methods:changes.payment_methods,
     profile_completed:changes.profile_completed,
+    profile_image_url:changes.profile_image_url,cover_image_url:changes.cover_image_url,
+    office_video_url:changes.office_video_url,gallery_urls:changes.gallery_urls,
+    clinic_description:changes.clinic_description,opening_hours:changes.opening_hours,
+    postal_code:changes.postal_code,address_line:changes.address_line,address_number:changes.address_number,
+    address_complement:changes.address_complement,
   }
   const {error}=await client().from('professional_profiles').update(allowed).eq('id',id)
   if(error) throw new Error(error.message)
+}
+
+export async function uploadMarketplaceImage(file:File,kind:'profile'|'cover'|'gallery') {
+  const db=client(); const {userId}=await getCurrentOrganization()
+  const extension=(file.name.split('.').pop()||'jpg').toLowerCase()
+  const path=`${userId}/${kind}-${crypto.randomUUID()}.${extension}`
+  const {error}=await db.storage.from('marketplace-media').upload(path,file,{upsert:false,contentType:file.type})
+  if(error) throw new Error(error.message)
+  return db.storage.from('marketplace-media').getPublicUrl(path).data.publicUrl
 }
 
 export async function getProfessionalSpecialtyEditor(professionalId:string) {

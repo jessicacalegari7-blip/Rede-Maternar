@@ -1,0 +1,11 @@
+grant select, insert, update on public.services to authenticated;
+grant select, insert, update on public.financial_entries to authenticated;
+grant select, insert, update on public.cash_sessions to authenticated;
+alter table public.services add column if not exists specialty text, add column if not exists professional_name text, add column if not exists professional_registration text, add column if not exists city text, add column if not exists neighborhood text;
+alter table public.professional_profiles add column if not exists profile_image_url text, add column if not exists cover_image_url text, add column if not exists office_video_url text, add column if not exists gallery_urls text[] not null default '{}', add column if not exists clinic_description text;
+grant update (profile_image_url,cover_image_url,office_video_url,gallery_urls,clinic_description) on public.professional_profiles to authenticated;
+insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types) values ('marketplace-media','marketplace-media',true,10485760,array['image/jpeg','image/png','image/webp']) on conflict (id) do update set public=true,file_size_limit=excluded.file_size_limit,allowed_mime_types=excluded.allowed_mime_types;
+drop policy if exists "marketplace media public read" on storage.objects;
+create policy "marketplace media public read" on storage.objects for select using (bucket_id='marketplace-media');
+drop policy if exists "marketplace media authenticated upload" on storage.objects;
+create policy "marketplace media authenticated upload" on storage.objects for insert to authenticated with check (bucket_id='marketplace-media' and (storage.foldername(name))[1]=auth.uid()::text);
