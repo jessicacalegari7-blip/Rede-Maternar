@@ -47,7 +47,9 @@ export function PortalHome() {
     <header className="portal-topbar">
       <Link to="/" aria-label="Início"><Logo /></Link>
       <Link className="professional-access" to="/login"><span><Users /></span><strong>Profissional de Saúde<small>Login na plataforma</small></strong></Link>
-      <div className="portal-header-actions"><button aria-label="Buscar"><Search /></button><button aria-label="Notificações"><Bell /></button><button aria-label="Menu"><Menu /></button></div>
+      <nav className="portal-institutional-nav" aria-label="Menu institucional">
+        <Link to="/sobre">Sobre</Link><Link to="/contato">Contato</Link><Link to="/privacidade">Privacidade</Link><Link to="/termos">Termos</Link><Link to="/cookies">Cookies</Link><Link to="/lgpd">LGPD</Link><Link to="/isencao-de-responsabilidade">Isenção</Link>
+      </nav>
     </header>
 
     <section className="portal-search">
