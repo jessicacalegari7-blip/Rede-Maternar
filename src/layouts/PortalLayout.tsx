@@ -84,7 +84,7 @@ export function PortalLayout({ role }: { role: UserRole }) {
     </aside>
     <main className="main"><Outlet /></main>
     <nav className="mobile-bar">
-      {items.slice(0, 4).map(([label, to, Icon]) =>
+      {items.map(([label, to, Icon]) =>
         <NavLink key={to} to={to} end={to.split('/').length === 2}><Icon size={20} /><span>{label}</span></NavLink>,
       )}
       <button onClick={signOut}><LogOut size={20} /><span>Sair</span></button>

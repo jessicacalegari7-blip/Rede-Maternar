@@ -38,7 +38,7 @@ export function PortalArticlePage() {
           <div className="article-content">{article.content.split(/\n\s*\n/).filter(Boolean).map(renderBlock)}</div>
           {article.isDemo && <div className="demo-content-note">Conteúdo demonstrativo para composição inicial do portal. Será substituído gradualmente por publicações editoriais da MaterPlace.</div>}
         </article>}
-        <aside className="article-marketplace-cta"><div><strong>Precisa de apoio materno-infantil?</strong><p>Encontre profissionais e clínicas na sua região.</p></div><Link className="btn btn-primary" to="/profissionais">Buscar profissionais</Link></aside>
+        <aside className="article-marketplace-cta"><div><strong>Precisa de apoio materno-infantil?</strong><p>Encontre profissionais e clínicas na sua região.</p></div><Link className="btn btn-primary" to="/">Buscar profissionais</Link></aside>
       </section>
       <aside className="article-suggestions"><span>Continue lendo</span><h2>Matérias sugeridas</h2>{suggestions.map((item, index) => <Link to={`/noticias/${item.slug}`} key={item.id}><div className={`suggestion-art suggestion-${index + 1}`}>{['🤱','👶','🩺','💗'][index]}</div><small>{item.category}</small><strong>{item.title}</strong><em>Ler matéria</em></Link>)}</aside>
     </main>
