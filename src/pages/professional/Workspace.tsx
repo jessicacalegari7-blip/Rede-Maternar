@@ -48,31 +48,33 @@ export function CrmCustomers() {
 export function ErpServices() {
   const [services,setServices]=useState<RealService[]>([])
   const [show,setShow]=useState(false)
+  const [editing,setEditing]=useState<RealService|null>(null)
   const [error,setError]=useState('')
   const money=new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'})
   async function refresh(){try{setServices(await listServices())}catch(err){setError(err instanceof Error?err.message:'Não foi possível carregar os serviços.')}}
   useEffect(()=>{void refresh()},[])
-  async function edit(service:RealService){const name=window.prompt('Nome do serviço',service.name);if(!name)return;const price=window.prompt('Valor da consulta',String(service.price_cents/100));if(!price)return;await updateService(service.id,{name,price:Number(price.replace(',','.')),description:service.description||'',durationMinutes:service.duration_minutes,attendanceModes:service.attendance_modes,marketplaceVisible:service.marketplace_visible,professionalName:service.professional_name||'',specialty:service.specialty||'',professionalRegistration:service.professional_registration||'',city:service.city||'',neighborhood:service.neighborhood||''});await refresh()}
-  async function submit(e:React.FormEvent<HTMLFormElement>){e.preventDefault();const data=new FormData(e.currentTarget);try{await createService({
+  function edit(service:RealService){setEditing(service);setShow(true)}
+  function close(){setShow(false);setEditing(null)}
+  async function submit(e:React.FormEvent<HTMLFormElement>){e.preventDefault();const data=new FormData(e.currentTarget);try{const input={
     name:String(data.get('name')),description:String(data.get('description')||''),durationMinutes:Number(data.get('duration')),
     price:Number(String(data.get('price')).replace(',','.')),attendanceModes:data.getAll('modes').map(String),
     marketplaceVisible:data.get('marketplace')==='on',professionalName:String(data.get('professionalName')),specialty:String(data.get('specialty')),professionalRegistration:String(data.get('professionalRegistration')),city:String(data.get('city')),neighborhood:String(data.get('neighborhood')),
-  });setShow(false);await refresh()}catch(err){setError(err instanceof Error?err.message:'Falha ao salvar serviço.')}}
+  };if(editing)await updateService(editing.id,input);else await createService(input);close();await refresh()}catch(err){setError(err instanceof Error?err.message:'Falha ao salvar serviço.')}}
   return <><div className="page-heading"><div><span className="badge">Catálogo</span><h1>Serviços e preços</h1><p className="muted">O mesmo catálogo alimenta o Marketplace, a agenda e o financeiro.</p></div><button className="btn btn-primary" onClick={()=>setShow(true)}><Plus size={17}/> Novo serviço</button></div>
     {error&&<div className="alert alert-error">{error}</div>}
     <div className="grid grid-3">{services.map(service=><article className="card service-admin-card" key={service.id}><div className="row between"><span className="badge">{service.active?'Ativo':'Inativo'}</span><button className="icon-btn" title="Editar serviço" onClick={()=>void edit(service)}><MoreHorizontal size={18}/></button></div><h2>{service.name}</h2><p className="muted">{service.description||service.attendance_modes.join(', ')||'Modalidade não informada'}</p><div className="service-price">{money.format(service.price_cents/100)}</div><div className="row muted"><Clock3 size={16}/>{service.duration_minutes} min</div><label className="switch-row"><input type="checkbox" checked={service.active} onChange={async e=>{await setServiceActive(service.id,e.target.checked);await refresh()}}/><span>Serviço ativo</span></label><small>{service.marketplace_visible?'Publicado no Marketplace':'Somente uso interno'}</small></article>)}</div>
     {!services.length&&!error&&<div className="card empty-state"><p className="muted">Nenhum serviço cadastrado. Use “Novo serviço” para iniciar o catálogo real.</p></div>}
-    {show&&<div className="modal-backdrop"><form className="modal-card customer-form" onSubmit={submit}><div className="modal-head"><div><span className="badge">Catálogo real</span><h2>Novo serviço</h2><p className="muted">Este serviço será gravado no banco da organização.</p></div><button type="button" className="icon-btn" onClick={()=>setShow(false)}>×</button></div><div className="form-grid">
-      <label className="field"><span>Nome do serviço</span><input name="name" required/></label>
-      <label className="field"><span>Nome do médico ou profissional</span><input name="professionalName" required/></label>
-      <label className="field"><span>Especialidade</span><input name="specialty" required/></label>
-      <label className="field"><span>Número do registro profissional</span><input name="professionalRegistration" placeholder="CRM, CRP, CRN, CREFITO..." required/></label>
-      <label className="field"><span>Valor da consulta (R$)</span><input name="price" inputMode="decimal" required/></label>
-      <label className="field"><span>Tempo médio da consulta (minutos)</span><input name="duration" type="number" min="5" required/></label>
-      <label className="field"><span>Cidade</span><input name="city" required/></label>
-      <label className="field"><span>Bairro</span><input name="neighborhood" required/></label>
-      <label className="field field-span-2"><span>Descrição</span><input name="description"/></label>
-      <label className="check-row"><input type="checkbox" name="modes" value="presencial"/><span>Presencial</span></label><label className="check-row"><input type="checkbox" name="modes" value="online"/><span>Online</span></label><label className="check-row"><input type="checkbox" name="modes" value="domiciliar"/><span>Domiciliar</span></label><label className="check-row"><input type="checkbox" name="marketplace"/><span>Publicar no Marketplace</span></label></div><div className="modal-actions"><button type="button" className="btn btn-secondary" onClick={()=>setShow(false)}>Cancelar</button><button className="btn btn-primary">Salvar serviço</button></div></form></div>}
+    {show&&<div className="modal-backdrop"><form key={editing?.id||'new'} className="modal-card customer-form" onSubmit={submit}><div className="modal-head"><div><span className="badge">Catálogo real</span><h2>{editing?'Editar serviço':'Novo serviço'}</h2><p className="muted">As alterações serão gravadas no banco da organização.</p></div><button type="button" className="icon-btn" onClick={close}>×</button></div><div className="form-grid">
+      <label className="field"><span>Nome do serviço</span><input name="name" defaultValue={editing?.name||''} required/></label>
+      <label className="field"><span>Nome do médico ou profissional</span><input name="professionalName" defaultValue={editing?.professional_name||''} required/></label>
+      <label className="field"><span>Especialidade</span><input name="specialty" defaultValue={editing?.specialty||''} required/></label>
+      <label className="field"><span>Número do registro profissional</span><input name="professionalRegistration" defaultValue={editing?.professional_registration||''} placeholder="CRM, CRP, CRN, CREFITO..." required/></label>
+      <label className="field"><span>Valor da consulta (R$)</span><input name="price" inputMode="decimal" defaultValue={editing?String(editing.price_cents/100):''} required/></label>
+      <label className="field"><span>Tempo médio da consulta (minutos)</span><input name="duration" type="number" min="5" defaultValue={editing?.duration_minutes||60} required/></label>
+      <label className="field"><span>Cidade</span><input name="city" defaultValue={editing?.city||''} required/></label>
+      <label className="field"><span>Bairro</span><input name="neighborhood" defaultValue={editing?.neighborhood||''} required/></label>
+      <label className="field field-span-2"><span>Descrição</span><input name="description" defaultValue={editing?.description||''}/></label>
+      {['presencial','online','domiciliar'].map(mode=><label className="check-row" key={mode}><input type="checkbox" name="modes" value={mode} defaultChecked={editing?.attendance_modes.includes(mode)}/><span>{mode[0].toUpperCase()+mode.slice(1)}</span></label>)}<label className="check-row"><input type="checkbox" name="marketplace" defaultChecked={editing?.marketplace_visible}/><span>Publicar no Marketplace</span></label></div><div className="modal-actions"><button type="button" className="btn btn-secondary" onClick={close}>Cancelar</button><button className="btn btn-primary">{editing?'Salvar alterações':'Salvar serviço'}</button></div></form></div>}
   </>
 }
 
