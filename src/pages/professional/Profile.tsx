@@ -53,6 +53,8 @@ export function ProfessionalProfilePage() {
       <div className="field"><label>WhatsApp</label><input value={profile.whatsapp||''} onChange={e=>set('whatsapp',e.target.value)}/></div>
       <div className="field"><label>E-mail profissional</label><input type="email" value={profile.email||''} onChange={e=>set('email',e.target.value)}/></div>
       <div className="field"><label>Instagram</label><input value={profile.instagram_handle||''} onChange={e=>set('instagram_handle',e.target.value)}/></div>
+      <div className="field"><label>Facebook</label><input type="url" value={profile.facebook_url||''} onChange={e=>set('facebook_url',e.target.value)}/></div>
+      <div className="field"><label>TikTok</label><input type="url" value={profile.tiktok_url||''} onChange={e=>set('tiktok_url',e.target.value)}/></div>
       <div className="field"><label>Site</label><input value={profile.website_url||''} onChange={e=>set('website_url',e.target.value)}/></div>
       <div className="field"><label>Cidade</label><input value={profile.city} onChange={e=>set('city',e.target.value)}/></div>
       <div className="field"><label>UF</label><input maxLength={2} value={profile.state_code} onChange={e=>set('state_code',e.target.value.toUpperCase())}/></div>
