@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /profissional/
+Disallow: /paciente/
+
+Sitemap: https://materplace.com.br/sitemap.xml

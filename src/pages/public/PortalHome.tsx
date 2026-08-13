@@ -55,13 +55,13 @@ export function PortalHome() {
       <h1>Encontre a profissional <em>materno-infantil mais próxima de você</em></h1>
       <p>Busque por especialidade e localização.</p>
       <form onSubmit={searchProfessionals}>
-        <label><span>Nome</span><input name="name" placeholder="Ex.: Maria Silva" /></label>
-        <label><span>Telefone com DDD</span><input name="phone" placeholder="Ex.: (11) 99999-9999" /></label>
+        <label><span>Seu Nome</span><input name="name" placeholder="Ex.: Maria Silva" /></label>
+        <label><span>Seu Telefone</span><input name="phone" placeholder="Ex.: (11) 99999-9999" /></label>
         <label><span>Especialidade</span><select name="specialty"><option value="">Escolha uma especialidade</option>{maternalChildSpecialties.map(item => <option key={item}>{item}</option>)}</select></label>
         <label><span>Cidade</span><input name="city" placeholder="Ex.: São Paulo, SP" /></label>
         <button className="portal-search-button"><Search /> Buscar agora</button>
       </form>
-      <div className="patient-search-note"><Heart /> Paciente, insira seu nome e telefone e faça sua consulta gratuitamente.</div>
+      <div className="patient-search-note"><Heart /> Paciente, insira seu nome e telefone e faça sua busca por profissionais gratuitamente.</div>
     </section>
 
     <nav className="portal-categories" aria-label="Categorias">

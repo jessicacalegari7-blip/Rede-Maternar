@@ -38,7 +38,7 @@ export async function listLeads() {
 }
 
 export async function createPatientAndLead(input: {
-  name: string; phone: string; email?: string; source: string; stage: LeadStage; notes?: string
+  name: string; phone: string; email?: string; cpf?:string; source: string; stage: LeadStage; notes?: string
 }) {
   const db = client()
   const { organizationId, userId } = await getCurrentOrganization()
@@ -47,6 +47,7 @@ export async function createPatientAndLead(input: {
     full_name: input.name.trim(),
     phone: input.phone.trim(),
     email: input.email?.trim() || null,
+    cpf: input.cpf?.replace(/\D/g,'') || null,
     notes: input.notes?.trim() || null,
     created_by: userId,
   }).select('id').single()
@@ -103,6 +104,28 @@ export async function createService(input: { name:string; description?:string; d
     professional_registration:input.professionalRegistration.trim(), city:input.city.trim(), neighborhood:input.neighborhood.trim(),
   })
   if (error) throw new Error(error.message)
+}
+
+export async function updateService(id:string,input: { name:string; description?:string; durationMinutes:number; price:number; attendanceModes:string[]; marketplaceVisible:boolean; professionalName:string; specialty:string; professionalRegistration:string; city:string; neighborhood:string }) {
+  const {error}=await client().from('services').update({
+    name:input.name.trim(),description:input.description?.trim()||null,duration_minutes:input.durationMinutes,
+    price_cents:Math.round(input.price*100),attendance_modes:input.attendanceModes,marketplace_visible:input.marketplaceVisible,
+    professional_name:input.professionalName.trim(),specialty:input.specialty.trim(),professional_registration:input.professionalRegistration.trim(),
+    city:input.city.trim(),neighborhood:input.neighborhood.trim(),
+  }).eq('id',id)
+  if(error) throw new Error(error.message)
+}
+
+export async function listPatientRecords(patientId:string) {
+  const {data,error}=await client().from('patient_records').select('*').eq('patient_id',patientId).order('created_at',{ascending:false})
+  if(error) throw new Error(error.message)
+  return data??[]
+}
+
+export async function createPatientRecord(patientId:string,content:string) {
+  const db=client(); const {organizationId,userId}=await getCurrentOrganization()
+  const {error}=await db.from('patient_records').insert({organization_id:organizationId,patient_id:patientId,author_id:userId,content:content.trim()})
+  if(error) throw new Error(error.message)
 }
 
 export async function setServiceActive(id:string, active:boolean) {
@@ -388,7 +411,12 @@ export async function getMyProfessionalProfile() {
   if(data) return data as RealProfessionalProfile
   const fallback=await db.from('professional_profiles').select('*').eq('organization_id',organizationId).limit(1).maybeSingle()
   if(fallback.error) throw new Error(fallback.error.message)
-  return fallback.data as RealProfessionalProfile|null
+  if(fallback.data) return fallback.data as RealProfessionalProfile
+  const created=await db.rpc('ensure_my_professional_profile')
+  if(created.error) throw new Error(created.error.message)
+  const result=await db.from('professional_profiles').select('*').eq('id',created.data).single()
+  if(result.error) throw new Error(result.error.message)
+  return result.data as RealProfessionalProfile
 }
 
 export async function updateMyProfessionalProfile(id:string,changes:Partial<RealProfessionalProfile>) {
