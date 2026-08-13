@@ -397,6 +397,7 @@ export interface RealProfessionalProfile {
   whatsapp:string|null;email:string|null;city:string;state_code:string;neighborhood:string|null
   clinic_name:string|null;accepts_online:boolean;marketplace_visible:boolean;verified:boolean
   website_url:string|null;instagram_handle:string|null;accepted_insurances:string[]
+  facebook_url:string|null;tiktok_url:string|null
   payment_methods:string[];profile_completed:boolean
   profile_image_url:string|null;cover_image_url:string|null;office_video_url:string|null
   gallery_urls:string[];clinic_description:string|null;opening_hours:string|null
@@ -426,6 +427,7 @@ export async function updateMyProfessionalProfile(id:string,changes:Partial<Real
     state_code:changes.state_code,neighborhood:changes.neighborhood,clinic_name:changes.clinic_name,
     accepts_online:changes.accepts_online,
     website_url:changes.website_url,instagram_handle:changes.instagram_handle,
+    facebook_url:changes.facebook_url,tiktok_url:changes.tiktok_url,
     accepted_insurances:changes.accepted_insurances,payment_methods:changes.payment_methods,
     profile_completed:changes.profile_completed,
     profile_image_url:changes.profile_image_url,cover_image_url:changes.cover_image_url,
@@ -485,8 +487,11 @@ export async function getMarketplaceProfessional(id:string) {
 }
 
 export async function listPublicServices(professionalId:string) {
-  const {data,error}=await client().from('services').select('id,name,description,duration_minutes,price_cents,is_online')
-    .eq('professional_id',professionalId).eq('active',true).order('name')
+  const db=client()
+  const {data:professional,error:profileError}=await db.from('professional_profiles').select('organization_id').eq('id',professionalId).single()
+  if(profileError) throw new Error(profileError.message)
+  const {data,error}=await db.from('services').select('id,name,description,duration_minutes,price_cents,attendance_modes,specialty,professional_name,professional_registration,city,neighborhood')
+    .eq('organization_id',professional.organization_id).eq('active',true).eq('marketplace_visible',true).order('name')
   if(error) throw new Error(error.message)
   return data??[]
 }

@@ -56,7 +56,7 @@ export function PortalHome() {
       </nav>
     </header>
 
-    <section className="portal-search">
+    <section className="portal-search" id="buscar-profissionais">
       <span className="brand-manifesto">Conecta · Acolhe · Transforma</span>
       <h1>Encontre a profissional <em>materno-infantil mais próxima de você</em></h1>
       <p>Busque por especialidade e localização.</p>
@@ -71,7 +71,7 @@ export function PortalHome() {
     </section>
 
     <nav className="portal-categories" aria-label="Categorias">
-      <Link className="active" to="/">Início</Link>
+      <button className={!selectedCategory?'active':''} type="button" onClick={()=>{setSelectedCategory('');window.scrollTo({top:0,behavior:'smooth'})}}>Início</button>
       {publishedCategories.map(label => <button className={selectedCategory === label ? 'active' : ''} type="button" key={label} onClick={() => setSelectedCategory(label)}>{label}</button>)}
       <a href="#videos"><Play />Vídeos</a><a href="#podcasts"><Mic2 />Podcasts</a>
     </nav>
