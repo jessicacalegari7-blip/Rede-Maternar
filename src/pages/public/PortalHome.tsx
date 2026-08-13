@@ -26,6 +26,7 @@ const articleDate = (article: PortalArticle) => new Date(article.publishedAt || 
 
 export function PortalHome() {
   const navigate = useNavigate()
+  const [selectedCategory, setSelectedCategory] = useState('')
   const [articles, setArticles] = useState<PortalArticle[]>([])
   const [videos,setVideos]=useState<PortalVideo[]>([])
   useEffect(() => { void listPortalArticles().then(setArticles).catch(() => setArticles([]));void listPortalVideos().then(setVideos) }, [])
@@ -36,12 +37,15 @@ export function PortalHome() {
     const query = new URLSearchParams()
     const fields = [['name', 'nome'], ['phone', 'telefone'], ['specialty', 'especialidade'], ['city', 'cidade']] as const
     fields.forEach(([field, parameter]) => { const value = String(form.get(field) || ''); if (value) query.set(parameter, value) })
+    if (fields.some(([field]) => !String(form.get(field) || '').trim())) { window.alert('Preencha seu nome, telefone, especialidade e cidade para realizar a busca.'); return }
     navigate(`/profissionais${query.size ? `?${query.toString()}` : ''}`)
   }
 
-  const featured = articles[0]
-  const headlineArticles = articles.slice(1, 4)
-  const mostReadArticles = articles.slice(4, 8)
+  const publishedCategories = Array.from(new Set(articles.map(article => article.category.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  const visibleArticles = selectedCategory ? articles.filter(article => article.category === selectedCategory) : articles
+  const featured = visibleArticles[0]
+  const headlineArticles = visibleArticles.slice(1, 4)
+  const mostReadArticles = visibleArticles.slice(4, 8)
 
   return <div className="portal-home">
     <header className="portal-topbar">
@@ -68,7 +72,7 @@ export function PortalHome() {
 
     <nav className="portal-categories" aria-label="Categorias">
       <Link className="active" to="/">Início</Link>
-      {categories.map(({ label, icon: Icon }) => <a key={label} href={`#${label.toLowerCase().replace(' ', '-')}`}><Icon />{label}</a>)}
+      {publishedCategories.map(label => <button className={selectedCategory === label ? 'active' : ''} type="button" key={label} onClick={() => setSelectedCategory(label)}>{label}</button>)}
       <a href="#videos"><Play />Vídeos</a><a href="#podcasts"><Mic2 />Podcasts</a>
     </nav>
 
