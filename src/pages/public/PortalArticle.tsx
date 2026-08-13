@@ -27,7 +27,7 @@ export function PortalArticlePage() {
       <Link className="professional-access" to="/login"><span><Users /></span><strong>Profissional de Saúde<small>Login na plataforma</small></strong></Link>
       <div className="portal-header-actions"><Link to="/profissionais" aria-label="Buscar profissionais"><Search /></Link></div>
     </header>
-    <nav className="article-nav"><Link to="/"><ArrowLeft /> Voltar para o Portal MaterPlace</Link><Link to="/profissionais">Buscar profissionais</Link></nav>
+    <nav className="article-nav"><Link to="/" onClick={() => window.scrollTo({ top: 0 })}><ArrowLeft /> Voltar para o Portal MaterPlace</Link><Link to="/" onClick={() => window.scrollTo({ top: 0 })}>Buscar profissionais</Link></nav>
     <main className="article-layout">
       <section className="article-page">
         {error && <div className="alert alert-error">{error}</div>}

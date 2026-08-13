@@ -47,7 +47,9 @@ export function PortalHome() {
     <header className="portal-topbar">
       <Link to="/" aria-label="Início"><Logo /></Link>
       <Link className="professional-access" to="/login"><span><Users /></span><strong>Profissional de Saúde<small>Login na plataforma</small></strong></Link>
-      <div className="portal-header-actions"><button aria-label="Buscar"><Search /></button><button aria-label="Notificações"><Bell /></button><button aria-label="Menu"><Menu /></button></div>
+      <nav className="portal-institutional-nav" aria-label="Menu institucional">
+        <Link to="/sobre">Sobre</Link><Link to="/contato">Contato</Link><Link to="/privacidade">Privacidade</Link><Link to="/termos">Termos</Link><Link to="/cookies">Cookies</Link><Link to="/lgpd">LGPD</Link><Link to="/isencao-de-responsabilidade">Isenção</Link>
+      </nav>
     </header>
 
     <section className="portal-search">
@@ -75,18 +77,19 @@ export function PortalHome() {
 
       <div className="portal-lead-grid">
         <article className={`lead-story${featured?.coverImageUrl ? ' has-real-image' : ''}`} style={featured?.coverImageUrl ? { backgroundImage: `linear-gradient(90deg, rgba(7,30,24,.9), rgba(7,30,24,.12)), url(${featured.coverImageUrl})` } : undefined}>
+          {featured && <Link className="news-card-click-target" to={`/noticias/${featured.slug}`} aria-label={`Abrir matéria: ${featured.title}`} />}
           <span>{featured?.category || 'Gestação'}</span>
           <div><h2>{featured?.title || 'Pré-natal: por que cada consulta é essencial para a saúde da mãe e do bebê'}</h2><p>{featured?.excerpt || 'Acompanhamento regular reduz riscos e garante mais segurança durante toda a gestação.'}</p>{featured ? <Link className="story-link" to={`/noticias/${featured.slug}`}>Ler notícia · {articleDate(featured)}</Link> : <small>5 min de leitura</small>}</div>
           {!featured?.coverImageUrl && <div className="story-illustration">🤰</div>}
         </article>
         <section className="headline-list">
-          {[0, 1, 2].map(index => { const real = headlineArticles[index]; const fallback = fallbackHeadlines[index]; return <article key={real?.id || fallback.title}>{real?.coverImageUrl ? <img className="news-thumb-image" src={real.coverImageUrl} alt={`Capa: ${real.title}`} loading="lazy" decoding="async" width="320" height="180" /> : <div className={`news-thumb ${fallback.tone}`}>{fallback.category === 'Desenvolvimento' ? '🧸' : fallback.category === 'Saúde infantil' ? '🩺' : '🤱'}</div>}<div><span>{real?.category || fallback.category}</span><h3>{real?.title || fallback.title}</h3><small>{real ? articleDate(real) : `${fallback.meta} de leitura`}</small>{real && <Link to={`/noticias/${real.slug}`}>Ler notícia</Link>}</div></article> })}
+          {[0, 1, 2].map(index => { const real = headlineArticles[index]; const fallback = fallbackHeadlines[index]; return <article key={real?.id || fallback.title}>{real && <Link className="news-card-click-target" to={`/noticias/${real.slug}`} aria-label={`Abrir matéria: ${real.title}`} />}{real?.coverImageUrl ? <img className="news-thumb-image" src={real.coverImageUrl} alt={`Capa: ${real.title}`} loading="lazy" decoding="async" width="320" height="180" /> : <div className={`news-thumb ${fallback.tone}`}>{fallback.category === 'Desenvolvimento' ? '🧸' : fallback.category === 'Saúde infantil' ? '🩺' : '🤱'}</div>}<div><span>{real?.category || fallback.category}</span><h3>{real?.title || fallback.title}</h3><small>{real ? articleDate(real) : `${fallback.meta} de leitura`}</small>{real && <Link className="news-read-link" to={`/noticias/${real.slug}`}>Ler notícia</Link>}</div></article> })}
         </section>
         <aside className="portal-ad"><span>Espaço de cuidado</span><h3>Conteúdo que acolhe cada fase.</h3><Baby /><button>Conheça agora</button></aside>
       </div>
 
       <section className="most-read-section"><div className="portal-section-title"><h2>Mais lidas</h2><a href="#noticias">Ver todas</a></div><div className="most-read-grid">
-        {[0, 1, 2, 3].map(index => { const real = mostReadArticles[index]; const [title, category] = fallbackMostRead[index]; return <article key={real?.id || title}><span>{index + 1}</span>{real?.coverImageUrl ? <img className="most-read-image" src={real.coverImageUrl} alt={`Capa: ${real.title}`} loading="lazy" decoding="async" width="360" height="200" /> : <div className={`most-read-art art-${index + 1}`}>{['🤰', '🥣', '👶', '💗'][index]}</div>}<small>{real?.category || category}</small><h3>{real?.title || title}</h3><p>{real?.excerpt || 'Leitura rápida e orientação confiável para a sua jornada.'}</p>{real && <Link to={`/noticias/${real.slug}`}>Ler notícia</Link>}</article> })}
+        {[0, 1, 2, 3].map(index => { const real = mostReadArticles[index]; const [title, category] = fallbackMostRead[index]; return <article key={real?.id || title}>{real && <Link className="news-card-click-target" to={`/noticias/${real.slug}`} aria-label={`Abrir matéria: ${real.title}`} />}<span>{index + 1}</span>{real?.coverImageUrl ? <img className="most-read-image" src={real.coverImageUrl} alt={`Capa: ${real.title}`} loading="lazy" decoding="async" width="360" height="200" /> : <div className={`most-read-art art-${index + 1}`}>{['🤰', '🥣', '👶', '💗'][index]}</div>}<small>{real?.category || category}</small><h3>{real?.title || title}</h3><p>{real?.excerpt || 'Leitura rápida e orientação confiável para a sua jornada.'}</p>{real && <Link className="news-read-link" to={`/noticias/${real.slug}`}>Ler notícia</Link>}</article> })}
       </div></section>
 
       <section className="newsletter-card"><div><BookOpen /><span><strong>Receba conteúdos exclusivos para uma maternidade mais leve</strong><small>Artigos, dicas e novidades direto no seu e-mail.</small></span></div><form onSubmit={event => event.preventDefault()}><input type="email" placeholder="Seu melhor e-mail" /><button>Quero receber</button></form></section>

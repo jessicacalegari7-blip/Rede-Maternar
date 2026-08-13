@@ -27,8 +27,9 @@ import { ClinicTeam } from './pages/professional/ClinicTeam'
 import { SetPassword } from './pages/public/SetPassword'
 import { AdminNewsPortal } from './pages/admin/NewsPortal'
 import { RecoverPassword } from './pages/public/RecoverPassword'
-import { ContactPage, CookiePolicy, LgpdPage, PrivacyPolicy, TermsOfUse } from './pages/public/Legal'
+import { AboutPage, ContactPage, CookiePolicy, DisclaimerPage, LgpdPage, PrivacyPolicy, TermsOfUse } from './pages/public/Legal'
 import { PortalArticlePage } from './pages/public/PortalArticle'
+import { CookieConsent } from './components/CookieConsent'
 
 function ProfessionalEntry() {
   const { user } = useAuth()
@@ -60,6 +61,8 @@ export default function App() {
     <Route path="/lgpd" element={<LgpdPage />} />
     <Route path="/cookies" element={<CookiePolicy />} />
     <Route path="/contato" element={<ContactPage />} />
+    <Route path="/sobre" element={<AboutPage />} />
+    <Route path="/isencao-de-responsabilidade" element={<DisclaimerPage />} />
     <Route path="/perfil/:slug" element={<PublicProfessionalProfile />} />
     <Route path="/convite/:token" element={<PatientInvitation />} />
 
@@ -111,5 +114,5 @@ export default function App() {
     </Route>
 
     <Route path="*" element={<Navigate to="/" replace />} />
-  </Routes></AuthProvider></BrowserRouter>
+  </Routes><CookieConsent/></AuthProvider></BrowserRouter>
 }
