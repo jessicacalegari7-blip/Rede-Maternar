@@ -1,8 +1,8 @@
-import type { ComponentType } from 'react'
+import { useState, type ComponentType } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   BadgeDollarSign, BarChart3, BriefcaseBusiness, CalendarDays, Home, KanbanSquare,
-  Bell, LogOut, MessageCircle, Newspaper, Settings, ShieldCheck, Sparkles, UserRound, Users, Video, Wallet,
+  Bell, LogOut, Menu, MessageCircle, Newspaper, Settings, ShieldCheck, Sparkles, UserRound, Users, Video, Wallet, X,
 } from 'lucide-react'
 import { Logo } from '../components/Logo'
 import type { UserRole } from '../lib/types'
@@ -58,6 +58,7 @@ const labels: Record<UserRole, string> = {
 }
 
 export function PortalLayout({ role }: { role: UserRole }) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const items = role === 'professional'
@@ -82,12 +83,17 @@ export function PortalLayout({ role }: { role: UserRole }) {
       )}</nav>
       <div className="portal-legal-menu"><Link to="/termos">Termos</Link><Link to="/lgpd">LGPD</Link><Link to="/privacidade">Privacidade</Link><Link to="/cookies">Cookies</Link><Link to="/contato">Contato</Link></div><button className="sidebar-logout" onClick={signOut}><LogOut size={18} />Sair</button>
     </aside>
-    <main className="main"><Outlet /></main>
-    <nav className="mobile-bar">
-      {items.map(([label, to, Icon]) =>
-        <NavLink key={to} to={to} end={to.split('/').length === 2}><Icon size={20} /><span>{label}</span></NavLink>,
-      )}
-      <button onClick={signOut}><LogOut size={20} /><span>Sair</span></button>
-    </nav>
+    <main className="main">
+      <button className="mobile-menu-trigger" type="button" onClick={() => setMobileMenuOpen(true)} aria-label="Abrir menu"><Menu /> Menu</button>
+      <Outlet />
+    </main>
+    {mobileMenuOpen && <button className="mobile-menu-backdrop" type="button" aria-label="Fechar menu" onClick={() => setMobileMenuOpen(false)} />}
+    <aside className={`mobile-navigation${mobileMenuOpen ? ' open' : ''}`} aria-hidden={!mobileMenuOpen}>
+      <div className="mobile-navigation-head"><Logo /><button type="button" onClick={() => setMobileMenuOpen(false)} aria-label="Fechar menu"><X /></button></div>
+      <nav>{items.map(([label, to, Icon]) =>
+        <NavLink key={to} to={to} end={to.split('/').length === 2} onClick={() => setMobileMenuOpen(false)}><Icon size={20} /><span>{label}</span></NavLink>,
+      )}</nav>
+      <button className="mobile-navigation-logout" onClick={signOut}><LogOut size={20} /><span>Sair</span></button>
+    </aside>
   </div>
 }

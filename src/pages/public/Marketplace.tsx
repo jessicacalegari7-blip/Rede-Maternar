@@ -1,21 +1,55 @@
-import { useEffect, useMemo, useState } from 'react'
-import { CheckCircle2, MapPin, MessageCircle, Search, Star } from 'lucide-react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { FormEvent, useEffect, useState } from 'react'
+import { CheckCircle2, Heart, MapPin, MessageCircle, Search, Star, Users } from 'lucide-react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Logo } from '../../components/Logo'
+import { maternalChildSpecialties } from '../../data/specialties'
 import { listMarketplaceProfessionals } from '../../lib/operations'
 import { LegalFooter } from './Legal'
 
-export function Marketplace(){
-  const [params]=useSearchParams();const [rows,setRows]=useState<any[]>([]);const [error,setError]=useState('')
-  const [specialty,setSpecialty]=useState(params.get('especialidade')||'');const [city,setCity]=useState(params.get('cidade')||'');const [neighborhood,setNeighborhood]=useState('')
-  useEffect(()=>{listMarketplaceProfessionals().then(setRows).catch(e=>setError(e instanceof Error?e.message:'Não foi possível carregar profissionais.'))},[])
-  const specialties=useMemo(()=>Array.from(new Set(rows.flatMap(p=>p.specialties||[]))).sort() as string[],[rows])
-  const cities=useMemo(()=>Array.from(new Set(rows.map(p=>`${p.city}, ${p.state_code}`))).sort() as string[],[rows])
-  const neighborhoods=useMemo(()=>Array.from(new Set(rows.filter(p=>!city||`${p.city}, ${p.state_code}`===city).map(p=>p.neighborhood).filter(Boolean))).sort() as string[],[rows,city])
-  const visible=rows.filter(p=>(!specialty||(p.specialties||[]).includes(specialty))&&(!city||`${p.city}, ${p.state_code}`===city)&&(!neighborhood||p.neighborhood===neighborhood))
-  function openWhatsApp(p:any){if(!p.whatsapp)return;const digits=String(p.whatsapp).replace(/\D/g,'');window.open(`https://wa.me/${digits}?text=${encodeURIComponent('Olá! Encontrei seu perfil na MaterPlace e gostaria de mais informações.')}`,'_blank','noopener,noreferrer')}
-  return <div className="marketplace-page"><header className="public-header marketplace-header"><Link to="/"><Logo/></Link><nav><Link to="/">Início</Link><Link to="/para-profissionais">Sou profissional</Link></nav><Link className="btn btn-secondary" to="/login">Entrar</Link></header>
-    <section className="marketplace-search-hero"><div><span className="marketplace-superclaim">A única plataforma de profissionais materno-infantil</span><h1>Encontre a profissional certa para o seu momento.</h1><p>Resultados publicados e aprovados pela plataforma.</p></div><div className="marketplace-search-box marketplace-search-cascade"><label><Search/><select value={specialty} onChange={e=>setSpecialty(e.target.value)}><option value="">Todas as especialidades</option>{specialties.map(x=><option key={x}>{x}</option>)}</select></label><label><MapPin/><select value={city} onChange={e=>{setCity(e.target.value);setNeighborhood('')}}><option value="">Todas as cidades</option>{cities.map(x=><option key={x}>{x}</option>)}</select></label><label><MapPin/><select value={neighborhood} onChange={e=>setNeighborhood(e.target.value)} disabled={!city}><option value="">Todos os bairros</option>{neighborhoods.map(x=><option key={x}>{x}</option>)}</select></label></div></section>
-    <main className="marketplace-results-shell"><section className="marketplace-list" style={{gridColumn:'1 / -1'}}><div className="results-head"><div><h2>{visible.length} perfis reais encontrados</h2><p className="muted">Somente perfis ativos e publicados.</p></div></div>{error&&<div className="alert alert-error">{error}</div>}{visible.map(p=><article className="professional-result-card" key={p.id}><div className="professional-photo wine">{String(p.full_name).split(' ').slice(0,2).map((x:string)=>x[0]).join('')}</div><div className="professional-result-main"><div className="verified-name"><h2>{p.full_name}</h2>{p.verified&&<><CheckCircle2/><span>Perfil verificado</span></>}</div>{p.clinic_name&&<p className="clinic-name">{p.clinic_name}</p>}<h3>{(p.specialties||[]).join(' · ')||'Especialidade em atualização'}</h3><div className="rating-line"><Star fill="currentColor"/><strong>{Number(p.rating||0).toFixed(1)}</strong><span>{p.review_count||0} avaliações</span></div><div className="location-line"><MapPin/><span>{p.neighborhood?`${p.neighborhood} · `:''}{p.city}, {p.state_code}</span><span>Endereço protegido</span></div>{p.accepted_insurances?.length>0&&<div className="insurance-line"><strong>Convênios:</strong> {p.accepted_insurances.join(' · ')}</div>}</div><aside className="professional-result-action"><small>{p.accepts_online?'Atendimento online disponível':'Consulte modalidades'}</small>{p.whatsapp?<button className="btn whatsapp-btn" onClick={()=>openWhatsApp(p)}><MessageCircle/> Falar no WhatsApp</button>:<span className="muted">WhatsApp não publicado</span>}<Link className="btn btn-secondary" to={`/perfil/${p.id}`}>Ver perfil completo</Link></aside></article>)}{!visible.length&&!error&&<div className="card empty-state"><Search/><h3>Nenhum perfil publicado</h3><p className="muted">Tente outros filtros ou volte em breve.</p></div>}</section></main><LegalFooter/>
+export function Marketplace() {
+  const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const [rows, setRows] = useState<any[]>([])
+  const [error, setError] = useState('')
+  const specialty = params.get('especialidade') || ''
+  const city = params.get('cidade') || ''
+
+  useEffect(() => { listMarketplaceProfessionals().then(setRows).catch(e => setError(e instanceof Error ? e.message : 'Não foi possível carregar profissionais.')) }, [])
+  const visible = rows.filter(p => (!specialty || (p.specialties || []).includes(specialty)) && (!city || `${p.city}, ${p.state_code}`.toLocaleLowerCase().includes(city.toLocaleLowerCase())))
+
+  function searchProfessionals(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const form = new FormData(event.currentTarget)
+    const fields = [['name', 'nome'], ['phone', 'telefone'], ['specialty', 'especialidade'], ['city', 'cidade']] as const
+    if (fields.some(([field]) => !String(form.get(field) || '').trim())) { window.alert('Preencha seu nome, telefone, especialidade e cidade para realizar a busca.'); return }
+    const query = new URLSearchParams()
+    fields.forEach(([field, parameter]) => query.set(parameter, String(form.get(field))))
+    navigate(`/profissionais?${query.toString()}`)
+  }
+
+  function openWhatsApp(p: any) {
+    if (!p.whatsapp) return
+    const digits = String(p.whatsapp).replace(/\D/g, '')
+    window.open(`https://wa.me/${digits}?text=${encodeURIComponent('Olá! Encontrei seu perfil na MaterPlace e gostaria de mais informações.')}`, '_blank', 'noopener,noreferrer')
+  }
+
+  return <div className="marketplace-page">
+    <header className="portal-topbar"><Link to="/" aria-label="Início"><Logo /></Link><Link className="professional-access" to="/login"><span><Users /></span><strong>Profissional de Saúde<small>Login na plataforma</small></strong></Link></header>
+    <section className="portal-search">
+      <span className="brand-manifesto">Conecta · Acolhe · Transforma</span>
+      <h1>Encontre a profissional <em>materno-infantil mais próxima de você</em></h1><p>Busque por especialidade e localização.</p>
+      <form onSubmit={searchProfessionals}>
+        <label><span>Seu Nome</span><input name="name" defaultValue={params.get('nome') || ''} placeholder="Ex.: Maria Silva" /></label>
+        <label><span>Seu Telefone</span><input name="phone" defaultValue={params.get('telefone') || ''} placeholder="Ex.: (11) 99999-9999" /></label>
+        <label><span>Especialidade</span><select name="specialty" defaultValue={specialty}><option value="">Escolha uma especialidade</option>{maternalChildSpecialties.map(item => <option key={item}>{item}</option>)}</select></label>
+        <label><span>Cidade</span><input name="city" defaultValue={city} placeholder="Ex.: São Paulo, SP" /></label>
+        <button className="portal-search-button"><Search /> Buscar agora</button>
+      </form>
+      <div className="patient-search-note"><Heart /> Paciente, insira seu nome e telefone e faça sua busca por profissionais gratuitamente.</div>
+    </section>
+    <main className="marketplace-results-shell"><section className="marketplace-list" style={{ gridColumn: '1 / -1' }}><div className="results-head"><div><h2>{visible.length} perfis reais encontrados</h2><p className="muted">Somente perfis ativos e publicados.</p></div></div>{error && <div className="alert alert-error">{error}</div>}
+      {visible.map(p => <article className="professional-result-card" key={p.id}><div className="professional-photo wine">{String(p.full_name).split(' ').slice(0, 2).map((x: string) => x[0]).join('')}</div><div className="professional-result-main"><div className="verified-name"><h2>{p.full_name}</h2>{p.verified && <><CheckCircle2 /><span>Perfil verificado</span></>}</div>{p.clinic_name && <p className="clinic-name">{p.clinic_name}</p>}<h3>{(p.specialties || []).join(' · ') || 'Especialidade em atualização'}</h3><div className="rating-line"><Star fill="currentColor" /><strong>{Number(p.rating || 0).toFixed(1)}</strong><span>{p.review_count || 0} avaliações</span></div><div className="location-line"><MapPin /><span>{p.neighborhood ? `${p.neighborhood} · ` : ''}{p.city}, {p.state_code}</span><span>Endereço protegido</span></div></div><aside className="professional-result-action">{p.whatsapp ? <button className="btn whatsapp-btn" onClick={() => openWhatsApp(p)}><MessageCircle /> Falar no WhatsApp</button> : <span className="muted">WhatsApp não publicado</span>}<Link className="btn btn-secondary" to={`/perfil/${p.id}`}>Ver perfil completo</Link></aside></article>)}
+      {!visible.length && !error && <div className="card empty-state"><Search /><h3>Profissionais em validação</h3><p className="muted">Esta especialidade e região ainda estão em fase de validação dos cadastros dos profissionais pelo corpo técnico da MaterPlace. Tente novamente em breve.</p></div>}
+    </section></main><LegalFooter />
   </div>
 }
