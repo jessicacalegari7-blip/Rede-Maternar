@@ -167,6 +167,18 @@ export async function createFinancialEntry(input: { type:FinancialEntryType; cat
   if (error) throw new Error(error.message)
 }
 
+export async function updateFinancialEntry(id:string,input:{type:FinancialEntryType;category:string;description:string;amount:number;dueDate?:string;status:RealFinancialEntry['status'];paymentMethod?:string;recurring?:boolean}) {
+  const status=input.status
+  const {data,error}=await client().from('financial_entries').update({
+    type:input.type,status,category:input.category.trim(),description:input.description.trim(),
+    amount_cents:Math.round(input.amount*100),due_date:input.dueDate||null,
+    paid_at:status==='paid'?new Date().toISOString():null,payment_method:input.paymentMethod||null,
+    recurring:Boolean(input.recurring),
+  }).eq('id',id).select('*').single()
+  if(error) throw new Error(error.message)
+  return data as RealFinancialEntry
+}
+
 export interface RealCashSession { id:string; opened_at:string; opening_balance_cents:number; closed_at:string|null }
 
 export async function getOpenCashSession() {
@@ -442,8 +454,10 @@ export async function updateMyProfessionalProfile(id:string,changes:Partial<Real
     postal_code:changes.postal_code,address_line:changes.address_line,address_number:changes.address_number,
     address_complement:changes.address_complement,
   }
-  const {error}=await client().from('professional_profiles').update(allowed).eq('id',id)
+  const {data,error}=await client().from('professional_profiles').update(allowed).eq('id',id).select('*').single()
   if(error) throw new Error(error.message)
+  if(!data) throw new Error('O perfil não foi confirmado pelo banco de dados.')
+  return data as RealProfessionalProfile
 }
 
 export async function uploadMarketplaceMedia(file:File,kind:'profile'|'cover'|'gallery'|'video') {
@@ -500,10 +514,7 @@ export async function getMarketplaceProfessional(id:string) {
 
 export async function listPublicServices(professionalId:string) {
   const db=client()
-  const {data:professional,error:profileError}=await db.from('professional_profiles').select('organization_id').eq('id',professionalId).single()
-  if(profileError) throw new Error(profileError.message)
-  const {data,error}=await db.from('services').select('id,name,description,duration_minutes,price_cents,attendance_modes,specialty,professional_name,professional_registration,city,neighborhood')
-    .eq('organization_id',professional.organization_id).eq('active',true).eq('marketplace_visible',true).order('name')
+  const {data,error}=await db.from('marketplace_services').select('*').eq('professional_profile_id',professionalId).order('name')
   if(error) throw new Error(error.message)
   return data??[]
 }

@@ -6,6 +6,7 @@ export interface PortalArticle {
   id: string
   slug: string
   title: string
+  seoTitle: string
   excerpt: string
   content: string
   category: string
@@ -21,7 +22,7 @@ export interface PortalArticle {
 
 export interface PortalVideo { id:string; title:string; description:string; youtubeId:string; published:boolean; featured:boolean; createdAt:string }
 
-export type NewsInput = Pick<PortalArticle, 'title' | 'slug' | 'excerpt' | 'content' | 'category' | 'coverImageUrl' | 'authorName' | 'status' | 'featured'> & { id?: string }
+export type NewsInput = Pick<PortalArticle, 'title' | 'seoTitle' | 'slug' | 'excerpt' | 'content' | 'category' | 'coverImageUrl' | 'authorName' | 'status' | 'featured'> & { id?: string }
 
 const demoContent = {
   prenatal: `O acompanhamento pré-natal é uma das principais formas de proteger a saúde da mãe e do bebê durante toda a gestação.
@@ -78,7 +79,7 @@ export const demoArticles: PortalArticle[] = [
   ['sono-do-bebe', 'Sono do bebê: como construir uma rotina saudável e segura', 'Hábitos simples podem tornar o momento de descanso mais previsível para toda a família.', 'Bem-estar', demoContent.sleep],
   ['sinais-alerta-gestacao', 'Sinais de alerta na gestação que merecem atenção', 'Saiba reconhecer situações em que é importante procurar orientação profissional rapidamente.', 'Gestação', demoContent.warning],
 ].map(([slug, title, excerpt, category, content], index) => ({
-  id: `demo-${index + 1}`, slug, title, excerpt, category, content,
+  id: `demo-${index + 1}`, slug, title, seoTitle: title, excerpt, category, content,
   coverImageUrl: null, authorName: 'Equipe MaterPlace', status: 'published' as const,
   featured: index === 0, publishedAt: new Date(2026, 7, 10 - index).toISOString(),
   createdAt: new Date(2026, 7, 10 - index).toISOString(), isDemo: true, views: 30 - index * 2,
@@ -86,7 +87,7 @@ export const demoArticles: PortalArticle[] = [
 
 function mapRow(row: Record<string, unknown>): PortalArticle {
   return {
-    id: String(row.id), slug: String(row.slug), title: String(row.title), excerpt: String(row.excerpt || ''),
+    id: String(row.id), slug: String(row.slug), title: String(row.title), seoTitle: String(row.seo_title || row.title), excerpt: String(row.excerpt || ''),
     content: String(row.content || ''), category: String(row.category || 'MaterPlace'),
     coverImageUrl: row.cover_image_url ? String(row.cover_image_url) : null,
     authorName: String(row.author_name || 'Equipe MaterPlace'), status: row.status as NewsStatus,
@@ -126,7 +127,7 @@ export async function adminListArticles(): Promise<PortalArticle[]> {
 export async function saveArticle(input: NewsInput): Promise<void> {
   if (!supabase) throw new Error('Supabase não configurado.')
   const payload = {
-    slug: input.slug, title: input.title, excerpt: input.excerpt, content: input.content,
+    slug: input.slug, title: input.title, seo_title: input.seoTitle || null, excerpt: input.excerpt, content: input.content,
     category: input.category, cover_image_url: input.coverImageUrl || null, author_name: input.authorName,
     status: input.status, featured: input.featured,
     published_at: input.status === 'published' ? new Date().toISOString() : null,
