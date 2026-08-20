@@ -90,7 +90,11 @@ async function discoverSources() {
       }
     } catch (error) { console.warn('official_index_unavailable', index.url, error.message) }
   }
-  const ranked = discovered.map(item => ({ ...item, score: keywordScore(`${item.title} ${item.summary}`) + (Date.now() - Date.parse(item.publishedAt || 0) < 172800000 ? 15 : 0) }))
+  const ranked = discovered.map(item => {
+    const hostname = (() => { try { return new URL(item.url).hostname } catch { return '' } })()
+    const primaryBoost = OFFICIAL_DOMAINS.some(domain => hostname === domain || hostname.endsWith(`.${domain}`)) ? 100 : 0
+    return { ...item, score: keywordScore(`${item.title} ${item.summary}`) + primaryBoost + (Date.now() - Date.parse(item.publishedAt || 0) < 172800000 ? 15 : 0) }
+  })
     .filter(item => item.score >= 8).sort((a, b) => b.score - a.score).slice(0, 12)
   const researched = []
   for (const item of ranked) {
