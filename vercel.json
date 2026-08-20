@@ -1,4 +1,11 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/editorial-run.mjs": { "maxDuration": 300 }
+  },
+  "crons": [
+    { "path": "/api/editorial-run", "schedule": "0 21 * * *" }
+  ],
   "rewrites": [
     { "source": "/sitemap.xml", "destination": "/api/sitemap" },
     { "source": "/sitemap-pages.xml", "destination": "/api/sitemap-pages" },

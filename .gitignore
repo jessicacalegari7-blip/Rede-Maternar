@@ -8,3 +8,7 @@ dist/
 .pnpm-store/
 __pycache__/
 *.py[cod]
+
+.vercel/
+.vercel-cli/
+.env.local
