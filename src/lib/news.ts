@@ -99,7 +99,8 @@ export async function listPortalArticles(limit = 12): Promise<PortalArticle[]> {
   const hidden=JSON.parse(localStorage.getItem('materplace-hidden-demo-news')||'[]') as string[]
   if (!isSupabaseConfigured || !supabase) return demoArticles.filter(x=>!hidden.includes(x.id)).slice(0, limit)
   const { data, error } = await supabase.from('news_articles').select('*').eq('status', 'published').order('featured', { ascending: false }).order('published_at', { ascending: false }).limit(limit)
-  if (error || !data?.length) return demoArticles.filter(x=>!hidden.includes(x.id)).slice(0, limit)
+  if (error) throw error
+  if (!data?.length) return []
   return data.map(mapRow)
 }
 
@@ -111,9 +112,7 @@ export async function getPortalArticle(slug: string): Promise<PortalArticle> {
       return mapRow(data)
     }
   }
-  const demo = demoArticles.find(article => article.slug === slug || article.id === slug)
-  if (!demo) throw new Error('Notícia não encontrada.')
-  return demo
+  throw new Error('Notícia não encontrada.')
 }
 
 export async function adminListArticles(): Promise<PortalArticle[]> {

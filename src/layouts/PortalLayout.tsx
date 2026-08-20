@@ -1,5 +1,5 @@
-import { useState, type ComponentType } from 'react'
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { useEffect, useState, type ComponentType } from 'react'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   BadgeDollarSign, BarChart3, BriefcaseBusiness, CalendarDays, Home, KanbanSquare,
   Bell, LogOut, Menu, MessageCircle, Newspaper, Settings, ShieldCheck, Sparkles, UserRound, Users, Video, Wallet, X,
@@ -61,6 +61,8 @@ export function PortalLayout({ role }: { role: UserRole }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  useEffect(() => setMobileMenuOpen(false), [location.pathname])
   const items = role === 'professional'
     ? (hasManagement(user?.plan) ? (isClinicPlan(user?.plan) ? [...management.slice(0,-2), ['Equipe da clínica', '/profissional/equipe', Users] as Item, ...management.slice(-2)] : management) : marketplace)
     : (menus[role] ?? [])

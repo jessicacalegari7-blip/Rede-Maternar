@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Eye, Save } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
-import { getMyProfessionalProfile, getProfessionalSpecialtyEditor, listMyProfileViewCounts, saveProfessionalSpecialties, updateMyProfessionalProfile, uploadMarketplaceImage, type RealProfessionalProfile } from '../../lib/operations'
+import { getMyProfessionalProfile, getProfessionalSpecialtyEditor, listMyProfileViewCounts, saveProfessionalSpecialties, updateMyProfessionalProfile, uploadMarketplaceMedia, type RealProfessionalProfile } from '../../lib/operations'
 import { isClinicPlan } from '../../lib/plans'
 
 export function ProfessionalProfilePage() {
@@ -26,13 +26,17 @@ export function ProfessionalProfilePage() {
   if(!profile) return <div className="card"><p>Carregando perfil real...</p></div>
   const set=<K extends keyof RealProfessionalProfile>(key:K,value:RealProfessionalProfile[K])=>setProfile({...profile,[key]:value})
   const list=(value:string)=>value.split(',').map(x=>x.trim()).filter(Boolean)
-  const upload=async(kind:'profile'|'cover'|'gallery',files:FileList|null)=>{
+  const upload=async(kind:'profile'|'cover'|'gallery'|'video',files:FileList|null)=>{
     if(!files?.length)return
-    setNotice('Enviando imagem...')
+    const current=kind==='gallery'?(profile.gallery_urls||[]):kind==='video'?(profile.office_video_urls||[]):[]
+    const limit=kind==='gallery'?5:kind==='video'?3:1
+    if(current.length+files.length>limit){setNotice(`Limite de ${limit} arquivos atingido.`);return}
+    setNotice('Enviando arquivo...')
     try{
-      const urls=await Promise.all(Array.from(files).map(file=>uploadMarketplaceImage(file,kind)))
+      const urls=await Promise.all(Array.from(files).map(file=>uploadMarketplaceMedia(file,kind)))
       if(kind==='profile')set('profile_image_url',urls[0]); if(kind==='cover')set('cover_image_url',urls[0]); if(kind==='gallery')set('gallery_urls',[...(profile.gallery_urls||[]),...urls])
-      setNotice('Imagem enviada. Clique em Salvar perfil real para confirmar.')
+      if(kind==='video')set('office_video_urls',[...(profile.office_video_urls||[]),...urls])
+      setNotice('Arquivo enviado. Clique em Salvar perfil real para confirmar.')
     }catch(e){setNotice(e instanceof Error?e.message:'Erro ao enviar imagem.')}
   }
   const save=async()=>{
@@ -69,8 +73,8 @@ export function ProfessionalProfilePage() {
       <div className="field grid-span-2"><label>Sobre a clínica ou consultório</label><textarea rows={5} value={profile.clinic_description||''} onChange={e=>set('clinic_description',e.target.value)}/></div>
       <div className="field"><label>Convênios (separados por vírgula)</label><input value={(profile.accepted_insurances||[]).join(', ')} onChange={e=>set('accepted_insurances',list(e.target.value))}/></div>
       <div className="field"><label>Formas de pagamento</label><input value={(profile.payment_methods||[]).join(', ')} onChange={e=>set('payment_methods',list(e.target.value))}/></div>
-      <div className="field grid-span-2"><label>Vídeo do consultório (link do YouTube)</label><input type="url" value={profile.office_video_url||''} onChange={e=>set('office_video_url',e.target.value)}/></div>
-      <div className="field grid-span-2"><label>Fotos do consultório</label><input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={e=>void upload('gallery',e.target.files)}/><small>{(profile.gallery_urls||[]).length} foto(s) enviada(s)</small></div>
+      <div className="field grid-span-2"><label>Vídeos do consultório (máximo 3)</label><input type="file" multiple accept="video/mp4,video/webm,video/quicktime" onChange={e=>void upload('video',e.target.files)}/><small>{(profile.office_video_urls||[]).length} de 3 vídeo(s)</small></div>
+      <div className="field grid-span-2"><label>Fotos do consultório (máximo 5)</label><input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={e=>void upload('gallery',e.target.files)}/><small>{(profile.gallery_urls||[]).length} de 5 foto(s)</small></div>
       <label className="switch-card"><span><strong>Aceita atendimento online</strong></span><input type="checkbox" checked={profile.accepts_online} onChange={e=>set('accepts_online',e.target.checked)}/></label>
       <div className="switch-card"><span><strong>Publicação no Marketplace</strong><small>{profile.marketplace_visible?'Perfil aprovado e publicado.':'Aguardando aprovação da administração.'}</small></span></div>
       <button className="btn btn-primary grid-span-2" onClick={()=>void save()}><Save size={17}/>Salvar perfil real</button>
