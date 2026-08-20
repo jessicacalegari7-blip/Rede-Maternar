@@ -8,6 +8,9 @@ const KEYWORDS = ['gestação', 'gravidez', 'gestante', 'maternidade', 'amamenta
 function required(name) {
   const value = process.env[name]?.trim()
   if (!value) throw new Error(`Variável obrigatória ausente: ${name}`)
+  if ([...value].some(character => character.codePointAt(0) > 255)) {
+    throw new Error(`Credencial inválida ou mascarada na Vercel: ${name}`)
+  }
   return value
 }
 
