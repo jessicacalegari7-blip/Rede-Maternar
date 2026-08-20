@@ -6,3 +6,5 @@ dist/
 !.env.example
 .supabase/
 .pnpm-store/
+__pycache__/
+*.py[cod]
