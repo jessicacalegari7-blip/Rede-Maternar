@@ -57,6 +57,24 @@ async function discoverSources() {
   for (const feed of feeds) {
     try { discovered.push(...rssItems((await fetchText(feed.url)).text, feed.publisher)) } catch (error) { console.warn('feed_unavailable', feed.url, error.message) }
   }
+  // Referências primárias mantidas como âncoras de verificação. Elas também
+  // permitem uma pauta quando agregadores não entregam a URL final da fonte.
+  discovered.push(
+    {
+      title: 'Alimentação de bebês e crianças pequenas: recomendações atualizadas',
+      url: 'https://www.who.int/news-room/fact-sheets/detail/infant-and-young-child-feeding',
+      summary: 'Recomendações oficiais sobre amamentação, alimentação complementar, nutrição e saúde infantil.',
+      publishedAt: '',
+      publisher: 'Organização Mundial da Saúde',
+    },
+    {
+      title: 'Países devem fortalecer o apoio à amamentação e os sistemas de saúde',
+      url: 'https://www.who.int/news/item/31-07-2026-countries-urged-to-strengthen-breastfeeding-support-and-health-systems-to-give-every-child-a-healthy-start-in-life',
+      summary: 'Comunicado oficial conjunto da OMS e do UNICEF sobre apoio à amamentação e saúde materno-infantil.',
+      publishedAt: '2026-07-31T00:00:00Z',
+      publisher: 'Organização Mundial da Saúde e UNICEF',
+    },
+  )
   const officialIndexes = [
     { url: 'https://www.gov.br/saude/pt-br/assuntos/noticias-ms', publisher: 'Ministério da Saúde' },
     { url: 'https://portal.fiocruz.br/noticias', publisher: 'Fiocruz' },
