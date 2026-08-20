@@ -20,10 +20,32 @@ export function PortalArticlePage() {
       .catch(error => setError(error instanceof Error ? error.message : 'Não foi possível carregar esta notícia.'))
   }, [slug])
 
+  useEffect(() => {
+    if (!article) return
+    const canonical=`https://www.materplace.com.br/noticias/${article.slug}`
+    const image=article.coverImageUrl||'https://www.materplace.com.br/brand/materplace-logo.png'
+    document.title=article.seoTitle||article.title
+    const setMeta=(key:string,value:string,attribute='name')=>{let element=document.head.querySelector(`meta[${attribute}="${key}"]`) as HTMLMetaElement|null;if(!element){element=document.createElement('meta');element.setAttribute(attribute,key);document.head.appendChild(element)}element.content=value}
+    setMeta('robots','index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1')
+    ;[['og:title',article.title],['og:description',article.excerpt],['og:image',image],['og:url',canonical],['og:type','article']].forEach(([key,value])=>setMeta(key,value,'property'))
+    ;[['twitter:card','summary_large_image'],['twitter:title',article.title],['twitter:description',article.excerpt],['twitter:image',image]].forEach(([key,value])=>setMeta(key,value))
+    let link=document.head.querySelector('link[rel="canonical"]') as HTMLLinkElement|null;if(!link){link=document.createElement('link');link.rel='canonical';document.head.appendChild(link)}link.href=canonical
+    document.getElementById('article-jsonld')?.remove();const script=document.createElement('script');script.id='article-jsonld';script.type='application/ld+json';script.text=JSON.stringify({'@context':'https://schema.org','@type':'NewsArticle',headline:article.title,image:[image],datePublished:article.publishedAt||article.createdAt,dateModified:article.publishedAt||article.createdAt,author:{'@type':'Person',name:article.authorName},publisher:{'@type':'Organization',name:'MaterPlace',url:'https://www.materplace.com.br',logo:{'@type':'ImageObject',url:'https://www.materplace.com.br/brand/materplace-logo.png'}},mainEntityOfPage:canonical});document.head.appendChild(script)
+    return()=>{script.remove()}
+  },[article])
+
   function returnToHomeTop() {
     navigate('/')
     window.requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }))
     window.setTimeout(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }), 50)
+  }
+
+  function renderContent() {
+    if(!article)return null
+    const blocks=article.content.split(/\n\s*\n/).filter(Boolean)
+    let paragraphs=0;let relatedIndex=0
+    const related=[...suggestions.filter(item=>item.category===article.category),...suggestions.filter(item=>item.category!==article.category)]
+    return blocks.flatMap((block,index)=>{const rendered=renderBlock(block,index);const isParagraph=!/^(##|###|- |> |!\[|\[youtube:)/.test(block);if(!isParagraph)return[rendered];paragraphs++;if(paragraphs===3||(paragraphs>3&&(paragraphs-3)%5===0)){const item=related[relatedIndex++%Math.max(related.length,1)];if(item)return[rendered,<aside className="inline-related-posts" role="complementary" aria-label="Leia também" key={`related-${index}`}><span className="inline-related-title">LEIA TAMBÉM:</span><Link className="inline-related-link" to={`/noticias/${item.slug}`} title={item.title}>{item.title}</Link></aside>]}return[rendered]})
   }
 
   function inline(text:string){return text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|\[grande\].+?\[\/grande\]|\[pequeno\].+?\[\/pequeno\]|\[[^\]]+\]\(https?:\/\/[^)]+\))/g).filter(Boolean).map((part,i)=>{const bold=part.match(/^\*\*(.+)\*\*$/);if(bold)return <strong key={i}>{bold[1]}</strong>;const italic=part.match(/^\*(.+)\*$/);if(italic)return <em key={i}>{italic[1]}</em>;if(part.startsWith('[grande]'))return <span className="text-large" key={i}>{part.slice(8,-9)}</span>;if(part.startsWith('[pequeno]'))return <span className="text-small" key={i}>{part.slice(9,-10)}</span>;const link=part.match(/^\[([^\]]+)\]\((https?:\/\/[^)]+)\)$/);if(link)return <a key={i} href={link[2]} target="_blank" rel="noreferrer">{link[1]}</a>;return part})}
@@ -43,7 +65,7 @@ export function PortalArticlePage() {
         {article && <article>
           <header className="article-heading"><span>{article.category}</span><h1>{article.title}</h1><p>{article.excerpt}</p><small><CalendarDays /> {new Date(article.publishedAt || article.createdAt).toLocaleDateString('pt-BR')} · {article.authorName}</small></header>
           {article.coverImageUrl && <img className="article-cover" src={article.coverImageUrl} alt={`Imagem de capa: ${article.title}`} width="1600" height="900" decoding="async" />}
-          <div className="article-share" aria-label="Compartilhar matéria"><strong>Compartilhar:</strong><a href={`https://wa.me/?text=${encodeURIComponent(`${article.title} https://materplace.com.br/noticias/${article.slug}`)}`} target="_blank" rel="noreferrer"><MessageCircle/>WhatsApp</a><a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`https://materplace.com.br/noticias/${article.slug}`)}`} target="_blank" rel="noreferrer"><Facebook/>Facebook</a><button onClick={async()=>{await navigator.clipboard.writeText(`https://materplace.com.br/noticias/${article.slug}`);window.open("https://www.instagram.com/","_blank")}}><Instagram/>Instagram</button></div><div className="article-content">{article.content.split(/\n\s*\n/).filter(Boolean).map(renderBlock)}</div>
+          <div className="article-share" aria-label="Compartilhar matéria"><strong>Compartilhar:</strong><a href={`https://wa.me/?text=${encodeURIComponent(`${article.title} https://materplace.com.br/noticias/${article.slug}`)}`} target="_blank" rel="noreferrer"><MessageCircle/>WhatsApp</a><a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`https://materplace.com.br/noticias/${article.slug}`)}`} target="_blank" rel="noreferrer"><Facebook/>Facebook</a><button onClick={async()=>{await navigator.clipboard.writeText(`https://materplace.com.br/noticias/${article.slug}`);window.open("https://www.instagram.com/","_blank")}}><Instagram/>Instagram</button></div><div className="article-content">{renderContent()}</div>
           {article.isDemo && <div className="demo-content-note">Conteúdo demonstrativo para composição inicial do portal. Será substituído gradualmente por publicações editoriais da MaterPlace.</div>}
         </article>}
         <aside className="article-marketplace-cta"><div><strong>Precisa de apoio materno-infantil?</strong><p>Encontre profissionais e clínicas na sua região.</p></div><button className="btn btn-primary" type="button" onClick={returnToHomeTop}>Buscar profissionais</button></aside>

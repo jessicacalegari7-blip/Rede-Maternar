@@ -11,6 +11,7 @@ export function ProfessionalProfilePage() {
   const [selectedSpecialties,setSelectedSpecialties]=useState<string[]>([])
   const [viewCount,setViewCount]=useState(0)
   const [notice,setNotice]=useState('')
+  const [saving,setSaving]=useState(false)
   const [error,setError]=useState('')
   const specialtyLimit=isClinicPlan(user?.plan)?null:3
 
@@ -40,9 +41,10 @@ export function ProfessionalProfilePage() {
     }catch(e){setNotice(e instanceof Error?e.message:'Erro ao enviar imagem.')}
   }
   const save=async()=>{
-    setNotice('')
-    try{const saved=await updateMyProfessionalProfile(profile.id,{...profile,profile_completed:Boolean(profile.full_name&&profile.city&&profile.whatsapp)});await saveProfessionalSpecialties(profile.id,selectedSpecialties,specialtyLimit);setProfile(saved);setNotice('Perfil salvo e confirmado no banco de dados.')}
+    setNotice('Salvando e confirmando no banco de dados...');setSaving(true)
+    try{const saved=await updateMyProfessionalProfile(profile.id,{...profile,profile_completed:Boolean(profile.full_name&&profile.city&&profile.whatsapp)});await saveProfessionalSpecialties(profile.id,selectedSpecialties,specialtyLimit);setProfile(saved);setNotice(saved.marketplace_visible?'Alterações salvas e publicadas no Marketplace.':'Alterações salvas. O perfil aguarda aprovação para publicação.')}
     catch(e){setNotice(e instanceof Error?e.message:'Erro ao salvar.')}
+    finally{setSaving(false)}
   }
 
   return <div>
@@ -77,7 +79,7 @@ export function ProfessionalProfilePage() {
       <div className="field grid-span-2"><label>Fotos do consultório (máximo 5)</label><input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={e=>void upload('gallery',e.target.files)}/><small>{(profile.gallery_urls||[]).length} de 5 foto(s)</small><div className="profile-media-editor">{(profile.gallery_urls||[]).map((url,index)=><div key={url}><img src={url} alt={`Foto do consultório ${index+1}`} width="320" height="200"/><button type="button" className="btn btn-danger" onClick={()=>set('gallery_urls',profile.gallery_urls.filter(item=>item!==url))}><Trash2 size={15}/> Remover foto {index+1}</button></div>)}</div></div>
       <label className="switch-card"><span><strong>Aceita atendimento online</strong></span><input type="checkbox" checked={profile.accepts_online} onChange={e=>set('accepts_online',e.target.checked)}/></label>
       <div className="switch-card"><span><strong>Publicação no Marketplace</strong><small>{profile.marketplace_visible?'Perfil aprovado e publicado.':'Aguardando aprovação da administração.'}</small></span></div>
-      <button className="btn btn-primary grid-span-2" onClick={()=>void save()}><Save size={17}/>Salvar perfil real</button>
+      <button className="btn btn-primary grid-span-2" disabled={saving} onClick={()=>void save()}><Save size={17}/>{saving?'Salvando...':'Salvar e publicar alterações'}</button>
     </section>
   </div>
 }

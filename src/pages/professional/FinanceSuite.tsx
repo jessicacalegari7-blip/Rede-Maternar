@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowDownLeft, ArrowUpRight, CircleDollarSign, Landmark, Plus, RefreshCw, Wallet } from 'lucide-react'
 import {
-  closeCashSession, createFinancialEntry, getOpenCashSession, listFinancialEntries,
+  closeCashSession, createFinancialEntry, getOpenCashSession, listFinancialEntries, updateFinancialEntry,
   openCashSession, updateFinancialEntryStatus, type FinancialEntryType, type RealCashSession, type RealFinancialEntry,
 } from '../../lib/operations'
 
@@ -14,6 +14,7 @@ export function FinanceSuite({initial='overview'}:{initial?:FinanceView}){
   const [entries,setEntries]=useState<RealFinancialEntry[]>([])
   const [cash,setCash]=useState<RealCashSession|null>(null)
   const [show,setShow]=useState(false)
+  const [editing,setEditing]=useState<RealFinancialEntry|null>(null)
   const [error,setError]=useState('')
   const [notice,setNotice]=useState('')
   const [dateFrom,setDateFrom]=useState('')
@@ -22,13 +23,15 @@ export function FinanceSuite({initial='overview'}:{initial?:FinanceView}){
   const [appliedTo,setAppliedTo]=useState('')
   async function load(){setError('');try{const [e,c]=await Promise.all([listFinancialEntries(),getOpenCashSession()]);setEntries(e);setCash(c)}catch(err){setError(err instanceof Error?err.message:'Falha ao carregar financeiro.')}}
   useEffect(()=>{void load()},[])
-  async function submit(e:React.FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);try{await createFinancialEntry({
+  async function submit(e:React.FormEvent<HTMLFormElement>){e.preventDefault();const f=new FormData(e.currentTarget);try{const payload={
     type:String(f.get('type')) as FinancialEntryType,category:String(f.get('category')),description:String(f.get('description')),
     amount:Number(String(f.get('amount')).replace(',','.')),dueDate:String(f.get('dueDate')||''),status:String(f.get('status')) as RealFinancialEntry['status'],
     paymentMethod:String(f.get('paymentMethod')||''),recurring:f.get('recurring')==='on',
-  });setShow(false);setNotice('Lançamento salvo no banco.');await load()}catch(err){setError(err instanceof Error?err.message:'Falha ao salvar lançamento.')}}
+  };if(editing)await updateFinancialEntry(editing.id,payload);else await createFinancialEntry(payload);setShow(false);setEditing(null);setNotice(editing?'Lançamento atualizado e recalculado no ERP.':'Lançamento salvo e integrado ao ERP.');await load()}catch(err){setError(err instanceof Error?err.message:'Falha ao salvar lançamento.')}}
   const dateFiltered=entries.filter(e=>{const date=(e.paid_at||e.due_date||e.created_at).slice(0,10);return(!appliedFrom||date>=appliedFrom)&&(!appliedTo||date<=appliedTo)})
-  const filtered=dateFiltered.filter(e=>view==='payable'?['payable','expense'].includes(e.type):view==='receivable'?['receivable','income'].includes(e.type):view==='costs'?e.type==='expense':view==='taxes'?e.type==='tax':view==='payroll'?e.type==='payroll':true)
+  const fixedCost=(e:RealFinancialEntry)=>['expense','payable'].includes(e.type)&&/(custo|aluguel|energia|internet|software|material|manuten)/i.test(`${e.category} ${e.description}`)
+  const filtered=dateFiltered.filter(e=>view==='payable'?['payable','expense','tax','payroll'].includes(e.type):view==='receivable'?['receivable','income'].includes(e.type):view==='costs'?fixedCost(e):view==='taxes'?e.type==='tax'||/imposto|tribut/i.test(e.category):view==='payroll'?e.type==='payroll'||/folha|sal.rio/i.test(e.category):true)
+  const openEditor=async(entry?:RealFinancialEntry)=>{if(!entry){setEditing(null);setShow(true);return}const description=window.prompt('Descrição',entry.description);if(description===null)return;const category=window.prompt('Categoria',entry.category);if(category===null)return;const amount=window.prompt('Valor (R$)',String(entry.amount_cents/100).replace('.',','));if(amount===null)return;await updateFinancialEntry(entry.id,{type:entry.type,category,description,amount:Number(amount.replace(',','.')),dueDate:entry.due_date||'',status:entry.status,paymentMethod:entry.payment_method||'',recurring:entry.recurring});setNotice('Lançamento atualizado e recalculado no ERP.');await load()}
   const totals=useMemo(()=>{const paid=dateFiltered.filter(e=>e.status==='paid');const income=paid.filter(e=>['income','receivable'].includes(e.type)).reduce((s,e)=>s+e.amount_cents,0);const expense=paid.filter(e=>['expense','payable','tax','payroll'].includes(e.type)).reduce((s,e)=>s+e.amount_cents,0);const pending=dateFiltered.filter(e=>e.status==='pending'&&['receivable','income'].includes(e.type)).reduce((s,e)=>s+e.amount_cents,0);return{income,expense,pending,result:income-expense}},[dateFiltered])
   return <><div className="page-heading"><div><span className="badge">ERP financeiro real</span><h1>Gestão financeira</h1><p className="muted">Todos os lançamentos abaixo pertencem à organização conectada.</p></div><div className="heading-actions"><button className="icon-btn" onClick={()=>void load()}><RefreshCw/></button><button className="btn btn-primary" onClick={()=>setShow(true)}><Plus/> Novo lançamento</button></div></div>
     {error&&<div className="alert alert-error">{error}</div>}{notice&&<div className="success-banner">{notice}</div>}
@@ -37,14 +40,14 @@ export function FinanceSuite({initial='overview'}:{initial?:FinanceView}){
     {view==='overview'&&<><div className="grid grid-4"><Metric icon={CircleDollarSign} label="Receitas pagas" value={money.format(totals.income/100)}/><Metric icon={ArrowDownLeft} label="Despesas pagas" value={money.format(totals.expense/100)}/><Metric icon={Wallet} label="Resultado" value={money.format(totals.result/100)}/><Metric icon={ArrowUpRight} label="A receber" value={money.format(totals.pending/100)}/></div><Entries rows={dateFiltered} reload={load}/></>}
     {view==='cashier'&&<Cashier cash={cash} totals={totals} reload={load} onNotice={setNotice}/>}
     {view==='dre'&&<Dre entries={dateFiltered}/>}
-    {['payable','receivable','costs','taxes','payroll'].includes(view)&&<Entries rows={filtered} reload={load}/>}
+    {['payable','receivable','costs','taxes','payroll'].includes(view)&&<Entries rows={filtered} reload={load} onEdit={openEditor}/>}
     {view==='invoices'&&<div className="card empty-state"><h2>Emissão de NFS-e</h2><p className="muted">O módulo está reservado, mas a emissão real depende da contratação de um provedor fiscal e suas credenciais. Nenhuma nota fictícia é exibida.</p></div>}
     {show&&<div className="modal-backdrop"><form className="modal-card customer-form" onSubmit={submit}><div className="modal-head"><div><h2>Novo lançamento</h2><p className="muted">Será salvo imediatamente no Supabase.</p></div><button type="button" className="icon-btn" onClick={()=>setShow(false)}>×</button></div><div className="form-grid"><label className="field"><span>Tipo</span><select name="type"><option value="receivable">Conta a receber</option><option value="payable">Conta a pagar</option><option value="income">Receita</option><option value="expense">Despesa/custo</option><option value="tax">Imposto</option><option value="payroll">Folha salarial</option></select></label><label className="field"><span>Status</span><select name="status"><option value="pending">Pendente</option><option value="paid">Pago/recebido</option><option value="overdue">Atrasado</option><option value="cancelled">Cancelado</option></select></label><label className="field"><span>Categoria</span><input name="category" required/></label><label className="field"><span>Descrição</span><input name="description" required/></label><label className="field"><span>Valor (R$)</span><input name="amount" inputMode="decimal" required/></label><label className="field"><span>Vencimento</span><input name="dueDate" type="date"/></label><label className="field"><span>Forma de pagamento</span><input name="paymentMethod"/></label><label className="check-row"><input name="recurring" type="checkbox"/><span>Lançamento recorrente</span></label></div><div className="modal-actions"><button type="button" className="btn btn-secondary" onClick={()=>setShow(false)}>Cancelar</button><button className="btn btn-primary">Salvar</button></div></form></div>}
   </>
 }
 
-function Entries({rows,reload}:{rows:RealFinancialEntry[];reload:()=>Promise<void>}){
-  return <section className="card finance-table-card"><div className="section-heading"><div><h2>Lançamentos</h2><p className="muted">{rows.length} registros reais</p></div></div><div className="table-wrap"><table><thead><tr><th>Descrição</th><th>Categoria</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Ação</th></tr></thead><tbody>{rows.map(e=><tr key={e.id}><td>{e.description}</td><td>{e.category}</td><td>{e.due_date?new Date(`${e.due_date}T12:00:00`).toLocaleDateString('pt-BR'):'—'}</td><td><strong>{money.format(e.amount_cents/100)}</strong></td><td><span className="badge">{e.status}</span></td><td>{e.status!=='paid'&&<button className="btn btn-secondary btn-small" onClick={async()=>{await updateFinancialEntryStatus(e.id,'paid');await reload()}}>Marcar pago</button>}</td></tr>)}</tbody></table></div>{!rows.length&&<div className="empty-state"><p className="muted">Nenhum lançamento real nesta categoria.</p></div>}</section>
+function Entries({rows,reload,onEdit}:{rows:RealFinancialEntry[];reload:()=>Promise<void>;onEdit?:(entry:RealFinancialEntry)=>void}){
+  return <section className="card finance-table-card"><div className="section-heading"><div><h2>Lançamentos</h2><p className="muted">{rows.length} registros reais</p></div></div><div className="table-wrap"><table><thead><tr><th>Descrição</th><th>Categoria</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Ação</th></tr></thead><tbody>{rows.map(e=><tr key={e.id}><td>{e.description}</td><td>{e.category}</td><td>{e.due_date?new Date(`${e.due_date}T12:00:00`).toLocaleDateString('pt-BR'):'—'}</td><td><strong>{money.format(e.amount_cents/100)}</strong></td><td><span className="badge">{e.status}</span></td><td><div className="row"><button className="btn btn-secondary btn-small" onClick={()=>onEdit?.(e)}>Editar</button>{e.status!=='paid'&&<button className="btn btn-secondary btn-small" onClick={async()=>{await updateFinancialEntryStatus(e.id,'paid');await reload()}}>Marcar pago</button>}</div></td></tr>)}</tbody></table></div>{!rows.length&&<div className="empty-state"><p className="muted">Nenhum lançamento real nesta categoria.</p></div>}</section>
 }
 
 function Cashier({cash,totals,reload,onNotice}:{cash:RealCashSession|null;totals:{income:number;expense:number;result:number;pending:number};reload:()=>Promise<void>;onNotice:(x:string)=>void}){
