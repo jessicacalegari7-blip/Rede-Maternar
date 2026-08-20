@@ -27,6 +27,8 @@ export interface RealLead {
   next_contact_at: string | null
   requested_professional_id: string | null
   created_at: string
+  patient_id?: string | null
+  assigned_professional_id?: string | null
 }
 
 export async function listLeads() {
@@ -38,31 +40,35 @@ export async function listLeads() {
 }
 
 export async function createPatientAndLead(input: {
-  name: string; phone: string; email?: string; cpf?:string; source: string; stage: LeadStage; notes?: string
+  name: string; phone: string; email?: string; cpf?:string; source: string; stage: LeadStage; notes?: string; serviceInterest?:string
 }) {
   const db = client()
-  const { organizationId, userId } = await getCurrentOrganization()
-  const { data: patient, error: patientError } = await db.from('patient_profiles').insert({
-    organization_id: organizationId,
-    full_name: input.name.trim(),
-    phone: input.phone.trim(),
-    email: input.email?.trim() || null,
-    cpf: input.cpf?.replace(/\D/g,'') || null,
-    notes: input.notes?.trim() || null,
-    created_by: userId,
-  }).select('id').single()
-  if (patientError) throw new Error(patientError.message)
-  const { error } = await db.from('leads').insert({
-    organization_id: organizationId,
-    patient_id: patient.id,
-    full_name: input.name.trim(),
-    phone: input.phone.trim(),
-    email: input.email?.trim() || null,
-    source: input.source,
-    status: input.stage,
-    created_by: userId,
-  })
+  const { organizationId } = await getCurrentOrganization()
+  const { error } = await db.rpc('upsert_crm_contact', { p_organization_id:organizationId, p_name:input.name.trim(), p_phone:input.phone.trim(), p_email:input.email?.trim()||null, p_cpf:input.cpf?.replace(/\D/g,'')||null, p_source:input.source, p_status:input.stage, p_notes:input.notes?.trim()||null, p_service_interest:input.serviceInterest?.trim()||null })
   if (error) throw new Error(error.message)
+}
+
+export async function getContactDetail(patientId:string) {
+  const db=client(); const {organizationId}=await getCurrentOrganization()
+  const [patient,lead,records,appointments,conversations]=await Promise.all([
+    db.from('patient_profiles').select('*').eq('organization_id',organizationId).eq('id',patientId).single(),
+    db.from('leads').select('*').eq('organization_id',organizationId).eq('patient_id',patientId).order('updated_at',{ascending:false}).limit(1).maybeSingle(),
+    db.from('patient_records').select('*').eq('organization_id',organizationId).eq('patient_id',patientId).order('created_at',{ascending:false}),
+    db.from('appointments').select('*').eq('organization_id',organizationId).eq('patient_id',patientId).order('starts_at',{ascending:false}),
+    db.from('conversations').select('*').eq('organization_id',organizationId).eq('patient_id',patientId).order('updated_at',{ascending:false}),
+  ])
+  const error=patient.error||lead.error||records.error||appointments.error||conversations.error
+  if(error) throw new Error(error.message)
+  return {patient:patient.data,lead:lead.data,records:records.data??[],appointments:appointments.data??[],conversations:conversations.data??[]}
+}
+
+export async function updateContact(patientId:string,input:{name:string;phone:string;email?:string;cpf?:string;notes?:string}) {
+  const db=client(); const {organizationId}=await getCurrentOrganization()
+  const payload={full_name:input.name.trim(),phone:input.phone.trim(),email:input.email?.trim()||null,cpf:input.cpf?.replace(/\D/g,'')||null,notes:input.notes?.trim()||null}
+  const {error}=await db.from('patient_profiles').update(payload).eq('organization_id',organizationId).eq('id',patientId)
+  if(error) throw new Error(error.message)
+  const {error:leadError}=await db.from('leads').update({full_name:payload.full_name,phone:payload.phone,email:payload.email}).eq('organization_id',organizationId).eq('patient_id',patientId)
+  if(leadError) throw new Error(leadError.message)
 }
 
 export async function updateLeadStage(id: string, status: LeadStage) {
@@ -399,7 +405,7 @@ export interface RealProfessionalProfile {
   website_url:string|null;instagram_handle:string|null;accepted_insurances:string[]
   facebook_url:string|null;tiktok_url:string|null
   payment_methods:string[];profile_completed:boolean
-  profile_image_url:string|null;cover_image_url:string|null;office_video_url:string|null
+  profile_image_url:string|null;cover_image_url:string|null;office_video_url:string|null;office_video_urls:string[]
   gallery_urls:string[];clinic_description:string|null;opening_hours:string|null
   postal_code:string|null;address_line:string|null;address_number:string|null;address_complement:string|null
 }
@@ -431,7 +437,7 @@ export async function updateMyProfessionalProfile(id:string,changes:Partial<Real
     accepted_insurances:changes.accepted_insurances,payment_methods:changes.payment_methods,
     profile_completed:changes.profile_completed,
     profile_image_url:changes.profile_image_url,cover_image_url:changes.cover_image_url,
-    office_video_url:changes.office_video_url,gallery_urls:changes.gallery_urls,
+    office_video_url:changes.office_video_url,office_video_urls:changes.office_video_urls,gallery_urls:changes.gallery_urls,
     clinic_description:changes.clinic_description,opening_hours:changes.opening_hours,
     postal_code:changes.postal_code,address_line:changes.address_line,address_number:changes.address_number,
     address_complement:changes.address_complement,
@@ -440,14 +446,20 @@ export async function updateMyProfessionalProfile(id:string,changes:Partial<Real
   if(error) throw new Error(error.message)
 }
 
-export async function uploadMarketplaceImage(file:File,kind:'profile'|'cover'|'gallery') {
+export async function uploadMarketplaceMedia(file:File,kind:'profile'|'cover'|'gallery'|'video') {
   const db=client(); const {userId}=await getCurrentOrganization()
+  const isVideo=kind==='video'
+  if(isVideo&&!file.type.startsWith('video/')) throw new Error('Escolha um arquivo de vídeo.')
+  if(!isVideo&&!file.type.startsWith('image/')) throw new Error('Escolha um arquivo de imagem.')
+  if(file.size>(isVideo?80:8)*1024*1024) throw new Error(isVideo?'Cada vídeo deve ter no máximo 80 MB.':'Cada imagem deve ter no máximo 8 MB.')
   const extension=(file.name.split('.').pop()||'jpg').toLowerCase()
   const path=`${userId}/${kind}-${crypto.randomUUID()}.${extension}`
   const {error}=await db.storage.from('marketplace-media').upload(path,file,{upsert:false,contentType:file.type})
   if(error) throw new Error(error.message)
   return db.storage.from('marketplace-media').getPublicUrl(path).data.publicUrl
 }
+
+export const uploadMarketplaceImage=uploadMarketplaceMedia
 
 export async function getProfessionalSpecialtyEditor(professionalId:string) {
   const db=client()
