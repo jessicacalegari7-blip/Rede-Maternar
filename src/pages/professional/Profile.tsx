@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Eye, Save } from 'lucide-react'
+import { Eye, Save, Trash2 } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
 import { getMyProfessionalProfile, getProfessionalSpecialtyEditor, listMyProfileViewCounts, saveProfessionalSpecialties, updateMyProfessionalProfile, uploadMarketplaceMedia, type RealProfessionalProfile } from '../../lib/operations'
 import { isClinicPlan } from '../../lib/plans'
@@ -41,7 +41,7 @@ export function ProfessionalProfilePage() {
   }
   const save=async()=>{
     setNotice('')
-    try{await updateMyProfessionalProfile(profile.id,{...profile,profile_completed:Boolean(profile.full_name&&profile.city&&profile.whatsapp)});await saveProfessionalSpecialties(profile.id,selectedSpecialties,specialtyLimit);setNotice('Perfil salvo no banco de dados.')}
+    try{const saved=await updateMyProfessionalProfile(profile.id,{...profile,profile_completed:Boolean(profile.full_name&&profile.city&&profile.whatsapp)});await saveProfessionalSpecialties(profile.id,selectedSpecialties,specialtyLimit);setProfile(saved);setNotice('Perfil salvo e confirmado no banco de dados.')}
     catch(e){setNotice(e instanceof Error?e.message:'Erro ao salvar.')}
   }
 
@@ -73,8 +73,8 @@ export function ProfessionalProfilePage() {
       <div className="field grid-span-2"><label>Sobre a clínica ou consultório</label><textarea rows={5} value={profile.clinic_description||''} onChange={e=>set('clinic_description',e.target.value)}/></div>
       <div className="field"><label>Convênios (separados por vírgula)</label><input value={(profile.accepted_insurances||[]).join(', ')} onChange={e=>set('accepted_insurances',list(e.target.value))}/></div>
       <div className="field"><label>Formas de pagamento</label><input value={(profile.payment_methods||[]).join(', ')} onChange={e=>set('payment_methods',list(e.target.value))}/></div>
-      <div className="field grid-span-2"><label>Vídeos do consultório (máximo 3)</label><input type="file" multiple accept="video/mp4,video/webm,video/quicktime" onChange={e=>void upload('video',e.target.files)}/><small>{(profile.office_video_urls||[]).length} de 3 vídeo(s)</small></div>
-      <div className="field grid-span-2"><label>Fotos do consultório (máximo 5)</label><input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={e=>void upload('gallery',e.target.files)}/><small>{(profile.gallery_urls||[]).length} de 5 foto(s)</small></div>
+      <div className="field grid-span-2"><label>Vídeos do consultório (máximo 3)</label><input type="file" multiple accept="video/mp4,video/webm,video/quicktime" onChange={e=>void upload('video',e.target.files)}/><small>{(profile.office_video_urls||[]).length} de 3 vídeo(s)</small><div className="profile-media-editor">{(profile.office_video_urls||[]).map((url,index)=><div key={url}><video controls preload="metadata" src={url}/><button type="button" className="btn btn-danger" onClick={()=>set('office_video_urls',profile.office_video_urls.filter(item=>item!==url))}><Trash2 size={15}/> Remover vídeo {index+1}</button></div>)}</div></div>
+      <div className="field grid-span-2"><label>Fotos do consultório (máximo 5)</label><input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={e=>void upload('gallery',e.target.files)}/><small>{(profile.gallery_urls||[]).length} de 5 foto(s)</small><div className="profile-media-editor">{(profile.gallery_urls||[]).map((url,index)=><div key={url}><img src={url} alt={`Foto do consultório ${index+1}`} width="320" height="200"/><button type="button" className="btn btn-danger" onClick={()=>set('gallery_urls',profile.gallery_urls.filter(item=>item!==url))}><Trash2 size={15}/> Remover foto {index+1}</button></div>)}</div></div>
       <label className="switch-card"><span><strong>Aceita atendimento online</strong></span><input type="checkbox" checked={profile.accepts_online} onChange={e=>set('accepts_online',e.target.checked)}/></label>
       <div className="switch-card"><span><strong>Publicação no Marketplace</strong><small>{profile.marketplace_visible?'Perfil aprovado e publicado.':'Aguardando aprovação da administração.'}</small></span></div>
       <button className="btn btn-primary grid-span-2" onClick={()=>void save()}><Save size={17}/>Salvar perfil real</button>

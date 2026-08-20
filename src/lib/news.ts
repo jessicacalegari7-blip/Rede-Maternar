@@ -96,8 +96,7 @@ function mapRow(row: Record<string, unknown>): PortalArticle {
 }
 
 export async function listPortalArticles(limit = 12): Promise<PortalArticle[]> {
-  const hidden=JSON.parse(localStorage.getItem('materplace-hidden-demo-news')||'[]') as string[]
-  if (!isSupabaseConfigured || !supabase) return demoArticles.filter(x=>!hidden.includes(x.id)).slice(0, limit)
+  if (!isSupabaseConfigured || !supabase) return []
   const { data, error } = await supabase.from('news_articles').select('*').eq('status', 'published').order('featured', { ascending: false }).order('published_at', { ascending: false }).limit(limit)
   if (error) throw error
   if (!data?.length) return []
@@ -116,8 +115,7 @@ export async function getPortalArticle(slug: string): Promise<PortalArticle> {
 }
 
 export async function adminListArticles(): Promise<PortalArticle[]> {
-  const hidden=JSON.parse(localStorage.getItem('materplace-hidden-demo-news')||'[]') as string[]
-  if (!supabase) return demoArticles.filter(x=>!hidden.includes(x.id))
+  if (!supabase) return []
   const { data, error } = await supabase.from('news_articles').select('*').order('created_at', { ascending: false })
   if (error) throw error
   return (data || []).map(mapRow)
@@ -136,7 +134,6 @@ export async function saveArticle(input: NewsInput): Promise<void> {
 }
 
 export async function removeArticle(id: string): Promise<void> {
-  if(id.startsWith('demo-')) { const hidden=JSON.parse(localStorage.getItem('materplace-hidden-demo-news')||'[]') as string[]; localStorage.setItem('materplace-hidden-demo-news',JSON.stringify([...new Set([...hidden,id])])); return }
   if (!supabase) throw new Error('Supabase não configurado.')
   const { error } = await supabase.from('news_articles').delete().eq('id', id)
   if (error) throw error

@@ -442,8 +442,10 @@ export async function updateMyProfessionalProfile(id:string,changes:Partial<Real
     postal_code:changes.postal_code,address_line:changes.address_line,address_number:changes.address_number,
     address_complement:changes.address_complement,
   }
-  const {error}=await client().from('professional_profiles').update(allowed).eq('id',id)
+  const {data,error}=await client().from('professional_profiles').update(allowed).eq('id',id).select('*').single()
   if(error) throw new Error(error.message)
+  if(!data) throw new Error('O perfil não foi atualizado. Verifique as permissões da conta.')
+  return data as RealProfessionalProfile
 }
 
 export async function uploadMarketplaceMedia(file:File,kind:'profile'|'cover'|'gallery'|'video') {

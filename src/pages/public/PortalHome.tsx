@@ -6,22 +6,6 @@ import { maternalChildSpecialties } from '../../data/specialties'
 import { listPortalArticles, listPortalVideos, type PortalArticle, type PortalVideo } from '../../lib/news'
 import { LegalFooter } from './Legal'
 
-const categories = [
-  { label: 'Gestação', icon: Heart }, { label: 'Bebê', icon: Baby },
-  { label: 'Primeira Infância', icon: Sparkles }, { label: 'Família', icon: Users },
-  { label: 'Bem-estar', icon: Heart },
-]
-const fallbackHeadlines = [
-  { category: 'Amamentação', title: 'Amamentação sem dor: 7 dicas para tornar esse momento mais leve', meta: '6 min', tone: 'rose' },
-  { category: 'Desenvolvimento', title: 'Marcos do desenvolvimento infantil: o que observar nos primeiros 12 meses', meta: '7 min', tone: 'gold' },
-  { category: 'Saúde infantil', title: 'Vacinas em dia: proteção que acompanha cada fase do crescimento', meta: '5 min', tone: 'sage' },
-]
-const fallbackMostRead = [
-  ['Licença-maternidade: seus direitos e como funciona', 'Gestação'],
-  ['Introdução alimentar: quando começar e por onde iniciar', 'Bebê'],
-  ['Sono do bebê: como criar uma rotina saudável', 'Bem-estar'],
-  ['Sinais de alerta na gestação que você não deve ignorar', 'Gestação'],
-]
 const articleDate = (article: PortalArticle) => new Date(article.publishedAt || article.createdAt).toLocaleDateString('pt-BR')
 
 export function PortalHome() {
@@ -42,7 +26,9 @@ export function PortalHome() {
   }
 
   const publishedCategories = Array.from(new Set(articles.map(article => article.category.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'))
-  const visibleArticles = selectedCategory ? articles.filter(article => article.category === selectedCategory) : articles
+  const categoryArticles = selectedCategory ? articles.filter(article => article.category === selectedCategory) : articles
+  const complementaryArticles = selectedCategory ? articles.filter(article => article.category !== selectedCategory) : []
+  const visibleArticles = [...categoryArticles, ...complementaryArticles]
   const featured = visibleArticles[0]
   const headlineArticles = visibleArticles.slice(1, 4)
   const mostReadArticles = visibleArticles.slice(4, 8)
@@ -82,18 +68,16 @@ export function PortalHome() {
       <div className="portal-lead-grid">
         <article className={`lead-story${featured?.coverImageUrl ? ' has-real-image' : ''}`} style={featured?.coverImageUrl ? { backgroundImage: `linear-gradient(90deg, rgba(7,30,24,.9), rgba(7,30,24,.12)), url(${featured.coverImageUrl})` } : undefined}>
           {featured && <Link className="news-card-click-target" to={`/noticias/${featured.slug}`} aria-label={`Abrir matéria: ${featured.title}`} />}
-          <span>{featured?.category || 'Gestação'}</span>
-          <div><h2>{featured?.title || 'Pré-natal: por que cada consulta é essencial para a saúde da mãe e do bebê'}</h2><p>{featured?.excerpt || 'Acompanhamento regular reduz riscos e garante mais segurança durante toda a gestação.'}</p>{featured ? <Link className="story-link" to={`/noticias/${featured.slug}`}>Ler notícia · {articleDate(featured)}</Link> : <small>5 min de leitura</small>}</div>
-          {!featured?.coverImageUrl && <div className="story-illustration">🤰</div>}
+          {featured ? <><span>{featured.category}</span><div><h2>{featured.title}</h2><p>{featured.excerpt}</p><Link className="story-link" to={`/noticias/${featured.slug}`}>Ler notícia · {articleDate(featured)}</Link></div>{!featured.coverImageUrl && <div className="story-illustration">📰</div>}</> : <div><h2>Nenhuma matéria publicada</h2><p>Novos conteúdos serão disponibilizados em breve.</p></div>}
         </article>
         <section className="headline-list">
-          {[0, 1, 2].map(index => { const real = headlineArticles[index]; const fallback = fallbackHeadlines[index]; return <article key={real?.id || fallback.title}>{real && <Link className="news-card-click-target" to={`/noticias/${real.slug}`} aria-label={`Abrir matéria: ${real.title}`} />}{real?.coverImageUrl ? <img className="news-thumb-image" src={real.coverImageUrl} alt={`Capa: ${real.title}`} loading="lazy" decoding="async" width="320" height="180" /> : <div className={`news-thumb ${fallback.tone}`}>{fallback.category === 'Desenvolvimento' ? '🧸' : fallback.category === 'Saúde infantil' ? '🩺' : '🤱'}</div>}<div><span>{real?.category || fallback.category}</span><h3>{real?.title || fallback.title}</h3><small>{real ? articleDate(real) : `${fallback.meta} de leitura`}</small>{real && <Link className="news-read-link" to={`/noticias/${real.slug}`}>Ler notícia</Link>}</div></article> })}
+          {headlineArticles.map(article => <article key={article.id}><Link className="news-card-click-target" to={`/noticias/${article.slug}`} aria-label={`Abrir matéria: ${article.title}`} />{article.coverImageUrl ? <img className="news-thumb-image" src={article.coverImageUrl} alt={`Capa: ${article.title}`} loading="lazy" decoding="async" width="320" height="180" /> : <div className="news-thumb sage">📰</div>}<div><span>{article.category}</span><h3>{article.title}</h3><small>{articleDate(article)}</small><Link className="news-read-link" to={`/noticias/${article.slug}`}>Ler notícia</Link></div></article>)}
         </section>
         <aside className="portal-ad"><span>Espaço de cuidado</span><h3>Conteúdo que acolhe cada fase.</h3><Baby /><button>Conheça agora</button></aside>
       </div>
 
       <section className="most-read-section"><div className="portal-section-title"><h2>Mais lidas</h2><a href="#noticias">Ver todas</a></div><div className="most-read-grid">
-        {[0, 1, 2, 3].map(index => { const real = mostReadArticles[index]; const [title, category] = fallbackMostRead[index]; return <article key={real?.id || title}>{real && <Link className="news-card-click-target" to={`/noticias/${real.slug}`} aria-label={`Abrir matéria: ${real.title}`} />}<span>{index + 1}</span>{real?.coverImageUrl ? <img className="most-read-image" src={real.coverImageUrl} alt={`Capa: ${real.title}`} loading="lazy" decoding="async" width="360" height="200" /> : <div className={`most-read-art art-${index + 1}`}>{['🤰', '🥣', '👶', '💗'][index]}</div>}<small>{real?.category || category}</small><h3>{real?.title || title}</h3><p>{real?.excerpt || 'Leitura rápida e orientação confiável para a sua jornada.'}</p>{real && <Link className="news-read-link" to={`/noticias/${real.slug}`}>Ler notícia</Link>}</article> })}
+        {mostReadArticles.map((article,index) => <article key={article.id}><Link className="news-card-click-target" to={`/noticias/${article.slug}`} aria-label={`Abrir matéria: ${article.title}`} /><span>{index + 1}</span>{article.coverImageUrl ? <img className="most-read-image" src={article.coverImageUrl} alt={`Capa: ${article.title}`} loading="lazy" decoding="async" width="360" height="200" /> : <div className={`most-read-art art-${index + 1}`}>📰</div>}<small>{article.category}</small><h3>{article.title}</h3><p>{article.excerpt}</p><Link className="news-read-link" to={`/noticias/${article.slug}`}>Ler notícia</Link></article>)}
       </div></section>
 
       <section className="newsletter-card"><div><BookOpen /><span><strong>Receba conteúdos exclusivos para uma maternidade mais leve</strong><small>Artigos, dicas e novidades direto no seu e-mail.</small></span></div><form onSubmit={event => event.preventDefault()}><input type="email" placeholder="Seu melhor e-mail" /><button>Quero receber</button></form></section>
