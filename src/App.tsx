@@ -2,6 +2,8 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Landing } from './pages/public/Landing'
 import { PortalHome } from './pages/public/PortalHome'
 import { Marketplace } from './pages/public/Marketplace'
+import { DirectoryLanding } from './pages/public/DirectoryLanding'
+import { DirectoryProfile } from './pages/public/DirectoryProfile'
 import { Login } from './pages/public/Login'
 import { ProfessionalSignup } from './pages/public/ProfessionalSignup'
 import { PublicProfessionalProfile } from './pages/public/PublicProfessionalProfile'
@@ -51,6 +53,8 @@ export default function App() {
     <Route path="/" element={<PublicHome />} />
     <Route path="/para-profissionais" element={<Landing />} />
     <Route path="/profissionais" element={<Marketplace />} />
+    <Route path="/encontrar/:specialty/:uf/:city" element={<DirectoryLanding />} />
+    <Route path="/profissional/:slug" element={<DirectoryProfile />} />
     <Route path="/noticias/:slug" element={<PortalArticlePage />} />
     <Route path="/login" element={<Login />} />
     <Route path="/definir-senha" element={<SetPassword />} />

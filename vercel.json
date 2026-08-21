@@ -1,15 +1,18 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
-    "api/editorial-run.mjs": { "maxDuration": 300 }
+    "api/editorial-run.mjs": { "maxDuration": 300 },
+    "api/professional-research-run.mjs": { "maxDuration": 300 }
   },
   "crons": [
-    { "path": "/api/editorial-run", "schedule": "0 21 * * *" }
+    { "path": "/api/editorial-run", "schedule": "0 21 * * *" },
+    { "path": "/api/professional-research-run", "schedule": "30 22 * * *" }
   ],
   "rewrites": [
     { "source": "/sitemap.xml", "destination": "/api/sitemap" },
     { "source": "/sitemap-pages.xml", "destination": "/api/sitemap-pages" },
     { "source": "/sitemap-news.xml", "destination": "/api/sitemap-news" },
+    { "source": "/sitemap-diretorio.xml", "destination": "/api/sitemap-directory" },
     {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
