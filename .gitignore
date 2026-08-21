@@ -11,4 +11,6 @@ __pycache__/
 
 .vercel/
 .vercel-cli/
+.vercel-data/
+.vercel-local/
 .env.local
