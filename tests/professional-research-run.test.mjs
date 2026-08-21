@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mapOsmItem, normalizeBrazilPhone, slugify } from './professional-research-run.mjs'
+import { mapOsmItem, normalizeBrazilPhone, slugify } from '../api/professional-research-run.mjs'
 
 describe('professional research helpers', () => {
   it('normaliza slugs e telefones brasileiros', () => {

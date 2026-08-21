@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { cleanText, rssItems, similarity, validateDraft } from './editorial-run.mjs'
+import { cleanText, rssItems, similarity, validateDraft } from '../api/editorial-run.mjs'
 
 test('limpa HTML e interpreta itens RSS', () => {
   assert.equal(cleanText('<p>Saúde &amp; cuidado</p>'), 'Saúde & cuidado')
