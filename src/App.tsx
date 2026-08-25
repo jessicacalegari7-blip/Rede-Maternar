@@ -51,6 +51,7 @@ function PublicHome() {
 export default function App() {
   return <BrowserRouter><AuthProvider><Routes>
     <Route path="/" element={<PublicHome />} />
+    <Route path="/categoria/:category" element={<PortalHome />} />
     <Route path="/para-profissionais" element={<Landing />} />
     <Route path="/profissionais" element={<Marketplace />} />
     <Route path="/encontrar/:specialty/:uf/:city" element={<DirectoryLanding />} />
