@@ -10,12 +10,12 @@
   ],
   "rewrites": [
     { "source": "/sitemap.xml", "destination": "/api/sitemap" },
-    { "source": "/sitemap-posts.xml", "destination": "/api/sitemap-posts?page=1" },
-    { "source": "/sitemap-posts-:page.xml", "destination": "/api/sitemap-posts?page=:page" },
-    { "source": "/sitemap-diretorio.xml", "destination": "/api/sitemap-directory?page=1" },
-    { "source": "/sitemap-diretorio-:page.xml", "destination": "/api/sitemap-directory?page=:page" },
-    { "source": "/sitemap-categorias.xml", "destination": "/api/sitemap-categories" },
-    { "source": "/sitemap-paginas.xml", "destination": "/api/sitemap-pages" },
+    { "source": "/sitemap-posts.xml", "destination": "/api/sitemap?type=posts&page=1" },
+    { "source": "/sitemap-posts-:page.xml", "destination": "/api/sitemap?type=posts&page=:page" },
+    { "source": "/sitemap-diretorio.xml", "destination": "/api/sitemap?type=directory&page=1" },
+    { "source": "/sitemap-diretorio-:page.xml", "destination": "/api/sitemap?type=directory&page=:page" },
+    { "source": "/sitemap-categorias.xml", "destination": "/api/sitemap?type=categories" },
+    { "source": "/sitemap-paginas.xml", "destination": "/api/sitemap?type=pages" },
     { "source": "/sitemap-news.xml", "destination": "/api/sitemap-news" },
     {
       "source": "/((?!api/).*)",

@@ -1,10 +1,16 @@
 import { adminClient } from './_lib/supabase-admin.mjs'
 import { MAX_URLS, SITE_URL, escapeXml, isoDate, sendXml } from './_lib/sitemap-xml.mjs'
+import { categories, directory, posts, staticPages } from './_lib/sitemap-handlers.mjs'
 
 const sitemapNode=(loc,lastmod)=>`<sitemap><loc>${escapeXml(loc)}</loc><lastmod>${isoDate(lastmod)}</lastmod></sitemap>`
 const pageUrls=(name,count)=>{const pages=Math.max(1,Math.ceil(count/MAX_URLS));return pages===1?[`${SITE_URL}/sitemap-${name}.xml`]:Array.from({length:pages},(_,index)=>`${SITE_URL}/sitemap-${name}-${index+1}.xml`)}
-export default async function handler(_request,response) {
+export default async function handler(request,response) {
   try {
+    const type=String(request.query?.type||'index')
+    if(type==='posts')return await posts(request,response)
+    if(type==='directory')return await directory(request,response)
+    if(type==='categories')return await categories(request,response)
+    if(type==='pages')return staticPages(request,response)
     const db=adminClient()
     const [{count:posts},{count:targets},{count:profiles}]=await Promise.all([
       db.from('news_articles').select('id',{count:'exact',head:true}).eq('status','published'),

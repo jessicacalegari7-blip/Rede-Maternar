@@ -7,3 +7,7 @@ tests/
 node_modules/
 dist/
 *.tsbuildinfo
+api/sitemap-posts.mjs
+api/sitemap-directory.mjs
+api/sitemap-categories.mjs
+api/sitemap-pages.mjs
