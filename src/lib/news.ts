@@ -24,6 +24,9 @@ export interface PortalVideo { id:string; title:string; description:string; yout
 
 export type NewsInput = Pick<PortalArticle, 'title' | 'seoTitle' | 'slug' | 'excerpt' | 'content' | 'category' | 'coverImageUrl' | 'authorName' | 'status' | 'featured'> & { id?: string }
 
+let portalArticlesCache: PortalArticle[] | null = null
+let portalArticlesRequest: Promise<PortalArticle[]> | null = null
+
 const demoContent = {
   prenatal: `O acompanhamento pré-natal é uma das principais formas de proteger a saúde da mãe e do bebê durante toda a gestação.
 
@@ -98,10 +101,14 @@ function mapRow(row: Record<string, unknown>): PortalArticle {
 
 export async function listPortalArticles(limit = 500): Promise<PortalArticle[]> {
   if (!isSupabaseConfigured || !supabase) return []
-  const { data, error } = await supabase.from('news_articles').select('*').eq('status', 'published').order('featured', { ascending: false }).order('published_at', { ascending: false }).limit(limit)
-  if (error) throw error
-  if (!data?.length) return []
-  return data.map(mapRow)
+  if (portalArticlesCache) return portalArticlesCache.slice(0, limit)
+  if (!portalArticlesRequest) portalArticlesRequest = (async () => {
+    const { data, error } = await supabase.from('news_articles').select('*').eq('status', 'published').order('featured', { ascending: false }).order('published_at', { ascending: false }).limit(500)
+    if (error) throw error
+    portalArticlesCache = (data || []).map(mapRow)
+    return portalArticlesCache
+  })().finally(() => { portalArticlesRequest = null })
+  return (await portalArticlesRequest).slice(0, limit)
 }
 
 export async function getPortalArticle(slug: string): Promise<PortalArticle> {
@@ -132,12 +139,14 @@ export async function saveArticle(input: NewsInput): Promise<void> {
   }
   const result = input.id ? await supabase.from('news_articles').update(payload).eq('id', input.id) : await supabase.from('news_articles').insert(payload)
   if (result.error) throw result.error
+  portalArticlesCache = null
 }
 
 export async function removeArticle(id: string): Promise<void> {
   if (!supabase) throw new Error('Supabase não configurado.')
   const { error } = await supabase.from('news_articles').delete().eq('id', id)
   if (error) throw error
+  portalArticlesCache = null
 }
 
 export function youtubeIdFrom(value:string) {
