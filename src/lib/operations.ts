@@ -393,6 +393,31 @@ export async function listAdminProspects() {
   return data??[]
 }
 
+export async function reviewAdminProspect(id:string,status:'approved'|'rejected'|'duplicate',publish=false) {
+  const {error}=await client().rpc('admin_review_clinic_prospect',{target_id:id,new_review_status:status,publish})
+  if(error) throw new Error(error.message)
+}
+
+export type DirectoryProfessional={id:string;name:string;primary_specialty:string;specialty_slug:string;city:string;city_slug:string;neighborhood:string|null;state_code:string;is_claimed:boolean;plan_type:'basic'|'premium';total_count?:number}
+
+export async function searchProfessionalDirectory(specialtySlug:string,stateCode:string,citySlug:string,page=1,pageSize=20) {
+  const {data,error}=await client().rpc('directory_search',{requested_specialty_slug:specialtySlug,requested_state_code:stateCode,requested_city_slug:citySlug,requested_page:page,requested_page_size:pageSize})
+  if(error) throw new Error(error.message)
+  return (data??[]) as DirectoryProfessional[]
+}
+
+export async function listDirectoryFallback(specialtySlug:string,stateCode:string,citySlug:string) {
+  const {data,error}=await client().rpc('directory_fallback',{requested_specialty_slug:specialtySlug,requested_state_code:stateCode,requested_city_slug:citySlug})
+  if(error) throw new Error(error.message)
+  return (data??[]) as DirectoryProfessional[]
+}
+
+export async function getDirectoryProfessional(id:string) {
+  const {data,error}=await client().from('published_clinic_directory').select('*').eq('id',id).maybeSingle()
+  if(error) throw new Error(error.message)
+  return data as DirectoryProfessional|null
+}
+
 export async function listMarketplaceProfessionals() {
   const {data,error}=await client().from('marketplace_professionals').select('*').order('verified',{ascending:false}).order('full_name')
   if(error) throw new Error(error.message)

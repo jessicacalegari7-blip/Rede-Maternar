@@ -96,7 +96,7 @@ function mapRow(row: Record<string, unknown>): PortalArticle {
   }
 }
 
-export async function listPortalArticles(limit = 12): Promise<PortalArticle[]> {
+export async function listPortalArticles(limit = 500): Promise<PortalArticle[]> {
   if (!isSupabaseConfigured || !supabase) return []
   const { data, error } = await supabase.from('news_articles').select('*').eq('status', 'published').order('featured', { ascending: false }).order('published_at', { ascending: false }).limit(limit)
   if (error) throw error

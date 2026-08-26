@@ -1,14 +1,21 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
-    "api/editorial-run.mjs": { "maxDuration": 300 }
+    "api/editorial-run.mjs": { "maxDuration": 300 },
+    "api/professional-research-run.mjs": { "maxDuration": 300 }
   },
   "crons": [
-    { "path": "/api/editorial-run", "schedule": "0 21 * * *" }
+    { "path": "/api/editorial-run", "schedule": "0 21 * * *" },
+    { "path": "/api/professional-research-run", "schedule": "30 22 * * *" }
   ],
   "rewrites": [
     { "source": "/sitemap.xml", "destination": "/api/sitemap" },
-    { "source": "/sitemap-pages.xml", "destination": "/api/sitemap-pages" },
+    { "source": "/sitemap-posts.xml", "destination": "/api/sitemap?type=posts&page=1" },
+    { "source": "/sitemap-posts-:page.xml", "destination": "/api/sitemap?type=posts&page=:page" },
+    { "source": "/sitemap-diretorio.xml", "destination": "/api/sitemap?type=directory&page=1" },
+    { "source": "/sitemap-diretorio-:page.xml", "destination": "/api/sitemap?type=directory&page=:page" },
+    { "source": "/sitemap-categorias.xml", "destination": "/api/sitemap?type=categories" },
+    { "source": "/sitemap-paginas.xml", "destination": "/api/sitemap?type=pages" },
     { "source": "/sitemap-news.xml", "destination": "/api/sitemap-news" },
     {
       "source": "/((?!api/).*)",

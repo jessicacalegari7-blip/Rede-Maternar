@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { Baby, Bell, BookOpen, ChevronRight, Heart, Menu, Mic2, Play, Search, Sparkles, Users } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Logo } from '../../components/Logo'
 import { maternalChildSpecialties } from '../../data/specialties'
 import { listPortalArticles, listPortalVideos, type PortalArticle, type PortalVideo } from '../../lib/news'
@@ -10,10 +10,12 @@ const articleDate = (article: PortalArticle) => new Date(article.publishedAt || 
 
 export function PortalHome() {
   const navigate = useNavigate()
+  const { category: categorySlug = '' } = useParams()
   const [selectedCategory, setSelectedCategory] = useState('')
   const [articles, setArticles] = useState<PortalArticle[]>([])
   const [videos,setVideos]=useState<PortalVideo[]>([])
-  useEffect(() => { void listPortalArticles().then(setArticles).catch(() => setArticles([]));void listPortalVideos().then(setVideos) }, [])
+  const [articlesLoading,setArticlesLoading]=useState(true)
+  useEffect(() => { void listPortalArticles().then(setArticles).catch(() => setArticles([])).finally(()=>setArticlesLoading(false));void listPortalVideos().then(setVideos) }, [])
 
   function searchProfessionals(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -25,13 +27,15 @@ export function PortalHome() {
     navigate(`/profissionais${query.size ? `?${query.toString()}` : ''}`)
   }
 
-  const publishedCategories = Array.from(new Set(articles.map(article => article.category.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'))
-  const categoryArticles = selectedCategory ? articles.filter(article => article.category === selectedCategory) : articles
-  const complementaryArticles = selectedCategory ? articles.filter(article => article.category !== selectedCategory) : []
-  const visibleArticles = [...categoryArticles, ...complementaryArticles]
+  const categoryKey=(value:string)=>value.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR')
+  const categoryMap=new Map<string,string>();articles.forEach(article=>{const key=categoryKey(article.category);if(key&&!categoryMap.has(key))categoryMap.set(key,article.category.trim())})
+  const publishedCategories = Array.from(categoryMap.values()).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  useEffect(()=>{if(!categorySlug){setSelectedCategory('');return}const match=publishedCategories.find(category=>categoryKey(category).replace(/\s+/g,'-')===categorySlug);setSelectedCategory(match||'')},[categorySlug,articles])
+  const visibleArticles = selectedCategory ? articles.filter(article => categoryKey(article.category) === categoryKey(selectedCategory)) : articles
   const featured = visibleArticles[0]
   const headlineArticles = visibleArticles.slice(1, 4)
   const mostReadArticles = visibleArticles.slice(4, 8)
+  const otherArticles = visibleArticles.slice(8)
 
   return <div className="portal-home">
     <header className="portal-topbar">
@@ -68,7 +72,7 @@ export function PortalHome() {
       <div className="portal-lead-grid">
         <article className={`lead-story${featured?.coverImageUrl ? ' has-real-image' : ''}`} style={featured?.coverImageUrl ? { backgroundImage: `linear-gradient(90deg, rgba(7,30,24,.9), rgba(7,30,24,.12)), url(${featured.coverImageUrl})` } : undefined}>
           {featured && <Link className="news-card-click-target" to={`/noticias/${featured.slug}`} aria-label={`Abrir matéria: ${featured.title}`} />}
-          {featured ? <><span>{featured.category}</span><div><h2>{featured.title}</h2><p>{featured.excerpt}</p><Link className="story-link" to={`/noticias/${featured.slug}`}>Ler notícia · {articleDate(featured)}</Link></div>{!featured.coverImageUrl && <div className="story-illustration">📰</div>}</> : <div><h2>Nenhuma matéria publicada</h2><p>Novos conteúdos serão disponibilizados em breve.</p></div>}
+          {featured ? <><span>{featured.category}</span><div><h2>{featured.title}</h2><p>{featured.excerpt}</p><Link className="story-link" to={`/noticias/${featured.slug}`}>Ler notícia · {articleDate(featured)}</Link></div>{!featured.coverImageUrl && <div className="story-illustration">📰</div>}</> : articlesLoading ? <div className="portal-news-skeleton" aria-label="Carregando matérias"><h2>Carregando conteúdos...</h2></div> : <div><h2>Nenhuma matéria publicada nesta categoria</h2><p>Novos conteúdos serão disponibilizados em breve.</p></div>}
         </article>
         <section className="headline-list">
           {headlineArticles.map(article => <article key={article.id}><Link className="news-card-click-target" to={`/noticias/${article.slug}`} aria-label={`Abrir matéria: ${article.title}`} />{article.coverImageUrl ? <img className="news-thumb-image" src={article.coverImageUrl} alt={`Capa: ${article.title}`} loading="lazy" decoding="async" width="320" height="180" /> : <div className="news-thumb sage">📰</div>}<div><span>{article.category}</span><h3>{article.title}</h3><small>{articleDate(article)}</small><Link className="news-read-link" to={`/noticias/${article.slug}`}>Ler notícia</Link></div></article>)}
@@ -79,6 +83,8 @@ export function PortalHome() {
       <section className="most-read-section"><div className="portal-section-title"><h2>Mais lidas</h2><a href="#noticias">Ver todas</a></div><div className="most-read-grid">
         {mostReadArticles.map((article,index) => <article key={article.id}><Link className="news-card-click-target" to={`/noticias/${article.slug}`} aria-label={`Abrir matéria: ${article.title}`} /><span>{index + 1}</span>{article.coverImageUrl ? <img className="most-read-image" src={article.coverImageUrl} alt={`Capa: ${article.title}`} loading="lazy" decoding="async" width="360" height="200" /> : <div className={`most-read-art art-${index + 1}`}>📰</div>}<small>{article.category}</small><h3>{article.title}</h3><p>{article.excerpt}</p><Link className="news-read-link" to={`/noticias/${article.slug}`}>Ler notícia</Link></article>)}
       </div></section>
+
+      {otherArticles.length>0&&<section id="noticias" className="all-news-section"><div className="portal-section-title"><h2>Outras notícias</h2></div><div className="all-news-grid">{otherArticles.map(article=><article className="all-news-card" key={article.id}><Link to={`/noticias/${article.slug}`} aria-label={`Abrir matéria: ${article.title}`}>{article.coverImageUrl?<img src={article.coverImageUrl} alt={`Capa: ${article.title}`} loading="lazy" decoding="async" width="480" height="270"/>:<div className="news-placeholder">MaterPlace</div>}<span>{article.category}</span><h3>{article.title}</h3><p>{article.excerpt}</p></Link></article>)}</div></section>}
 
       <section className="newsletter-card"><div><BookOpen /><span><strong>Receba conteúdos exclusivos para uma maternidade mais leve</strong><small>Artigos, dicas e novidades direto no seu e-mail.</small></span></div><form onSubmit={event => event.preventDefault()}><input type="email" placeholder="Seu melhor e-mail" /><button>Quero receber</button></form></section>
       <div className="portal-bottom-grid">

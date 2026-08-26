@@ -1,0 +1,13 @@
+.git/
+.vercel/
+.vercel-data/
+.vercel-local/
+tests/
+*.test.mjs
+node_modules/
+dist/
+*.tsbuildinfo
+api/sitemap-posts.mjs
+api/sitemap-directory.mjs
+api/sitemap-categories.mjs
+api/sitemap-pages.mjs

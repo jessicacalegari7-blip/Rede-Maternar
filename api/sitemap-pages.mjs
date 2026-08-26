@@ -1,2 +1,7 @@
-import { adminClient } from './_lib/supabase-admin.mjs'
-export default async function handler(_request,response){const {data}=await adminClient().from('news_articles').select('slug,published_at').eq('status','published').order('published_at',{ascending:false});const core=['','profissionais','planos','sobre','contato','politica-de-privacidade','termos-de-uso','cookies'];const urls=[...core.map(path=>({loc:`https://www.materplace.com.br/${path}`,date:new Date().toISOString()})),...(data||[]).map(item=>({loc:`https://www.materplace.com.br/noticias/${item.slug}`,date:item.published_at}))].map(item=>`<url><loc>${item.loc}</loc><lastmod>${item.date}</lastmod></url>`).join('');response.setHeader('Content-Type','application/xml; charset=utf-8');return response.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`)}
+import { SITE_URL, sendXml, urlNode, urlset } from './_lib/sitemap-xml.mjs'
+
+const pages=['','profissionais','para-profissionais','sobre','contato','privacidade','termos','lgpd','cookies','isencao-de-responsabilidade']
+export default function handler(_request,response) {
+  const lastmod=new Date().toISOString()
+  return sendXml(response,urlset(pages.map(path=>urlNode({loc:`${SITE_URL}/${path}`,lastmod,changefreq:'monthly',priority:path===''?'1.0':'0.3'}))),3600)
+}
