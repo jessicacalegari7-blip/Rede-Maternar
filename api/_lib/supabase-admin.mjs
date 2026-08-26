@@ -29,3 +29,13 @@ export async function requireOrganization(req, { manager = false } = {}) {
   return { db, user: auth.user, organizationId, membership, isAdmin: Boolean(profile?.is_platform_admin) }
 }
 
+export async function requirePlatformAdmin(req) {
+  const token = req.headers.authorization?.replace(/^Bearer\s+/i, '')
+  if (!token) throw Object.assign(new Error('Não autenticado.'), { status: 401 })
+  const db = adminClient()
+  const { data: auth, error: authError } = await db.auth.getUser(token)
+  if (authError || !auth.user) throw Object.assign(new Error('Sessão inválida.'), { status: 401 })
+  const { data: profile } = await db.from('profiles').select('is_platform_admin').eq('id', auth.user.id).maybeSingle()
+  if (!profile?.is_platform_admin) throw Object.assign(new Error('Acesso administrativo necessário.'), { status: 403 })
+  return { db, user: auth.user }
+}

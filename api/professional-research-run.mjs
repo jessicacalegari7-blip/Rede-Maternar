@@ -1,4 +1,4 @@
-import { adminClient } from './_lib/supabase-admin.mjs'
+import { adminClient, requirePlatformAdmin } from './_lib/supabase-admin.mjs'
 import { json } from './_lib/http.mjs'
 
 const SOURCE = 'OpenStreetMap/Overpass'
@@ -50,10 +50,36 @@ export function mapOsmItem(item, target) {
   }
 }
 
-function authorized(req) {
+function cronAuthorized(req) {
   const expected = process.env.CRON_SECRET?.trim()
   if (!expected) return false
   return req.headers.authorization === `Bearer ${expected}`
+}
+
+
+async function authorizedDatabase(req) {
+  if (cronAuthorized(req)) return adminClient()
+  return (await requirePlatformAdmin(req)).db
+}
+
+async function seedTargets(db) {
+  const response = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/municipios', { signal: AbortSignal.timeout(30000) })
+  if (!response.ok) throw new Error(`IBGE respondeu HTTP ${response.status}`)
+  const municipalities = await response.json()
+  const populationResponse = await fetch('https://servicodados.ibge.gov.br/api/v3/agregados/6579/periodos/-6/variaveis/9324?localidades=N6[all]', { signal: AbortSignal.timeout(60000) })
+  if (!populationResponse.ok) throw new Error(`IBGE População respondeu HTTP ${populationResponse.status}`)
+  const populationPayload = await populationResponse.json()
+  const series = populationPayload?.[0]?.resultados?.[0]?.series || []
+  const populationById = new Map(series.map(item => [String(item.localidade?.id), Number(Object.values(item.serie || {}).at(-1) || 0)]))
+  const topCities = municipalities.map(city => ({city:city.nome,state_code:city.microrregiao?.mesorregiao?.UF?.sigla || city['regiao-imediata']?.['regiao-intermediaria']?.UF?.sigla,population:populationById.get(String(city.id))||0})).filter(city=>city.state_code).sort((a,b)=>b.population-a.population).slice(0,200)
+  const { data: specialties, error: specialtiesError } = await db.from('specialties').select('name,slug').eq('active',true).order('name')
+  if (specialtiesError) throw specialtiesError
+  const rows = topCities.flatMap((city,cityIndex)=>(specialties||[]).map((specialty,specialtyIndex)=>({city:city.city,state_code:city.state_code,specialty:specialty.name,specialty_slug:specialty.slug,city_slug:slugify(city.city),city_population:city.population,city_rank:cityIndex+1,priority:(cityIndex+1)*100+specialtyIndex,enabled:true})))
+  for (let index=0; index<rows.length; index+=500) {
+    const { error } = await db.from('professional_research_targets').upsert(rows.slice(index,index+500),{onConflict:'specialty_slug,state_code,city_slug',ignoreDuplicates:false})
+    if (error) throw error
+  }
+  return { cities:topCities.length,specialties:specialties?.length||0,targets:rows.length }
 }
 
 async function collect(target) {
@@ -68,8 +94,12 @@ async function collect(target) {
 
 export default async function handler(req, res) {
   if (!['GET','POST'].includes(req.method)) return json(res,405,{error:'Método não permitido.'})
-  if (!authorized(req)) return json(res,401,{error:'Execução não autorizada.'})
-  const db = adminClient()
+  let db
+  try { db = await authorizedDatabase(req) } catch (error) { return json(res,error.status||401,{error:error.message}) }
+  if (req.method==='POST' && req.body?.action==='seed') {
+    try { return json(res,200,{ok:true,...await seedTargets(db)}) }
+    catch (error) { return json(res,502,{error:error instanceof Error?error.message:'Falha ao gerar fila.'}) }
+  }
   const { data: target, error: targetError } = await db.from('professional_research_targets').select('*')
     .eq('enabled',true).order('priority').order('last_run_at',{ascending:true,nullsFirst:true}).limit(1).maybeSingle()
   if (targetError) return json(res,500,{error:targetError.message})
@@ -94,7 +124,7 @@ export default async function handler(req, res) {
       db.from('professional_research_runs').update({status:'completed',fetched_count:rows.length,inserted_count:inserted,updated_count:updated,finished_at:new Date().toISOString()}).eq('id',run.id),
       db.from('professional_research_targets').update({last_run_at:new Date().toISOString(),last_status:'completed',last_result_count:rows.length}).eq('id',target.id),
     ])
-    return json(res,200,{ok:true,target:`${target.specialty} em ${target.city}/${target.state_code}`,fetched:rows.length,inserted,updated,review:'Todos permanecem privados até aprovação humana.'})
+    return json(res,200,{ok:true,target:`${target.specialty} em ${target.city}/${target.state_code}`,fetched:rows.length,inserted,updated,publication:'Perfis básicos válidos foram publicados automaticamente; contatos permanecem privados.'})
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Falha desconhecida'
     await Promise.all([
