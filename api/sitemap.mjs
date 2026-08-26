@@ -21,5 +21,5 @@ export default async function handler(request,response) {
     const urls=[...pageUrls('posts',postCount||0),...pageUrls('diretorio',(targetCount||0)+(profileCount||0)),`${SITE_URL}/sitemap-categorias.xml`,`${SITE_URL}/sitemap-paginas.xml`]
     const xml=`<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map(url=>sitemapNode(url,new Date())).join('')}</sitemapindex>`
     return sendXml(response,xml)
-  } catch(error) { return response.status(500).json({error:error instanceof Error?error.message:'Erro ao gerar sitemap.'}) }
+  } catch(error) { return response.status(500).json({error:error?.message||'Erro ao gerar sitemap.'}) }
 }
