@@ -15,7 +15,7 @@ export function PortalHome() {
   const [articles, setArticles] = useState<PortalArticle[]>([])
   const [videos,setVideos]=useState<PortalVideo[]>([])
   const [articlesLoading,setArticlesLoading]=useState(true)
-  useEffect(() => { void listPortalArticles().then(setArticles).catch(() => setArticles([])).finally(()=>setArticlesLoading(false));void listPortalVideos().then(setVideos) }, [])
+  useEffect(() => { let active=true;void listPortalArticles().then(items=>{if(active)setArticles(items)}).catch(() => {if(active)setArticles([])}).finally(()=>{if(active)setArticlesLoading(false)});void listPortalVideos().then(items=>{if(active)setVideos(items)});return()=>{active=false} }, [])
 
   function searchProfessionals(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
