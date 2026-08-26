@@ -398,6 +398,18 @@ export async function reviewAdminProspect(id:string,status:'approved'|'rejected'
   if(error) throw new Error(error.message)
 }
 
+export type ResearchTarget={id:string;city:string;state_code:string;specialty:string;enabled:boolean;priority:number;last_run_at:string|null;last_status:string|null;last_result_count:number;city_rank:number|null}
+export type ResearchRun={id:string;source_name:string;status:string;fetched_count:number;inserted_count:number;updated_count:number;error_message:string|null;started_at:string;finished_at:string|null;professional_research_targets:{city:string;state_code:string;specialty:string}|null}
+
+export async function listResearchTargets(){const {data,error}=await client().from('professional_research_targets').select('*').order('priority').limit(500);if(error)throw error;return (data||[]) as ResearchTarget[]}
+export async function listResearchRuns(){const {data,error}=await client().from('professional_research_runs').select('*,professional_research_targets(city,state_code,specialty)').order('started_at',{ascending:false}).limit(30);if(error)throw error;return (data||[]) as ResearchRun[]}
+export async function setResearchTargetEnabled(id:string,enabled:boolean){const {error}=await client().from('professional_research_targets').update({enabled}).eq('id',id);if(error)throw error}
+export async function runProfessionalResearch(action:'run'|'seed'='run'){
+  const db=client();const {data}=await db.auth.getSession();const token=data.session?.access_token;if(!token)throw new Error('Sessão administrativa expirada.')
+  const response=await fetch('/api/professional-research-run',{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},body:JSON.stringify({action})})
+  const payload=await response.json();if(!response.ok)throw new Error(payload.error||'Falha ao executar pesquisa.');return payload
+}
+
 export type DirectoryProfessional={id:string;name:string;primary_specialty:string;specialty_slug:string;city:string;city_slug:string;neighborhood:string|null;state_code:string;is_claimed:boolean;plan_type:'basic'|'premium';total_count?:number}
 
 export async function searchProfessionalDirectory(specialtySlug:string,stateCode:string,citySlug:string,page=1,pageSize=20) {
@@ -408,6 +420,18 @@ export async function searchProfessionalDirectory(specialtySlug:string,stateCode
 
 export async function listDirectoryFallback(specialtySlug:string,stateCode:string,citySlug:string) {
   const {data,error}=await client().rpc('directory_fallback',{requested_specialty_slug:specialtySlug,requested_state_code:stateCode,requested_city_slug:citySlug})
+  if(error) throw new Error(error.message)
+  return (data??[]) as DirectoryProfessional[]
+}
+
+export async function searchProfessionalDirectoryByCity(specialtySlug:string,citySlug:string,page=1,pageSize=20) {
+  const {data,error}=await client().rpc('directory_search_by_city',{requested_specialty_slug:specialtySlug,requested_city_slug:citySlug,requested_page:page,requested_page_size:pageSize})
+  if(error) throw new Error(error.message)
+  return (data??[]) as DirectoryProfessional[]
+}
+
+export async function listDirectoryFallbackByCity(specialtySlug:string,citySlug:string) {
+  const {data,error}=await client().rpc('directory_fallback_by_city',{requested_specialty_slug:specialtySlug,requested_city_slug:citySlug})
   if(error) throw new Error(error.message)
   return (data??[]) as DirectoryProfessional[]
 }
