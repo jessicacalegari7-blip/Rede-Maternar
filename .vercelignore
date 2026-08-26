@@ -11,3 +11,4 @@ api/sitemap-posts.mjs
 api/sitemap-directory.mjs
 api/sitemap-categories.mjs
 api/sitemap-pages.mjs
+public/sitemap.xml
