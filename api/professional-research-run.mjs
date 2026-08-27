@@ -3,6 +3,7 @@ import { json } from './_lib/http.mjs'
 
 const SOURCE = 'OpenStreetMap/Overpass'
 const USER_AGENT = 'MaterPlaceDirectoryBot/1.0 (https://materplace.com.br/contato)'
+const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'
 
 export function slugify(value = '') {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
@@ -18,8 +19,14 @@ export function normalizeBrazilPhone(value = '') {
 }
 
 export function overpassQuery({ city, state_code, specialty }) {
-  const safe = String(specialty).replace(/["\\]/g, '')
-  return `[out:json][timeout:120];area["name"="${city}"]["boundary"="administrative"]->.city;(nwr(area.city)["healthcare"]["name"~"${safe}",i];nwr(area.city)["amenity"~"clinic|doctors|hospital"]["name"~"${safe}",i];nwr(area.city)["healthcare:speciality"~"${safe}",i];);out center tags;`
+  const normalized = slugify(specialty)
+  const aliases = normalized.includes('pediatr')
+    ? 'pediatr|paediatr|infantil|crianca'
+    : normalized.includes('amament')
+      ? 'amament|lacta'
+      : normalized.split('-').filter(part => part.length > 3).join('|')
+  const safe = aliases.replace(/["\\]/g, '')
+  return `[out:json][timeout:45];area["name"="${city}"]["boundary"="administrative"]["admin_level"="8"]->.city;(nwr(area.city)["healthcare:speciality"~"${safe}",i];nwr(area.city)["name"~"${safe}",i]["amenity"~"clinic|doctors|hospital"];nwr(area.city)["name"~"${safe}",i]["healthcare"];);out center tags 200;`
 }
 
 function sourceUrl(item) { return `https://www.openstreetmap.org/${item.type}/${item.id}` }
@@ -48,6 +55,69 @@ export function mapOsmItem(item, target) {
     last_seen_at: new Date().toISOString(),
     source_payload: { osm_type: item.type, osm_id: item.id, tags: safeTags },
   }
+}
+
+function nominatimQueries(target) {
+  const specialty = target.specialty || ''
+  const normalized = slugify(specialty)
+  const terms = normalized.includes('pediatr')
+    ? [specialty, 'clinica pediatrica', 'pediatra', 'hospital infantil']
+    : normalized.includes('amament')
+      ? [specialty, 'consultoria de amamentacao', 'lactacao']
+      : [specialty]
+  return [...new Set(terms.map(term => `${term} ${target.city} ${target.state_code} Brasil`))]
+}
+
+function mapNominatimItem(item, target) {
+  const name = String(item.name || item.display_name || '').split(',')[0].trim()
+  if (!name || !item.osm_type || !item.osm_id) return null
+  const address = item.address || {}
+  const extras = item.extratags || {}
+  const osmType = String(item.osm_type).toLowerCase() === 'node'
+    ? 'node'
+    : String(item.osm_type).toLowerCase() === 'way' ? 'way' : 'relation'
+  return {
+    name,
+    primary_specialty: target.specialty,
+    specialty_slug: target.specialty_slug || slugify(target.specialty),
+    city: target.city,
+    city_slug: target.city_slug || slugify(target.city),
+    neighborhood: address.suburb || address.neighbourhood || address.city_district || null,
+    state_code: target.state_code,
+    whatsapp: normalizeBrazilPhone(extras['contact:whatsapp'] || extras.whatsapp || extras['contact:phone'] || extras.phone),
+    source_url: `https://www.openstreetmap.org/${osmType}/${item.osm_id}`,
+    source_name: 'OpenStreetMap/Nominatim',
+    source_record_id: `${osmType}/${item.osm_id}`,
+    source_checked_at: new Date().toISOString(),
+    last_seen_at: new Date().toISOString(),
+    source_payload: { osm_type: osmType, osm_id: item.osm_id, category: item.category, type: item.type },
+  }
+}
+
+async function collectFromNominatim(target) {
+  const collected = new Map()
+  for (const query of nominatimQueries(target)) {
+    const url = new URL(NOMINATIM_URL)
+    url.searchParams.set('format', 'jsonv2')
+    url.searchParams.set('addressdetails', '1')
+    url.searchParams.set('extratags', '1')
+    url.searchParams.set('countrycodes', 'br')
+    url.searchParams.set('limit', '20')
+    url.searchParams.set('q', query)
+    const response = await fetch(url, {
+      headers: { 'user-agent': USER_AGENT, accept: 'application/json' },
+      signal: AbortSignal.timeout(25000),
+    })
+    if (!response.ok) throw new Error(`Nominatim respondeu HTTP ${response.status}`)
+    const payload = await response.json()
+    for (const item of payload) {
+      const row = mapNominatimItem(item, target)
+      if (row) collected.set(row.source_record_id, row)
+    }
+    // A política pública do Nominatim limita clientes a uma solicitação por segundo.
+    await new Promise(resolve => setTimeout(resolve, 1100))
+  }
+  return [...collected.values()]
 }
 
 function cronAuthorized(req) {
@@ -83,13 +153,37 @@ async function seedTargets(db) {
 }
 
 async function collect(target) {
-  const response = await fetch(process.env.OVERPASS_API_URL || 'https://overpass-api.de/api/interpreter', {
-    method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', 'user-agent': USER_AGENT },
-    body: new URLSearchParams({ data: overpassQuery(target) }), signal: AbortSignal.timeout(150000),
-  })
-  if (!response.ok) throw new Error(`Fonte pública respondeu HTTP ${response.status}`)
-  const payload = await response.json()
-  return (payload.elements || []).map(item => mapOsmItem(item, target)).filter(Boolean)
+  const configured = process.env.OVERPASS_API_URL?.trim()
+  const endpoints = [...new Set([
+    configured,
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.nchc.org.tw/api/interpreter',
+  ].filter(Boolean))]
+  const failures = []
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', 'user-agent': USER_AGENT },
+        body: new URLSearchParams({ data: overpassQuery(target) }), signal: AbortSignal.timeout(65000),
+      })
+      if (!response.ok) { failures.push(`${new URL(endpoint).host}: HTTP ${response.status}`); continue }
+      const payload = await response.json()
+      const rows = (payload.elements || []).map(item => mapOsmItem(item, target)).filter(Boolean)
+      if (rows.length) return rows
+      failures.push(`${new URL(endpoint).host}: nenhum resultado`)
+    } catch (error) {
+      failures.push(`${new URL(endpoint).host}: ${error instanceof Error ? error.message : 'falha'}`)
+    }
+  }
+  try {
+    const fallbackRows = await collectFromNominatim(target)
+    if (fallbackRows.length) return fallbackRows
+    failures.push('nominatim.openstreetmap.org: nenhum resultado')
+  } catch (error) {
+    failures.push(`nominatim.openstreetmap.org: ${error instanceof Error ? error.message : 'falha'}`)
+  }
+  throw new Error(`Fontes públicas indisponíveis (${failures.join('; ')})`)
 }
 
 export default async function handler(req, res) {
