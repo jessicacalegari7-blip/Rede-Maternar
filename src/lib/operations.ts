@@ -443,9 +443,21 @@ export async function getDirectoryProfessional(id:string) {
 }
 
 export async function listMarketplaceProfessionals() {
-  const {data,error}=await client().from('marketplace_professionals').select('*').order('verified',{ascending:false}).order('full_name')
-  if(error) throw new Error(error.message)
-  return data??[]
+  const db=client()
+  const [profilesResult,directoryResult]=await Promise.all([
+    db.from('marketplace_professionals').select('*').order('verified',{ascending:false}).order('full_name'),
+    db.from('published_clinic_directory').select('*').order('plan_type',{ascending:false}).order('name'),
+  ])
+  if(profilesResult.error) throw new Error(profilesResult.error.message)
+  if(directoryResult.error) throw new Error(directoryResult.error.message)
+  const profiles=(profilesResult.data??[]).map(item=>({...item,directory_profile:false}))
+  const profileIds=new Set(profiles.map(item=>item.id))
+  const directory=(directoryResult.data??[]).filter(item=>!profileIds.has(item.id)).map(item=>({
+    id:item.id,full_name:item.name,clinic_name:null,verified:false,rating:0,review_count:0,
+    specialties:[item.primary_specialty],city:item.city,state_code:item.state_code,
+    neighborhood:item.neighborhood,whatsapp:null,directory_profile:true,
+  }))
+  return [...profiles,...directory]
 }
 
 export async function recordProfessionalProfileView(professionalId:string) {
