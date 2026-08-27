@@ -17,7 +17,7 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { PlanGate } from './components/PlanGate'
 import { SetPassword } from './pages/public/SetPassword'
 import { RecoverPassword } from './pages/public/RecoverPassword'
-import { AboutPage, ContactPage, CookiePolicy, DisclaimerPage, LgpdPage, PrivacyPolicy, TermsOfUse } from './pages/public/Legal'
+import { AboutPage, ContactPage, CookiePolicy, DisclaimerPage, EditorialStaffPage, LgpdPage, PrivacyPolicy, TermsOfUse } from './pages/public/Legal'
 import { PortalArticlePage } from './pages/public/PortalArticle'
 import { CookieConsent } from './components/CookieConsent'
 
@@ -73,6 +73,7 @@ export default function App() {
     <Route path="/cookies" element={<CookiePolicy />} />
     <Route path="/contato" element={<ContactPage />} />
     <Route path="/sobre" element={<AboutPage />} />
+    <Route path="/expediente" element={<EditorialStaffPage />} />
     <Route path="/isencao-de-responsabilidade" element={<DisclaimerPage />} />
     <Route path="/perfil/:slug" element={<PublicProfessionalProfile />} />
     <Route path="/convite/:token" element={<PatientInvitation />} />

@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Logo } from '../../components/Logo'
 import { getPortalArticle, listPortalArticles, type PortalArticle } from '../../lib/news'
 import { LegalFooter } from './Legal'
+import { WebPushPrompt } from '../../components/WebPushPrompt'
 
 export function PortalArticlePage() {
   const navigate = useNavigate()
@@ -72,6 +73,6 @@ export function PortalArticlePage() {
       </section>
       <aside className="article-suggestions"><span>Continue lendo</span><h2>Matérias sugeridas</h2>{suggestions.map((item, index) => <Link to={`/noticias/${item.slug}`} key={item.id}>{item.coverImageUrl?<img className="suggestion-art" src={item.coverImageUrl} alt={`Capa: ${item.title}`} loading="lazy" width="164" height="152"/>:<div className={`suggestion-art suggestion-${index + 1}`}>{['🤱','👶','🩺','💗'][index]}</div>}<small>{item.category}</small><strong>{item.title}</strong><em>Ler matéria</em></Link>)}</aside>
     </main>
-    <LegalFooter />
+    {article&&<WebPushPrompt category={article.category}/>}<LegalFooter />
   </div>
 }
