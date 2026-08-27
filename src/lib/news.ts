@@ -26,6 +26,28 @@ export type NewsInput = Pick<PortalArticle, 'title' | 'seoTitle' | 'slug' | 'exc
 
 let portalArticlesCache: PortalArticle[] | null = null
 let portalArticlesRequest: Promise<PortalArticle[]> | null = null
+const PORTAL_ARTICLES_STORAGE_KEY = 'materplace.portal-articles.v1'
+
+function readStoredPortalArticles(): PortalArticle[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(PORTAL_ARTICLES_STORAGE_KEY) || '[]')
+    return Array.isArray(stored) ? stored : []
+  } catch {
+    return []
+  }
+}
+
+function storePortalArticles(articles: PortalArticle[]) {
+  if (typeof window === 'undefined' || !articles.length) return
+  try {
+    window.localStorage.setItem(PORTAL_ARTICLES_STORAGE_KEY, JSON.stringify(articles))
+  } catch {
+    // O cache é apenas uma proteção contra falhas momentâneas de rede.
+  }
+}
+
+const wait = (milliseconds: number) => new Promise(resolve => window.setTimeout(resolve, milliseconds))
 
 const demoContent = {
   prenatal: `O acompanhamento pré-natal é uma das principais formas de proteger a saúde da mãe e do bebê durante toda a gestação.
@@ -100,13 +122,26 @@ function mapRow(row: Record<string, unknown>): PortalArticle {
 }
 
 export async function listPortalArticles(limit = 500): Promise<PortalArticle[]> {
-  if (!isSupabaseConfigured || !supabase) return []
+  if (!isSupabaseConfigured || !supabase) return readStoredPortalArticles().slice(0, limit)
   if (portalArticlesCache) return portalArticlesCache.slice(0, limit)
   if (!portalArticlesRequest) portalArticlesRequest = (async () => {
-    const { data, error } = await supabase.from('news_articles').select('*').eq('status', 'published').order('featured', { ascending: false }).order('published_at', { ascending: false }).limit(500)
-    if (error) throw error
-    portalArticlesCache = (data || []).map(mapRow)
-    return portalArticlesCache
+    let lastError: unknown = null
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const { data, error } = await supabase.from('news_articles').select('*').eq('status', 'published').order('featured', { ascending: false }).order('published_at', { ascending: false }).limit(500)
+      if (!error && data?.length) {
+        portalArticlesCache = data.map(mapRow)
+        storePortalArticles(portalArticlesCache)
+        return portalArticlesCache
+      }
+      lastError = error || new Error('O Supabase retornou uma lista vazia de notícias publicadas.')
+      if (attempt < 2) await wait(250 * (attempt + 1))
+    }
+    const stored = readStoredPortalArticles()
+    if (stored.length) {
+      portalArticlesCache = stored
+      return stored
+    }
+    throw lastError
   })().finally(() => { portalArticlesRequest = null })
   return (await portalArticlesRequest).slice(0, limit)
 }

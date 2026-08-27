@@ -15,7 +15,17 @@ export function PortalHome() {
   const [articles, setArticles] = useState<PortalArticle[]>([])
   const [videos,setVideos]=useState<PortalVideo[]>([])
   const [articlesLoading,setArticlesLoading]=useState(true)
-  useEffect(() => { let active=true;void listPortalArticles().then(items=>{if(active)setArticles(items)}).catch(() => {if(active)setArticles([])}).finally(()=>{if(active)setArticlesLoading(false)});void listPortalVideos().then(items=>{if(active)setVideos(items)});return()=>{active=false} }, [])
+  const [articlesError,setArticlesError]=useState(false)
+  useEffect(() => {
+    let active=true
+    const loadArticles=()=>{setArticlesLoading(true);setArticlesError(false);void listPortalArticles().then(items=>{if(active)setArticles(items)}).catch(()=>{if(active)setArticlesError(true)}).finally(()=>{if(active)setArticlesLoading(false)})}
+    loadArticles()
+    const refresh=()=>{if(document.visibilityState==='visible')loadArticles()}
+    window.addEventListener('online',loadArticles)
+    document.addEventListener('visibilitychange',refresh)
+    void listPortalVideos().then(items=>{if(active)setVideos(items)})
+    return()=>{active=false;window.removeEventListener('online',loadArticles);document.removeEventListener('visibilitychange',refresh)}
+  }, [])
 
   function searchProfessionals(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -72,7 +82,7 @@ export function PortalHome() {
       <div className="portal-lead-grid">
         <article className={`lead-story${featured?.coverImageUrl ? ' has-real-image' : ''}`}>
           {featured && <Link className="news-card-click-target" to={`/noticias/${featured.slug}`} aria-label={`Abrir matéria: ${featured.title}`} />}
-          {featured ? <>{featured.coverImageUrl&&<img className="lead-story-image" src={featured.coverImageUrl} alt="" width="1600" height="900" fetchPriority="high" decoding="async"/>}<span>{featured.category}</span><div><h2>{featured.title}</h2><p>{featured.excerpt}</p><Link className="story-link" to={`/noticias/${featured.slug}`} aria-label={`Abrir matéria: ${featured.title}`}>Ler notícia · {articleDate(featured)}</Link></div>{!featured.coverImageUrl && <div className="story-illustration">📰</div>}</> : articlesLoading ? <div className="portal-news-skeleton" aria-label="Carregando matérias"><h2>Carregando conteúdos...</h2></div> : <div><h2>Nenhuma matéria publicada nesta categoria</h2><p>Novos conteúdos serão disponibilizados em breve.</p></div>}
+          {featured ? <>{featured.coverImageUrl&&<img className="lead-story-image" src={featured.coverImageUrl} alt={`Capa: ${featured.title}`} width="1600" height="900" fetchPriority="high" decoding="async"/>}<span>{featured.category}</span><div><h2>{featured.title}</h2><p>{featured.excerpt}</p><Link className="story-link" to={`/noticias/${featured.slug}`} aria-label={`Abrir matéria: ${featured.title}`}>Ler notícia · {articleDate(featured)}</Link></div>{!featured.coverImageUrl && <div className="story-illustration">📰</div>}</> : articlesLoading ? <div className="portal-news-skeleton" aria-label="Carregando matérias"><h2>Carregando conteúdos...</h2></div> : articlesError ? <div><h2>Não foi possível atualizar as matérias</h2><p>Verifique sua conexão. A página tentará novamente automaticamente.</p></div> : <div><h2>Nenhuma matéria publicada nesta categoria</h2><p>Novos conteúdos serão disponibilizados em breve.</p></div>}
         </article>
         <section className="headline-list">
           {headlineArticles.map(article => <article key={article.id}><Link className="news-card-click-target" to={`/noticias/${article.slug}`} aria-label={`Abrir matéria: ${article.title}`} />{article.coverImageUrl ? <img className="news-thumb-image" src={article.coverImageUrl} alt={`Capa: ${article.title}`} loading="lazy" decoding="async" width="320" height="180" /> : <div className="news-thumb sage">📰</div>}<div><span>{article.category}</span><h3>{article.title}</h3><small>{articleDate(article)}</small><Link className="news-read-link" to={`/noticias/${article.slug}`} aria-label={`Abrir matéria: ${article.title}`}>Ler notícia</Link></div></article>)}
