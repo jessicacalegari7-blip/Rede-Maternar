@@ -1,0 +1,11 @@
+const esc=value=>String(value||'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]))
+export default async function handler(req,res){
+  const slug=String(req.query?.slug||'').replace(/[^a-z0-9-]/gi,'');if(!slug)return res.status(400).send('Slug inválido')
+  const base=process.env.SUPABASE_URL||process.env.VITE_SUPABASE_URL,key=process.env.SUPABASE_SERVICE_ROLE_KEY||process.env.VITE_SUPABASE_ANON_KEY
+  if(!base||!key)return res.redirect(302,`/noticias/${slug}`)
+  const response=await fetch(`${base}/rest/v1/news_articles?slug=eq.${encodeURIComponent(slug)}&status=eq.published&select=title,excerpt,cover_image_url&limit=1`,{headers:{apikey:key,Authorization:`Bearer ${key}`}})
+  const [article]=response.ok?await response.json():[];if(!article)return res.redirect(302,`/noticias/${slug}`)
+  const url=`https://materplace.com.br/noticias/${slug}`,image=article.cover_image_url||'https://materplace.com.br/brand/materplace-logo.png'
+  res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Cache-Control','public, s-maxage=600, stale-while-revalidate=3600')
+  return res.status(200).send(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(article.title)}</title><meta name="description" content="${esc(article.excerpt)}"><link rel="canonical" href="${url}"><meta property="og:type" content="article"><meta property="og:locale" content="pt_BR"><meta property="og:site_name" content="MaterPlace"><meta property="og:title" content="${esc(article.title)}"><meta property="og:description" content="${esc(article.excerpt)}"><meta property="og:image" content="${esc(image)}"><meta property="og:image:secure_url" content="${esc(image)}"><meta property="og:image:alt" content="Imagem de capa: ${esc(article.title)}"><meta property="og:image:width" content="1600"><meta property="og:image:height" content="900"><meta property="og:url" content="${url}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${esc(article.title)}"><meta name="twitter:description" content="${esc(article.excerpt)}"><meta name="twitter:image" content="${esc(image)}"><meta name="twitter:image:alt" content="Imagem de capa: ${esc(article.title)}"></head><body><h1>${esc(article.title)}</h1><p>${esc(article.excerpt)}</p><a href="${url}">Ler na MaterPlace</a></body></html>`)
+}

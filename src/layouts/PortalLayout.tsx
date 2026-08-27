@@ -83,7 +83,7 @@ export function PortalLayout({ role }: { role: UserRole }) {
       <nav className="nav">{items.map(([label, to, Icon]) =>
         <NavLink key={to} to={to} end={to.split('/').length === 2}><Icon size={18} />{label}</NavLink>,
       )}</nav>
-      <div className="portal-legal-menu"><Link to="/termos">Termos</Link><Link to="/lgpd">LGPD</Link><Link to="/privacidade">Privacidade</Link><Link to="/cookies">Cookies</Link><Link to="/contato">Contato</Link></div><button className="sidebar-logout" onClick={signOut}><LogOut size={18} />Sair</button>
+      <div className="portal-legal-menu"><Link to="/expediente">Expediente</Link><Link to="/termos">Termos</Link><Link to="/lgpd">LGPD</Link><Link to="/privacidade">Privacidade</Link><Link to="/cookies">Cookies</Link><Link to="/contato">Contato</Link></div><button className="sidebar-logout" onClick={signOut}><LogOut size={18} />Sair</button>
     </aside>
     <main className="main">
       <button className="mobile-menu-trigger" type="button" onClick={() => setMobileMenuOpen(true)} aria-label="Abrir menu"><Menu /> Menu</button>

@@ -2,7 +2,7 @@ import { adminClient } from './supabase-admin.mjs'
 import { MAX_URLS, SITE_URL, fetchRange, pageNumber, sendXml, urlNode, urlset } from './sitemap-xml.mjs'
 
 const slugify=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
-const pages=['','profissionais','para-profissionais','sobre','contato','privacidade','termos','lgpd','cookies','isencao-de-responsabilidade']
+const pages=['','profissionais','para-profissionais','sobre','expediente','contato','privacidade','termos','lgpd','cookies','isencao-de-responsabilidade']
 
 async function fetchWindow(buildQuery,offset,limit){const rows=[];for(let cursor=offset;cursor<offset+limit;cursor+=1000){const end=Math.min(cursor+999,offset+limit-1);const {data,error}=await buildQuery().range(cursor,end);if(error)throw error;rows.push(...(data||[]));if(!data||data.length<end-cursor+1)break}return rows}
 

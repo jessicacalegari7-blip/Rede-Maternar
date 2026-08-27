@@ -13,6 +13,7 @@
     { "source": "/brand/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=2592000, stale-while-revalidate=86400" }] }
   ],
   "rewrites": [
+    { "source": "/noticias/:slug", "has": [{ "type": "header", "key": "user-agent", "value": ".*(facebookexternalhit|Facebot|Twitterbot|LinkedInBot|WhatsApp|TelegramBot).*" }], "destination": "/api/article-share?slug=:slug" },
     { "source": "/sitemap.xml", "destination": "/api/sitemap" },
     { "source": "/sitemap-posts.xml", "destination": "/api/sitemap?type=posts&page=1" },
     { "source": "/sitemap-posts-:page.xml", "destination": "/api/sitemap?type=posts&page=:page" },
