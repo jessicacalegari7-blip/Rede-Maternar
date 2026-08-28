@@ -7,8 +7,7 @@ update public.clinic_prospects set primary_specialty='Fonoaudióloga Infantil',s
 update public.clinic_prospects set primary_specialty='Pediatra',specialty_slug='pediatra',updated_at=now() where specialty_slug='pediatria';
 update public.clinic_prospects set publication_status='unpublished',updated_at=now()
 where nullif(regexp_replace(coalesce(whatsapp,''),'\D','','g'),'') is null and is_claimed is not true;
-drop view if exists public.published_clinic_directory;
-create view public.published_clinic_directory as
+create or replace view public.published_clinic_directory as
 select id,name,primary_specialty,specialty_slug,city,city_slug,neighborhood,state_code,is_claimed,plan_type,created_at,updated_at
 from public.clinic_prospects where review_status='approved' and publication_status in ('published','claimed')
 and (is_claimed is true or nullif(regexp_replace(coalesce(whatsapp,''),'\D','','g'),'') is not null);

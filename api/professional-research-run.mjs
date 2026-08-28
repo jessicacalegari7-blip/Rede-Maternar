@@ -231,12 +231,16 @@ async function seedTargets(db) {
   const topCities = municipalities.map(city => ({city:city.nome,state_code:city.microrregiao?.mesorregiao?.UF?.sigla || city['regiao-imediata']?.['regiao-intermediaria']?.UF?.sigla,population:populationById.get(String(city.id))||0})).filter(city=>city.state_code).sort((a,b)=>b.population-a.population).slice(0,200)
   const { data: specialties, error: specialtiesError } = await db.from('specialties').select('name,slug').eq('active',true).order('name')
   if (specialtiesError) throw specialtiesError
-  const rows = topCities.flatMap((city,cityIndex)=>(specialties||[]).map((specialty,specialtyIndex)=>({city:city.city,state_code:city.state_code,specialty:specialty.name,specialty_slug:specialty.slug,city_slug:slugify(city.city),city_population:city.population,city_rank:cityIndex+1,priority:(cityIndex+1)*100+specialtyIndex,enabled:true})))
+  const canonicalSpecialties = [...new Map((specialties || []).map(specialty => {
+    const normalized = canonicalSpecialty(specialty.name, specialty.slug)
+    return [normalized.slug, normalized]
+  })).values()]
+  const rows = topCities.flatMap((city,cityIndex)=>canonicalSpecialties.map((specialty,specialtyIndex)=>({city:city.city,state_code:city.state_code,specialty:specialty.name,specialty_slug:specialty.slug,city_slug:slugify(city.city),city_population:city.population,city_rank:cityIndex+1,priority:(cityIndex+1)*100+specialtyIndex,enabled:true})))
   for (let index=0; index<rows.length; index+=500) {
     const { error } = await db.from('professional_research_targets').upsert(rows.slice(index,index+500),{onConflict:'specialty_slug,state_code,city_slug',ignoreDuplicates:false})
     if (error) throw error
   }
-  return { cities:topCities.length,specialties:specialties?.length||0,targets:rows.length }
+  return { cities:topCities.length,specialties:canonicalSpecialties.length,targets:rows.length }
 }
 
 async function collect(target) {
