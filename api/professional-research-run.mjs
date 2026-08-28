@@ -7,6 +7,19 @@ const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'
 const GOOGLE_PLACES_URL = 'https://places.googleapis.com/v1/places:searchText'
 const MAX_GOOGLE_PAGES = 3
 
+const SPECIALTY_ALIASES = new Map([
+  ['neuropediatra', { name: 'Neurologista Infantil', slug: 'neurologista-infantil' }],
+  ['neuropediatria', { name: 'Neurologista Infantil', slug: 'neurologista-infantil' }],
+  ['neurologia-pediatrica', { name: 'Neurologista Infantil', slug: 'neurologista-infantil' }],
+  ['neurologista-pediatrico', { name: 'Neurologista Infantil', slug: 'neurologista-infantil' }],
+  ['gastro-pediatra', { name: 'Gastroenterologista Infantil', slug: 'gastroenterologista-infantil' }],
+  ['gastropediatra', { name: 'Gastroenterologista Infantil', slug: 'gastroenterologista-infantil' }],
+  ['gastroenterologia-pediatrica', { name: 'Gastroenterologista Infantil', slug: 'gastroenterologista-infantil' }],
+  ['fono-infantil', { name: 'Fonoaudiologa Infantil', slug: 'fonoaudiologa-infantil' }],
+  ['fonoaudiologia-infantil', { name: 'Fonoaudiologa Infantil', slug: 'fonoaudiologa-infantil' }],
+  ['pediatria', { name: 'Pediatra', slug: 'pediatra' }],
+])
+
 export function slugify(value = '') {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
     .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
@@ -18,6 +31,16 @@ export function normalizeBrazilPhone(value = '') {
   if (digits.startsWith('0')) digits = digits.replace(/^0+/, '')
   if (!digits.startsWith('55')) digits = `55${digits}`
   return /^55\d{10,11}$/.test(digits) ? digits : null
+}
+
+export function canonicalSpecialty(name = '', slug = '') {
+  const key = slugify(slug || name)
+  return SPECIALTY_ALIASES.get(key) || { name: String(name).trim(), slug: key }
+}
+
+function withCanonicalSpecialty(row, target) {
+  const specialty = canonicalSpecialty(target.specialty, target.specialty_slug)
+  return { ...row, primary_specialty: specialty.name, specialty_slug: specialty.slug }
 }
 
 export function overpassQuery({ city, state_code, specialty }) {
@@ -43,8 +66,8 @@ export function mapOsmItem(item, target) {
   ].includes(key)))
   return {
     name,
-    primary_specialty: target.specialty,
-    specialty_slug: target.specialty_slug || slugify(target.specialty),
+    primary_specialty: canonicalSpecialty(target.specialty, target.specialty_slug).name,
+    specialty_slug: canonicalSpecialty(target.specialty, target.specialty_slug).slug,
     city: target.city,
     city_slug: target.city_slug || slugify(target.city),
     neighborhood: tags['addr:suburb'] || tags['addr:neighbourhood'] || tags['addr:district'] || null,
@@ -80,8 +103,8 @@ function mapNominatimItem(item, target) {
     : String(item.osm_type).toLowerCase() === 'way' ? 'way' : 'relation'
   return {
     name,
-    primary_specialty: target.specialty,
-    specialty_slug: target.specialty_slug || slugify(target.specialty),
+    primary_specialty: canonicalSpecialty(target.specialty, target.specialty_slug).name,
+    specialty_slug: canonicalSpecialty(target.specialty, target.specialty_slug).slug,
     city: target.city,
     city_slug: target.city_slug || slugify(target.city),
     neighborhood: address.suburb || address.neighbourhood || address.city_district || null,
@@ -150,8 +173,8 @@ async function verifyOfficialWebsite(place, target) {
     const name = String(place.displayName?.text || '').trim()
     if (!name) return null
     return {
-      name, primary_specialty: target.specialty,
-      specialty_slug: target.specialty_slug || slugify(target.specialty),
+      name, primary_specialty: canonicalSpecialty(target.specialty, target.specialty_slug).name,
+      specialty_slug: canonicalSpecialty(target.specialty, target.specialty_slug).slug,
       city: target.city, city_slug: target.city_slug || slugify(target.city),
       neighborhood: null, state_code: target.state_code, whatsapp,
       source_url: response.url || website,
@@ -257,7 +280,12 @@ async function processTarget(db, target) {
     .insert({target_id:target.id,source_name:process.env.GOOGLE_MAPS_API_KEY?'Google Places + sites oficiais + OpenStreetMap':SOURCE,status:'running'}).select('id').single()
   if (runError) throw runError
   try {
-    const rows = await collect(target); let inserted = 0; let updated = 0
+    const collectedRows = await collect(target)
+    const rows = collectedRows
+      .map(row => withCanonicalSpecialty(row, target))
+      .filter(row => Boolean(normalizeBrazilPhone(row.whatsapp)))
+      .map(row => ({ ...row, whatsapp: normalizeBrazilPhone(row.whatsapp) }))
+    let inserted = 0; let updated = 0
     for (const row of rows) {
       const canonical = `${row.name}|${row.city}|${row.state_code}`.toLowerCase().replace(/[^a-z0-9]+/g,'')
       const { data: existing } = await db.from('clinic_prospects').select('id').eq('canonical_key',canonical).maybeSingle()
@@ -268,14 +296,14 @@ async function processTarget(db, target) {
       db.from('professional_research_runs').update({status:'completed',fetched_count:rows.length,inserted_count:inserted,updated_count:updated,finished_at:new Date().toISOString()}).eq('id',run.id),
       db.from('professional_research_targets').update({last_run_at:new Date().toISOString(),last_status:'completed',last_result_count:rows.length}).eq('id',target.id),
     ])
-    return {target:`${target.specialty} em ${target.city}/${target.state_code}`,fetched:rows.length,inserted,updated}
+    return {target:`${target.specialty} em ${target.city}/${target.state_code}`,fetched:collectedRows.length,eligible:rows.length,inserted,updated}
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Falha desconhecida'
     await Promise.all([
       db.from('professional_research_runs').update({status:'failed',error_message:message,finished_at:new Date().toISOString()}).eq('id',run.id),
       db.from('professional_research_targets').update({last_run_at:new Date().toISOString(),last_status:'failed'}).eq('id',target.id),
     ])
-    return {target:`${target.specialty} em ${target.city}/${target.state_code}`,fetched:0,inserted:0,updated:0,error:message}
+    return {target:`${target.specialty} em ${target.city}/${target.state_code}`,fetched:0,eligible:0,inserted:0,updated:0,error:message}
   }
 }
 
@@ -295,5 +323,5 @@ export default async function handler(req, res) {
   if (!targets?.length) return json(res,200,{ok:true,message:'Nenhum alvo habilitado.'})
   const results=[]
   for (const target of targets) results.push(await processTarget(db,target))
-  return json(res,200,{ok:true,batchSize:results.length,results,target:results.map(x=>x.target).join('; '),fetched:results.reduce((s,x)=>s+x.fetched,0),inserted:results.reduce((s,x)=>s+x.inserted,0),updated:results.reduce((s,x)=>s+x.updated,0),publication:'Perfis básicos são publicados automaticamente; WhatsApp permanece privado no backoffice.'})
+  return json(res,200,{ok:true,batchSize:results.length,results,target:results.map(x=>x.target).join('; '),fetched:results.reduce((s,x)=>s+x.fetched,0),eligible:results.reduce((s,x)=>s+(x.eligible||0),0),inserted:results.reduce((s,x)=>s+x.inserted,0),updated:results.reduce((s,x)=>s+x.updated,0),publication:'Somente registros com WhatsApp profissional público validado são cadastrados; o número permanece privado no backoffice.'})
 }

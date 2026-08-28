@@ -407,7 +407,9 @@ export async function setResearchTargetEnabled(id:string,enabled:boolean){const 
 export async function runProfessionalResearch(action:'run'|'seed'='run'){
   const db=client();const {data}=await db.auth.getSession();const token=data.session?.access_token;if(!token)throw new Error('Sessão administrativa expirada.')
   const response=await fetch('/api/professional-research-run',{method:'POST',headers:{authorization:`Bearer ${token}`,'content-type':'application/json'},body:JSON.stringify({action})})
-  const payload=await response.json();if(!response.ok)throw new Error(payload.error||'Falha ao executar pesquisa.');return payload
+  const raw=await response.text();let payload:any
+  try{payload=raw?JSON.parse(raw):{}}catch{throw new Error(`O servidor respondeu em formato inválido (HTTP ${response.status}). Atualize a página e tente novamente.`)}
+  if(!response.ok)throw new Error(payload.error||`Falha ao executar pesquisa (HTTP ${response.status}).`);return payload
 }
 
 export type DirectoryProfessional={id:string;name:string;primary_specialty:string;specialty_slug:string;city:string;city_slug:string;neighborhood:string|null;state_code:string;is_claimed:boolean;plan_type:'basic'|'premium';total_count?:number}
