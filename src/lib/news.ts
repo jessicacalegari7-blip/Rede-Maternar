@@ -38,6 +38,8 @@ function readStoredPortalArticles(): PortalArticle[] {
   }
 }
 
+export function cachedPortalArticles(): PortalArticle[] { return portalArticlesCache || readStoredPortalArticles() }
+
 function storePortalArticles(articles: PortalArticle[]) {
   if (typeof window === 'undefined' || !articles.length) return
   try {

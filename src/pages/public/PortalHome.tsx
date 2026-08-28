@@ -3,7 +3,7 @@ import { Baby, Bell, BookOpen, ChevronRight, Heart, Menu, Mic2, Play, Search, Sp
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Logo } from '../../components/Logo'
 import { maternalChildSpecialties } from '../../data/specialties'
-import { listPortalArticles, listPortalVideos, type PortalArticle, type PortalVideo } from '../../lib/news'
+import { cachedPortalArticles, listPortalArticles, listPortalVideos, type PortalArticle, type PortalVideo } from '../../lib/news'
 import { LegalFooter } from './Legal'
 
 const articleDate = (article: PortalArticle) => new Date(article.publishedAt || article.createdAt).toLocaleDateString('pt-BR')
@@ -12,13 +12,13 @@ export function PortalHome() {
   const navigate = useNavigate()
   const { category: categorySlug = '' } = useParams()
   const [selectedCategory, setSelectedCategory] = useState('')
-  const [articles, setArticles] = useState<PortalArticle[]>([])
+  const [articles, setArticles] = useState<PortalArticle[]>(()=>cachedPortalArticles())
   const [videos,setVideos]=useState<PortalVideo[]>([])
-  const [articlesLoading,setArticlesLoading]=useState(true)
+  const [articlesLoading,setArticlesLoading]=useState(()=>cachedPortalArticles().length===0)
   const [articlesError,setArticlesError]=useState(false)
   useEffect(() => {
     let active=true
-    const loadArticles=()=>{setArticlesLoading(true);setArticlesError(false);void listPortalArticles().then(items=>{if(active)setArticles(items)}).catch(()=>{if(active)setArticlesError(true)}).finally(()=>{if(active)setArticlesLoading(false)})}
+    const loadArticles=()=>{if(!cachedPortalArticles().length)setArticlesLoading(true);setArticlesError(false);void listPortalArticles().then(items=>{if(active)setArticles(items)}).catch(()=>{if(active)setArticlesError(true)}).finally(()=>{if(active)setArticlesLoading(false)})}
     loadArticles()
     const refresh=()=>{if(document.visibilityState==='visible')loadArticles()}
     window.addEventListener('online',loadArticles)

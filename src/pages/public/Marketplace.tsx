@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Logo } from '../../components/Logo'
 import { maternalChildSpecialties } from '../../data/specialties'
 import { listMarketplaceProfessionals } from '../../lib/operations'
+import { listPortalArticles, type PortalArticle } from '../../lib/news'
 import { LegalFooter } from './Legal'
 
 export function Marketplace() {
@@ -11,10 +12,11 @@ export function Marketplace() {
   const [params] = useSearchParams()
   const [rows, setRows] = useState<any[]>([])
   const [error, setError] = useState('')
+  const [articles,setArticles]=useState<PortalArticle[]>([])
   const specialty = params.get('especialidade') || ''
   const city = params.get('cidade') || ''
 
-  useEffect(() => { listMarketplaceProfessionals().then(setRows).catch(e => setError(e instanceof Error ? e.message : 'Não foi possível carregar profissionais.')) }, [])
+  useEffect(() => { listMarketplaceProfessionals().then(setRows).catch(e => setError(e instanceof Error ? e.message : 'Não foi possível carregar profissionais.'));listPortalArticles(20).then(setArticles).catch(()=>undefined) }, [])
   const normalize=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
   const specialtyMatches=(candidate:string,requested:string)=>{
     const left=normalize(candidate); const right=normalize(requested)
@@ -23,6 +25,7 @@ export function Marketplace() {
     return common>=7
   }
   const visible = rows.filter(p => (!specialty || (p.specialties || []).some((item:string)=>specialtyMatches(item,specialty))) && (!city || `${p.city}, ${p.state_code}`.toLocaleLowerCase().includes(city.toLocaleLowerCase())))
+  const relatedArticles=[...articles.filter(a=>normalize(a.category).includes(normalize(specialty))||normalize(specialty).includes(normalize(a.category))),...articles.filter(a=>!(normalize(a.category).includes(normalize(specialty))||normalize(specialty).includes(normalize(a.category))))].filter((a,i,all)=>all.findIndex(x=>x.id===a.id)===i)
   const publicProfileHref=(p:any)=>p.directory_profile
     ? `/profissional/${normalize(p.full_name)}-${p.id}`
     : `/perfil/${p.id}`
@@ -58,7 +61,7 @@ export function Marketplace() {
       <div className="patient-search-note"><Heart /> Paciente, insira seu nome e telefone e faça sua busca por profissionais gratuitamente.</div>
     </section>
     <main className="marketplace-results-shell"><section className="marketplace-list" style={{ gridColumn: '1 / -1' }}><div className="results-head"><div><h2>{visible.length} perfis reais encontrados</h2><p className="muted">Somente perfis ativos e publicados.</p></div></div>{error && <div className="alert alert-error">{error}</div>}
-      {visible.map(p => <article className="professional-result-card" key={p.id}><div className="professional-photo wine">{String(p.full_name).split(' ').slice(0, 2).map((x: string) => x[0]).join('')}</div><div className="professional-result-main"><div className="verified-name"><h2>{p.full_name}</h2>{p.verified && <><CheckCircle2 /><span>Perfil verificado</span></>}</div>{p.clinic_name && <p className="clinic-name">{p.clinic_name}</p>}<h3>{(p.specialties || []).join(' · ') || 'Especialidade em atualização'}</h3><div className="rating-line"><Star fill="currentColor" /><strong>{Number(p.rating || 0).toFixed(1)}</strong><span>{p.review_count || 0} avaliações</span></div><div className="location-line"><MapPin /><span>{p.neighborhood ? `${p.neighborhood} · ` : ''}{p.city}, {p.state_code}</span><span>Endereço protegido</span></div></div><aside className="professional-result-action">{p.whatsapp ? <button className="btn whatsapp-btn" onClick={() => openWhatsApp(p)}><MessageCircle /> Falar no WhatsApp</button> : <span className="muted">Contato disponível após reivindicação do perfil</span>}<Link className="btn btn-secondary" to={publicProfileHref(p)}>Ver perfil</Link></aside></article>)}
+      {visible.flatMap((p,index)=>{const cards:any[]=[<article className="professional-result-card" key={p.id}><div className="professional-photo wine">{String(p.full_name).split(' ').slice(0, 2).map((x: string) => x[0]).join('')}</div><div className="professional-result-main"><div className="verified-name"><h2>{p.full_name}</h2>{p.verified && <><CheckCircle2 /><span>Perfil verificado</span></>}</div>{p.clinic_name && <p className="clinic-name">{p.clinic_name}</p>}<h3>{(p.specialties || []).join(' · ') || 'Especialidade em atualização'}</h3><div className="rating-line"><Star fill="currentColor" /><strong>{Number(p.rating || 0).toFixed(1)}</strong><span>{p.review_count || 0} avaliações</span></div><div className="location-line"><MapPin /><span>{p.neighborhood ? `${p.neighborhood} · ` : ''}{p.city}, {p.state_code}</span><span>Endereço protegido</span></div></div><aside className="professional-result-action">{p.whatsapp ? <button className="btn whatsapp-btn" onClick={() => openWhatsApp(p)}><MessageCircle /> Falar no WhatsApp</button> : <span className="muted">Contato disponível após reivindicação do perfil</span>}<Link className="btn btn-secondary" to={publicProfileHref(p)}>Ver perfil</Link></aside></article>];if((index+1)%4===0||index===visible.length-1){const news=relatedArticles[Math.floor(index/4)];if(news)cards.push(<article className="directory-news-card" key={`news-${news.id}`}><Link to={`/noticias/${news.slug}`}><img src={news.coverImageUrl||'/brand/materplace-logo.webp'} alt={`Capa: ${news.title}`} loading="lazy" decoding="async" width="480" height="270"/><span><small>Conteúdo recomendado · {news.category}</small><strong>{news.title}</strong><em>Ler matéria</em></span></Link></article>)}return cards})}
       {!visible.length && !error && <div className="card empty-state"><Search /><h3>Profissionais em validação</h3><p className="muted">Esta especialidade e região ainda estão em fase de validação dos cadastros dos profissionais pelo corpo técnico da MaterPlace. Tente novamente em breve.</p></div>}
     </section></main><LegalFooter />
   </div>
