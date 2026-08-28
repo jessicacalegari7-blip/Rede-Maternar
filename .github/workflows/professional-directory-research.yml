@@ -1,0 +1,33 @@
+name: Pesquisa do diretório profissional
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+    inputs:
+      batch_size:
+        description: "Quantidade de combinações cidade/especialidade (1 a 10)"
+        required: false
+        default: "3"
+
+concurrency:
+  group: professional-directory-research
+  cancel-in-progress: false
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Executar próximo lote do robô
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          BATCH_SIZE: ${{ inputs.batch_size || '3' }}
+        run: |
+          test -n "$CRON_SECRET" || { echo "O secret CRON_SECRET não foi configurado no GitHub."; exit 1; }
+          curl --fail-with-body --max-time 300 \
+            --retry 2 --retry-all-errors \
+            -X POST "https://materplace.com.br/api/professional-research-run" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json" \
+            --data "{\"batchSize\":${BATCH_SIZE}}"
