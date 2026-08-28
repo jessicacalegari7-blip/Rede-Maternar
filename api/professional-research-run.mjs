@@ -4,6 +4,8 @@ import { json } from './_lib/http.mjs'
 const SOURCE = 'OpenStreetMap/Overpass'
 const USER_AGENT = 'MaterPlaceDirectoryBot/1.0 (https://materplace.com.br/contato)'
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'
+const GOOGLE_PLACES_URL = 'https://places.googleapis.com/v1/places:searchText'
+const MAX_GOOGLE_PAGES = 3
 
 export function slugify(value = '') {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
@@ -126,6 +128,68 @@ function cronAuthorized(req) {
   return req.headers.authorization === `Bearer ${expected}`
 }
 
+function extractPublicBusinessPhone(html = '') {
+  const whatsappLink = html.match(/(?:wa\.me\/|api\.whatsapp\.com\/send\?phone=|whatsapp:\/\/send\?phone=)(?:%2B|\+)?(55)?([1-9]{2}9?\d{8})/i)
+  if (whatsappLink) return normalizeBrazilPhone(`${whatsappLink[1] || '55'}${whatsappLink[2]}`)
+  const labeled = html.match(/(?:whats(?:app)?|fale\s+conosco)[^\d+]{0,80}(?:\+?55\s*)?\(?([1-9]{2})\)?[\s.-]*(9?\d{4})[\s.-]*(\d{4})/i)
+  return labeled ? normalizeBrazilPhone(`55${labeled[1]}${labeled[2]}${labeled[3]}`) : null
+}
+
+async function verifyOfficialWebsite(place, target) {
+  const website = String(place.websiteUri || '').trim()
+  if (!website || !/^https?:\/\//i.test(website)) return null
+  try {
+    const response = await fetch(website, {
+      headers: { 'user-agent': USER_AGENT, accept: 'text/html,application/xhtml+xml' },
+      redirect: 'follow', signal: AbortSignal.timeout(9000),
+    })
+    if (!response.ok || !String(response.headers.get('content-type') || '').includes('text/html')) return null
+    const html = (await response.text()).slice(0, 1_500_000)
+    const whatsapp = extractPublicBusinessPhone(html)
+    if (!whatsapp) return null
+    const name = String(place.displayName?.text || '').trim()
+    if (!name) return null
+    return {
+      name, primary_specialty: target.specialty,
+      specialty_slug: target.specialty_slug || slugify(target.specialty),
+      city: target.city, city_slug: target.city_slug || slugify(target.city),
+      neighborhood: null, state_code: target.state_code, whatsapp,
+      source_url: response.url || website,
+      source_name: 'Site oficial público',
+      source_record_id: place.id ? `google-place/${place.id}` : `website/${slugify(name)}`,
+      source_checked_at: new Date().toISOString(), last_seen_at: new Date().toISOString(),
+      source_payload: { google_place_id: place.id || null, verified_on_official_website: true },
+      legal_basis_note: 'Contato profissional/empresarial divulgado publicamente no site oficial; uso restrito à prospecção B2B com opção de oposição.',
+    }
+  } catch { return null }
+}
+
+async function collectFromGooglePlaces(target) {
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY?.trim()
+  if (!apiKey) return []
+  const collected = new Map(); let pageToken = null
+  for (let page = 0; page < MAX_GOOGLE_PAGES; page += 1) {
+    const body = { textQuery: `${target.specialty} em ${target.city} ${target.state_code}, Brasil`, languageCode: 'pt-BR', regionCode: 'BR', pageSize: 20 }
+    if (pageToken) body.pageToken = pageToken
+    const response = await fetch(GOOGLE_PLACES_URL, {
+      method: 'POST', headers: {
+        'content-type': 'application/json', 'X-Goog-Api-Key': apiKey,
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.websiteUri,nextPageToken',
+      }, body: JSON.stringify(body), signal: AbortSignal.timeout(25000),
+    })
+    if (!response.ok) throw new Error(`Google Places respondeu HTTP ${response.status}`)
+    const payload = await response.json(); const places = payload.places || []
+    for (let index = 0; index < places.length; index += 5) {
+      const verified = await Promise.all(places.slice(index, index + 5).map(place => verifyOfficialWebsite(place, target)))
+      verified.filter(Boolean).forEach(row => collected.set(row.source_url, row))
+    }
+    pageToken = payload.nextPageToken || null
+    if (!pageToken) break
+    await new Promise(resolve => setTimeout(resolve, 1200))
+  }
+  return [...collected.values()]
+}
+
 
 async function authorizedDatabase(req) {
   if (cronAuthorized(req)) return adminClient()
@@ -153,6 +217,7 @@ async function seedTargets(db) {
 }
 
 async function collect(target) {
+  const googleRows = await collectFromGooglePlaces(target)
   const configured = process.env.OVERPASS_API_URL?.trim()
   const endpoints = [...new Set([
     configured,
@@ -170,7 +235,7 @@ async function collect(target) {
       if (!response.ok) { failures.push(`${new URL(endpoint).host}: HTTP ${response.status}`); continue }
       const payload = await response.json()
       const rows = (payload.elements || []).map(item => mapOsmItem(item, target)).filter(Boolean)
-      if (rows.length) return rows
+      if (rows.length) return [...new Map([...googleRows, ...rows].map(row => [row.source_url, row])).values()]
       failures.push(`${new URL(endpoint).host}: nenhum resultado`)
     } catch (error) {
       failures.push(`${new URL(endpoint).host}: ${error instanceof Error ? error.message : 'falha'}`)
@@ -178,12 +243,40 @@ async function collect(target) {
   }
   try {
     const fallbackRows = await collectFromNominatim(target)
-    if (fallbackRows.length) return fallbackRows
+    if (fallbackRows.length) return [...new Map([...googleRows, ...fallbackRows].map(row => [row.source_url, row])).values()]
     failures.push('nominatim.openstreetmap.org: nenhum resultado')
   } catch (error) {
     failures.push(`nominatim.openstreetmap.org: ${error instanceof Error ? error.message : 'falha'}`)
   }
+  if (googleRows.length) return googleRows
   throw new Error(`Fontes públicas indisponíveis (${failures.join('; ')})`)
+}
+
+async function processTarget(db, target) {
+  const { data: run, error: runError } = await db.from('professional_research_runs')
+    .insert({target_id:target.id,source_name:process.env.GOOGLE_MAPS_API_KEY?'Google Places + sites oficiais + OpenStreetMap':SOURCE,status:'running'}).select('id').single()
+  if (runError) throw runError
+  try {
+    const rows = await collect(target); let inserted = 0; let updated = 0
+    for (const row of rows) {
+      const canonical = `${row.name}|${row.city}|${row.state_code}`.toLowerCase().replace(/[^a-z0-9]+/g,'')
+      const { data: existing } = await db.from('clinic_prospects').select('id').eq('canonical_key',canonical).maybeSingle()
+      if (existing) { const { error } = await db.from('clinic_prospects').update(row).eq('id',existing.id); if (error) throw error; updated += 1 }
+      else { const { error } = await db.from('clinic_prospects').insert(row); if (error) throw error; inserted += 1 }
+    }
+    await Promise.all([
+      db.from('professional_research_runs').update({status:'completed',fetched_count:rows.length,inserted_count:inserted,updated_count:updated,finished_at:new Date().toISOString()}).eq('id',run.id),
+      db.from('professional_research_targets').update({last_run_at:new Date().toISOString(),last_status:'completed',last_result_count:rows.length}).eq('id',target.id),
+    ])
+    return {target:`${target.specialty} em ${target.city}/${target.state_code}`,fetched:rows.length,inserted,updated}
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Falha desconhecida'
+    await Promise.all([
+      db.from('professional_research_runs').update({status:'failed',error_message:message,finished_at:new Date().toISOString()}).eq('id',run.id),
+      db.from('professional_research_targets').update({last_run_at:new Date().toISOString(),last_status:'failed'}).eq('id',target.id),
+    ])
+    return {target:`${target.specialty} em ${target.city}/${target.state_code}`,fetched:0,inserted:0,updated:0,error:message}
+  }
 }
 
 export default async function handler(req, res) {
@@ -194,37 +287,13 @@ export default async function handler(req, res) {
     try { return json(res,200,{ok:true,...await seedTargets(db)}) }
     catch (error) { return json(res,502,{error:error instanceof Error?error.message:'Falha ao gerar fila.'}) }
   }
-  const { data: target, error: targetError } = await db.from('professional_research_targets').select('*')
-    .eq('enabled',true).order('priority').order('last_run_at',{ascending:true,nullsFirst:true}).limit(1).maybeSingle()
+  const requestedBatch = Number(req.body?.batchSize || process.env.RESEARCH_TARGETS_PER_RUN || 3)
+  const batchSize = Math.min(Math.max(Number.isFinite(requestedBatch)?requestedBatch:3,1),10)
+  const { data: targets, error: targetError } = await db.from('professional_research_targets').select('*')
+    .eq('enabled',true).order('last_run_at',{ascending:true,nullsFirst:true}).order('priority').limit(batchSize)
   if (targetError) return json(res,500,{error:targetError.message})
-  if (!target) return json(res,200,{ok:true,message:'Nenhum alvo habilitado.'})
-  const { data: run, error: runError } = await db.from('professional_research_runs')
-    .insert({target_id:target.id,source_name:SOURCE,status:'running'}).select('id').single()
-  if (runError) return json(res,500,{error:runError.message})
-  try {
-    const rows = await collect(target); let inserted = 0; let updated = 0
-    for (const row of rows) {
-      const canonical = `${row.name}|${row.city}|${row.state_code}`.toLowerCase().replace(/[^a-z0-9]+/g,'')
-      const { data: existing } = await db.from('clinic_prospects').select('id').eq('canonical_key',canonical).maybeSingle()
-      if (existing) {
-        const { error } = await db.from('clinic_prospects').update(row).eq('id',existing.id)
-        if (error) throw error; updated += 1
-      } else {
-        const { error } = await db.from('clinic_prospects').insert(row)
-        if (error) throw error; inserted += 1
-      }
-    }
-    await Promise.all([
-      db.from('professional_research_runs').update({status:'completed',fetched_count:rows.length,inserted_count:inserted,updated_count:updated,finished_at:new Date().toISOString()}).eq('id',run.id),
-      db.from('professional_research_targets').update({last_run_at:new Date().toISOString(),last_status:'completed',last_result_count:rows.length}).eq('id',target.id),
-    ])
-    return json(res,200,{ok:true,target:`${target.specialty} em ${target.city}/${target.state_code}`,fetched:rows.length,inserted,updated,publication:'Perfis básicos válidos foram publicados automaticamente; contatos permanecem privados.'})
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Falha desconhecida'
-    await Promise.all([
-      db.from('professional_research_runs').update({status:'failed',error_message:message,finished_at:new Date().toISOString()}).eq('id',run.id),
-      db.from('professional_research_targets').update({last_run_at:new Date().toISOString(),last_status:'failed'}).eq('id',target.id),
-    ])
-    return json(res,502,{error:message})
-  }
+  if (!targets?.length) return json(res,200,{ok:true,message:'Nenhum alvo habilitado.'})
+  const results=[]
+  for (const target of targets) results.push(await processTarget(db,target))
+  return json(res,200,{ok:true,batchSize:results.length,results,target:results.map(x=>x.target).join('; '),fetched:results.reduce((s,x)=>s+x.fetched,0),inserted:results.reduce((s,x)=>s+x.inserted,0),updated:results.reduce((s,x)=>s+x.updated,0),publication:'Perfis básicos são publicados automaticamente; WhatsApp permanece privado no backoffice.'})
 }
