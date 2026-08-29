@@ -8,12 +8,12 @@ export default async function handler(request,response) {
     const db=adminClient();const page=pageNumber(request)
     const [{count:targetCount}]=await Promise.all([db.from('professional_research_targets').select('id',{count:'exact',head:true}).eq('enabled',true)])
     const globalOffset=(page-1)*MAX_URLS;const targetsAvailable=Math.max(0,(targetCount||0)-globalOffset);const targetLimit=Math.min(MAX_URLS,targetsAvailable)
-    const targets=targetLimit?await fetchWindow(()=>db.from('professional_research_targets').select('specialty_slug,city_slug,last_run_at,created_at').eq('enabled',true).order('priority'),globalOffset,targetLimit):[]
+    const targets=targetLimit?await fetchWindow(()=>db.from('professional_research_targets').select('specialty_slug,city_slug,state_code,last_run_at,created_at').eq('enabled',true).order('priority'),globalOffset,targetLimit):[]
     const profileLimit=MAX_URLS-targets.length;const profileOffset=Math.max(0,globalOffset-(targetCount||0))
-    const profiles=profileLimit?await fetchWindow(()=>db.from('published_clinic_directory').select('id,name,specialty_slug,city_slug,updated_at').order('updated_at',{ascending:false}),profileOffset,profileLimit):[]
+    const profiles=profileLimit?await fetchWindow(()=>db.from('published_clinic_directory').select('id,name,specialty_slug,city_slug,state_code,updated_at').order('updated_at',{ascending:false}),profileOffset,profileLimit):[]
     const nodes=[];const seen=new Set()
-    for(const item of [...targets,...profiles]){const key=`${item.specialty_slug}/${item.city_slug}`;if(!item.specialty_slug||!item.city_slug||seen.has(key))continue;seen.add(key);nodes.push(urlNode({loc:`${SITE_URL}/profissionais/${key}`,lastmod:item.updated_at||item.last_run_at||item.created_at,changefreq:'daily',priority:'0.9'}))}
-    for(const item of profiles)nodes.push(urlNode({loc:`${SITE_URL}/profissional/${slugify(item.name)}-${item.id}`,lastmod:item.updated_at,changefreq:'weekly',priority:'0.8'}))
+    for(const item of [...targets,...profiles]){const state=String(item.state_code||'').toLowerCase();const key=`${item.specialty_slug}/${state}/${item.city_slug}`;if(!item.specialty_slug||!state||!item.city_slug||seen.has(key))continue;seen.add(key);nodes.push(urlNode({loc:`${SITE_URL}/profissionais/${key}`,lastmod:item.updated_at||item.last_run_at||item.created_at,changefreq:'daily',priority:'0.9'}))}
+    for(const item of profiles){const state=String(item.state_code||'').toLowerCase();if(state)nodes.push(urlNode({loc:`${SITE_URL}/profissionais/${item.specialty_slug}/${state}/${item.city_slug}/${slugify(item.name)}-${item.id}`,lastmod:item.updated_at,changefreq:'weekly',priority:'0.8'}))}
     return sendXml(response,urlset(nodes))
   } catch(error) { return response.status(500).json({error:error instanceof Error?error.message:'Erro ao gerar sitemap do diretório.'}) }
 }
