@@ -72,6 +72,8 @@ export function mapOsmItem(item, target) {
     city_slug: target.city_slug || slugify(target.city),
     neighborhood: tags['addr:suburb'] || tags['addr:neighbourhood'] || tags['addr:district'] || null,
     state_code: target.state_code,
+    latitude: Number(item.lat ?? item.center?.lat) || null,
+    longitude: Number(item.lon ?? item.center?.lon) || null,
     whatsapp: normalizeBrazilPhone(tags['contact:whatsapp'] || tags.whatsapp || tags['contact:phone'] || tags.phone),
     source_url: sourceUrl(item),
     source_name: SOURCE,
@@ -109,6 +111,8 @@ function mapNominatimItem(item, target) {
     city_slug: target.city_slug || slugify(target.city),
     neighborhood: address.suburb || address.neighbourhood || address.city_district || null,
     state_code: target.state_code,
+    latitude: Number(item.lat) || null,
+    longitude: Number(item.lon) || null,
     whatsapp: normalizeBrazilPhone(extras['contact:whatsapp'] || extras.whatsapp || extras['contact:phone'] || extras.phone),
     source_url: `https://www.openstreetmap.org/${osmType}/${item.osm_id}`,
     source_name: 'OpenStreetMap/Nominatim',
@@ -177,6 +181,8 @@ async function verifyOfficialWebsite(place, target) {
       specialty_slug: canonicalSpecialty(target.specialty, target.specialty_slug).slug,
       city: target.city, city_slug: target.city_slug || slugify(target.city),
       neighborhood: null, state_code: target.state_code, whatsapp,
+      latitude: Number(place.location?.latitude) || null,
+      longitude: Number(place.location?.longitude) || null,
       source_url: response.url || website,
       source_name: 'Site oficial público',
       source_record_id: place.id ? `google-place/${place.id}` : `website/${slugify(name)}`,
@@ -197,7 +203,7 @@ async function collectFromGooglePlaces(target) {
     const response = await fetch(GOOGLE_PLACES_URL, {
       method: 'POST', headers: {
         'content-type': 'application/json', 'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': 'places.id,places.displayName,places.websiteUri,nextPageToken',
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.websiteUri,places.location,nextPageToken',
       }, body: JSON.stringify(body), signal: AbortSignal.timeout(25000),
     })
     if (!response.ok) throw new Error(`Google Places respondeu HTTP ${response.status}`)
