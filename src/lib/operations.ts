@@ -462,6 +462,14 @@ export async function listMarketplaceProfessionals() {
   return [...profiles,...directory]
 }
 
+export async function listNearbyMarketplaceProfessionals(specialty:string,city:string) {
+  const query=new URLSearchParams({specialty,city,radius:'30'})
+  const response=await fetch(`/api/directory-nearby?${query}`)
+  const payload=await response.json().catch(()=>({}))
+  if(!response.ok)throw new Error(payload.error||'Não foi possível buscar profissionais próximos.')
+  return (payload.professionals??[]) as any[]
+}
+
 export async function recordProfessionalProfileView(professionalId:string) {
   const {error}=await client().rpc('record_professional_profile_view',{target_professional_id:professionalId})
   if(error) throw new Error(error.message)
