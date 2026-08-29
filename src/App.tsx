@@ -59,6 +59,8 @@ export default function App() {
     <Route path="/categoria/:category" element={<PortalHome />} />
     <Route path="/para-profissionais" element={<Landing />} />
     <Route path="/profissionais" element={<Marketplace />} />
+    <Route path="/profissionais/:specialty/:uf/:city/:profileSlug" element={<DirectoryProfile />} />
+    <Route path="/profissionais/:specialty/:uf/:city" element={<DirectoryLanding />} />
     <Route path="/profissionais/:specialty/:city" element={<DirectoryLanding />} />
     <Route path="/encontrar/:specialty/:uf/:city" element={<DirectoryLanding />} />
     <Route path="/profissional/:slug" element={<DirectoryProfile />} />
