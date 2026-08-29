@@ -293,8 +293,13 @@ async function processTarget(db, target) {
     const collectedRows = await collect(target)
     const rows = collectedRows
       .map(row => withCanonicalSpecialty(row, target))
-      .filter(row => Boolean(normalizeBrazilPhone(row.whatsapp)))
-      .map(row => ({ ...row, whatsapp: normalizeBrazilPhone(row.whatsapp) }))
+      .map(row => ({
+        ...row,
+        whatsapp: normalizeBrazilPhone(row.whatsapp) || null,
+        review_status: 'approved',
+        publication_status: 'published',
+        reviewed_at: new Date().toISOString(),
+      }))
     let inserted = 0; let updated = 0
     for (const row of rows) {
       const canonical = `${row.name}|${row.city}|${row.state_code}`.toLowerCase().replace(/[^a-z0-9]+/g,'')
