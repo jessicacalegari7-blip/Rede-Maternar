@@ -330,11 +330,26 @@ async function processTarget(db, target) {
         reviewed_at: new Date().toISOString(),
       }))
     let inserted = 0; let updated = 0
+    async function persistProspect(row, existingId) {
+      const compatibleRow = { ...row }
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        const query = existingId
+          ? db.from('clinic_prospects').update(compatibleRow).eq('id', existingId)
+          : db.from('clinic_prospects').insert(compatibleRow)
+        const { error } = await query
+        if (!error) return
+        const missingColumn = errorMessage(error).match(/Could not find the '([^']+)' column/i)?.[1]
+        if (!missingColumn || !(missingColumn in compatibleRow)) throw error
+        delete compatibleRow[missingColumn]
+      }
+      throw new Error('Não foi possível adaptar o cadastro ao schema atual de clinic_prospects.')
+    }
     for (const row of rows) {
       const canonical = `${row.name}|${row.city}|${row.state_code}`.toLowerCase().replace(/[^a-z0-9]+/g,'')
       const { data: existing } = await db.from('clinic_prospects').select('id').eq('canonical_key',canonical).maybeSingle()
-      if (existing) { const { error } = await db.from('clinic_prospects').update(row).eq('id',existing.id); if (error) throw error; updated += 1 }
-      else { const { error } = await db.from('clinic_prospects').insert(row); if (error) throw error; inserted += 1 }
+      await persistProspect(row, existing?.id)
+      if (existing) updated += 1
+      else inserted += 1
     }
     await Promise.all([
       db.from('professional_research_runs').update({status:'completed',fetched_count:rows.length,inserted_count:inserted,updated_count:updated,finished_at:new Date().toISOString()}).eq('id',run.id),
