@@ -5,7 +5,9 @@ const SOURCE = 'OpenStreetMap/Overpass'
 const USER_AGENT = 'MaterPlaceDirectoryBot/1.0 (https://materplace.com.br/contato)'
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'
 const GOOGLE_PLACES_URL = 'https://places.googleapis.com/v1/places:searchText'
-const MAX_GOOGLE_PAGES = 3
+// Execuções externas têm janela curta (cronjob gratuito/Vercel Hobby).
+// Uma página por alvo mantém a resposta abaixo de 30s e a fila continua na próxima rodada.
+const MAX_GOOGLE_PAGES = 1
 
 const SPECIALTY_ALIASES = new Map([
   ['neuropediatra', { name: 'Neurologista Infantil', slug: 'neurologista-infantil' }],
@@ -257,13 +259,13 @@ async function collect(target) {
     'https://overpass.kumi.systems/api/interpreter',
     'https://overpass-api.de/api/interpreter',
     'https://overpass.nchc.org.tw/api/interpreter',
-  ].filter(Boolean))]
+  ].filter(Boolean))].slice(0, 1)
   const failures = []
   for (const endpoint of endpoints) {
     try {
       const response = await fetch(endpoint, {
         method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', 'user-agent': USER_AGENT },
-        body: new URLSearchParams({ data: overpassQuery(target) }), signal: AbortSignal.timeout(65000),
+        body: new URLSearchParams({ data: overpassQuery(target) }), signal: AbortSignal.timeout(12000),
       })
       if (!response.ok) { failures.push(`${new URL(endpoint).host}: HTTP ${response.status}`); continue }
       const payload = await response.json()
@@ -330,7 +332,9 @@ export default async function handler(req, res) {
     try { return json(res,200,{ok:true,...await seedTargets(db)}) }
     catch (error) { return json(res,502,{error:error instanceof Error?error.message:'Falha ao gerar fila.'}) }
   }
-  const requestedBatch = Number(req.body?.batchSize || process.env.RESEARCH_TARGETS_PER_RUN || 3)
+  // Uma execução curta é mais confiável no plano Hobby da Vercel. O agendador
+  // externo chama a rota novamente e a fila garante continuidade sem duplicar alvos.
+  const requestedBatch = Number(req.body?.batchSize || process.env.RESEARCH_TARGETS_PER_RUN || 1)
   const batchSize = Math.min(Math.max(Number.isFinite(requestedBatch)?requestedBatch:3,1),10)
   const { data: targets, error: targetError } = await db.from('professional_research_targets').select('*')
     .eq('enabled',true).order('last_run_at',{ascending:true,nullsFirst:true}).order('priority').limit(batchSize)
