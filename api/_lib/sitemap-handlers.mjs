@@ -22,8 +22,8 @@ export async function directory(request,response){
   const profileLimit=MAX_URLS-targets.length;const profileOffset=Math.max(0,globalOffset-availableTargets)
   const profiles=profileLimit?await fetchWindow(()=>db.from('published_clinic_directory').select('*').order('id',{ascending:true}),profileOffset,profileLimit):[]
   const nodes=[];const seen=new Set()
-  for(const item of [...targets,...profiles]){const specialty=item.specialty_slug||slugify(item.primary_specialty||item.specialty);const city=item.city_slug||slugify(item.city);const key=`${specialty}/${city}`;if(!specialty||!city||seen.has(key))continue;seen.add(key);nodes.push(urlNode({loc:`${SITE_URL}/profissionais/${key}`,lastmod:item.updated_at||item.last_run_at||item.created_at,changefreq:'daily',priority:'0.9'}))}
-  for(const item of profiles)nodes.push(urlNode({loc:`${SITE_URL}/profissional/${slugify(item.name)}-${item.id}`,lastmod:item.updated_at,changefreq:'weekly',priority:'0.8'}))
+  for(const item of [...targets,...profiles]){const specialty=item.specialty_slug||slugify(item.primary_specialty||item.specialty);const city=item.city_slug||slugify(item.city);const state=String(item.state_code||'').toLowerCase();const key=`${specialty}/${state}/${city}`;if(!specialty||!state||!city||seen.has(key))continue;seen.add(key);nodes.push(urlNode({loc:`${SITE_URL}/profissionais/${key}`,lastmod:item.updated_at||item.last_run_at||item.created_at,changefreq:'daily',priority:'0.9'}))}
+  for(const item of profiles){const specialty=item.specialty_slug||slugify(item.primary_specialty);const city=item.city_slug||slugify(item.city);const state=String(item.state_code||'').toLowerCase();if(specialty&&state&&city)nodes.push(urlNode({loc:`${SITE_URL}/profissionais/${specialty}/${state}/${city}/${slugify(item.name)}-${item.id}`,lastmod:item.updated_at,changefreq:'weekly',priority:'0.8'}))}
   return sendXml(response,urlset(nodes))
 }
 

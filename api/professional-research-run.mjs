@@ -5,8 +5,6 @@ const SOURCE = 'OpenStreetMap/Overpass'
 const USER_AGENT = 'MaterPlaceDirectoryBot/1.0 (https://materplace.com.br/contato)'
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'
 const GOOGLE_PLACES_URL = 'https://places.googleapis.com/v1/places:searchText'
-// Execuções externas têm janela curta (cronjob gratuito/Vercel Hobby).
-// Uma página por alvo mantém a resposta abaixo de 30s e a fila continua na próxima rodada.
 const MAX_GOOGLE_PAGES = 1
 
 const SPECIALTY_ALIASES = new Map([
@@ -53,7 +51,7 @@ export function overpassQuery({ city, state_code, specialty }) {
       ? 'amament|lacta'
       : normalized.split('-').filter(part => part.length > 3).join('|')
   const safe = aliases.replace(/["\\]/g, '')
-  return `[out:json][timeout:45];area["name"="${city}"]["boundary"="administrative"]["admin_level"="8"]->.city;(nwr(area.city)["healthcare:speciality"~"${safe}",i];nwr(area.city)["name"~"${safe}",i]["amenity"~"clinic|doctors|hospital"];nwr(area.city)["name"~"${safe}",i]["healthcare"];);out center tags 200;`
+  return `[out:json][timeout:8];area["name"="${city}"]["boundary"="administrative"]["admin_level"="8"]->.city;(nwr(area.city)["healthcare:speciality"~"${safe}",i];nwr(area.city)["name"~"${safe}",i]["amenity"~"clinic|doctors|hospital"];nwr(area.city)["name"~"${safe}",i]["healthcare"];);out center tags 100;`
 }
 
 function sourceUrl(item) { return `https://www.openstreetmap.org/${item.type}/${item.id}` }
@@ -137,7 +135,7 @@ async function collectFromNominatim(target) {
     url.searchParams.set('q', query)
     const response = await fetch(url, {
       headers: { 'user-agent': USER_AGENT, accept: 'application/json' },
-      signal: AbortSignal.timeout(25000),
+      signal: AbortSignal.timeout(6000),
     })
     if (!response.ok) throw new Error(`Nominatim respondeu HTTP ${response.status}`)
     const payload = await response.json()
@@ -166,33 +164,38 @@ function extractPublicBusinessPhone(html = '') {
 
 async function verifyOfficialWebsite(place, target) {
   const website = String(place.websiteUri || '').trim()
-  if (!website || !/^https?:\/\//i.test(website)) return null
+  const name = String(place.displayName?.text || '').trim()
+  if (!name) return null
+  const baseRow = {
+    name, primary_specialty: canonicalSpecialty(target.specialty, target.specialty_slug).name,
+    specialty_slug: canonicalSpecialty(target.specialty, target.specialty_slug).slug,
+    city: target.city, city_slug: target.city_slug || slugify(target.city),
+    neighborhood: null, state_code: target.state_code, whatsapp: null,
+    latitude: Number(place.location?.latitude) || null,
+    longitude: Number(place.location?.longitude) || null,
+    source_url: place.id ? `https://www.google.com/maps/place/?q=place_id:${place.id}` : website,
+    source_name: 'Google Places (dados públicos)',
+    source_record_id: place.id ? `google-place/${place.id}` : `website/${slugify(name)}`,
+    source_checked_at: new Date().toISOString(), last_seen_at: new Date().toISOString(),
+    source_payload: { google_place_id: place.id || null, verified_on_official_website: false },
+  }
+  if (!website || !/^https?:\/\//i.test(website)) return baseRow
   try {
     const response = await fetch(website, {
       headers: { 'user-agent': USER_AGENT, accept: 'text/html,application/xhtml+xml' },
-      redirect: 'follow', signal: AbortSignal.timeout(9000),
+      redirect: 'follow', signal: AbortSignal.timeout(3000),
     })
-    if (!response.ok || !String(response.headers.get('content-type') || '').includes('text/html')) return null
-    const html = (await response.text()).slice(0, 1_500_000)
+    if (!response.ok || !String(response.headers.get('content-type') || '').includes('text/html')) return baseRow
+    const html = (await response.text()).slice(0, 500_000)
     const whatsapp = extractPublicBusinessPhone(html)
-    if (!whatsapp) return null
-    const name = String(place.displayName?.text || '').trim()
-    if (!name) return null
     return {
-      name, primary_specialty: canonicalSpecialty(target.specialty, target.specialty_slug).name,
-      specialty_slug: canonicalSpecialty(target.specialty, target.specialty_slug).slug,
-      city: target.city, city_slug: target.city_slug || slugify(target.city),
-      neighborhood: null, state_code: target.state_code, whatsapp,
-      latitude: Number(place.location?.latitude) || null,
-      longitude: Number(place.location?.longitude) || null,
+      ...baseRow, whatsapp,
       source_url: response.url || website,
       source_name: 'Site oficial público',
-      source_record_id: place.id ? `google-place/${place.id}` : `website/${slugify(name)}`,
-      source_checked_at: new Date().toISOString(), last_seen_at: new Date().toISOString(),
       source_payload: { google_place_id: place.id || null, verified_on_official_website: true },
       legal_basis_note: 'Contato profissional/empresarial divulgado publicamente no site oficial; uso restrito à prospecção B2B com opção de oposição.',
     }
-  } catch { return null }
+  } catch { return baseRow }
 }
 
 async function collectFromGooglePlaces(target) {
@@ -206,7 +209,7 @@ async function collectFromGooglePlaces(target) {
       method: 'POST', headers: {
         'content-type': 'application/json', 'X-Goog-Api-Key': apiKey,
         'X-Goog-FieldMask': 'places.id,places.displayName,places.websiteUri,places.location,nextPageToken',
-      }, body: JSON.stringify(body), signal: AbortSignal.timeout(25000),
+      }, body: JSON.stringify(body), signal: AbortSignal.timeout(8000),
     })
     if (!response.ok) throw new Error(`Google Places respondeu HTTP ${response.status}`)
     const payload = await response.json(); const places = payload.places || []
@@ -253,19 +256,18 @@ async function seedTargets(db) {
 
 async function collect(target) {
   const googleRows = await collectFromGooglePlaces(target)
+  if (googleRows.length) return googleRows
   const configured = process.env.OVERPASS_API_URL?.trim()
   const endpoints = [...new Set([
     configured,
-    'https://overpass.kumi.systems/api/interpreter',
     'https://overpass-api.de/api/interpreter',
-    'https://overpass.nchc.org.tw/api/interpreter',
-  ].filter(Boolean))].slice(0, 1)
+  ].filter(Boolean))]
   const failures = []
   for (const endpoint of endpoints) {
     try {
       const response = await fetch(endpoint, {
         method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', 'user-agent': USER_AGENT },
-        body: new URLSearchParams({ data: overpassQuery(target) }), signal: AbortSignal.timeout(12000),
+        body: new URLSearchParams({ data: overpassQuery(target) }), signal: AbortSignal.timeout(9000),
       })
       if (!response.ok) { failures.push(`${new URL(endpoint).host}: HTTP ${response.status}`); continue }
       const payload = await response.json()
@@ -332,8 +334,6 @@ export default async function handler(req, res) {
     try { return json(res,200,{ok:true,...await seedTargets(db)}) }
     catch (error) { return json(res,502,{error:error instanceof Error?error.message:'Falha ao gerar fila.'}) }
   }
-  // Uma execução curta é mais confiável no plano Hobby da Vercel. O agendador
-  // externo chama a rota novamente e a fila garante continuidade sem duplicar alvos.
   const requestedBatch = Number(req.body?.batchSize || process.env.RESEARCH_TARGETS_PER_RUN || 1)
   const batchSize = Math.min(Math.max(Number.isFinite(requestedBatch)?requestedBatch:3,1),10)
   const { data: targets, error: targetError } = await db.from('professional_research_targets').select('*')
