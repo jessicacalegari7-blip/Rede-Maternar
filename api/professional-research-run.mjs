@@ -7,6 +7,20 @@ const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'
 const GOOGLE_PLACES_URL = 'https://places.googleapis.com/v1/places:searchText'
 const MAX_GOOGLE_PAGES = 1
 
+function errorMessage(error, fallback = 'Falha desconhecida') {
+  if (error instanceof Error && error.message) return error.message
+  if (error && typeof error === 'object') {
+    const parts = [error.message, error.error_description, error.details, error.hint]
+      .filter(value => typeof value === 'string' && value.trim())
+    if (parts.length) return [...new Set(parts)].join(' | ')
+    try {
+      const serialized = JSON.stringify(error)
+      if (serialized && serialized !== '{}') return serialized.slice(0, 1200)
+    } catch { /* mantém a mensagem segura abaixo */ }
+  }
+  return fallback
+}
+
 const SPECIALTY_ALIASES = new Map([
   ['neuropediatra', { name: 'Neurologista Infantil', slug: 'neurologista-infantil' }],
   ['neuropediatria', { name: 'Neurologista Infantil', slug: 'neurologista-infantil' }],
@@ -211,7 +225,11 @@ async function collectFromGooglePlaces(target) {
         'X-Goog-FieldMask': 'places.id,places.displayName,places.websiteUri,places.location,nextPageToken',
       }, body: JSON.stringify(body), signal: AbortSignal.timeout(8000),
     })
-    if (!response.ok) throw new Error(`Google Places respondeu HTTP ${response.status}`)
+    if (!response.ok) {
+      const failure = await response.json().catch(() => null)
+      const reason = failure?.error?.message || failure?.message || response.statusText || 'erro sem detalhes'
+      throw new Error(`Google Places respondeu HTTP ${response.status}: ${reason}`)
+    }
     const payload = await response.json(); const places = payload.places || []
     for (let index = 0; index < places.length; index += 5) {
       const verified = await Promise.all(places.slice(index, index + 5).map(place => verifyOfficialWebsite(place, target)))
@@ -255,14 +273,20 @@ async function seedTargets(db) {
 }
 
 async function collect(target) {
-  const googleRows = await collectFromGooglePlaces(target)
+  const failures = []
+  let googleRows = []
+  try {
+    googleRows = await collectFromGooglePlaces(target)
+    if (!googleRows.length && process.env.GOOGLE_MAPS_API_KEY?.trim()) failures.push('Google Places: nenhum resultado')
+  } catch (error) {
+    failures.push(`Google Places: ${errorMessage(error, 'falha na consulta')}`)
+  }
   if (googleRows.length) return googleRows
   const configured = process.env.OVERPASS_API_URL?.trim()
   const endpoints = [...new Set([
     configured,
     'https://overpass-api.de/api/interpreter',
   ].filter(Boolean))]
-  const failures = []
   for (const endpoint of endpoints) {
     try {
       const response = await fetch(endpoint, {
@@ -275,7 +299,7 @@ async function collect(target) {
       if (rows.length) return [...new Map([...googleRows, ...rows].map(row => [row.source_url, row])).values()]
       failures.push(`${new URL(endpoint).host}: nenhum resultado`)
     } catch (error) {
-      failures.push(`${new URL(endpoint).host}: ${error instanceof Error ? error.message : 'falha'}`)
+      failures.push(`${new URL(endpoint).host}: ${errorMessage(error, 'falha')}`)
     }
   }
   try {
@@ -283,7 +307,7 @@ async function collect(target) {
     if (fallbackRows.length) return [...new Map([...googleRows, ...fallbackRows].map(row => [row.source_url, row])).values()]
     failures.push('nominatim.openstreetmap.org: nenhum resultado')
   } catch (error) {
-    failures.push(`nominatim.openstreetmap.org: ${error instanceof Error ? error.message : 'falha'}`)
+    failures.push(`nominatim.openstreetmap.org: ${errorMessage(error, 'falha')}`)
   }
   if (googleRows.length) return googleRows
   throw new Error(`Fontes públicas indisponíveis (${failures.join('; ')})`)
@@ -293,8 +317,9 @@ async function processTarget(db, target) {
   const { data: run, error: runError } = await db.from('professional_research_runs')
     .insert({target_id:target.id,source_name:process.env.GOOGLE_MAPS_API_KEY?'Google Places + sites oficiais + OpenStreetMap':SOURCE,status:'running'}).select('id').single()
   if (runError) throw runError
+  let collectedRows = []
   try {
-    const collectedRows = await collect(target)
+    collectedRows = await collect(target)
     const rows = collectedRows
       .map(row => withCanonicalSpecialty(row, target))
       .map(row => ({
@@ -317,12 +342,12 @@ async function processTarget(db, target) {
     ])
     return {target:`${target.specialty} em ${target.city}/${target.state_code}`,fetched:collectedRows.length,eligible:rows.length,inserted,updated}
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Falha desconhecida'
+    const message = errorMessage(error)
     await Promise.all([
       db.from('professional_research_runs').update({status:'failed',error_message:message,finished_at:new Date().toISOString()}).eq('id',run.id),
       db.from('professional_research_targets').update({last_run_at:new Date().toISOString(),last_status:'failed'}).eq('id',target.id),
     ])
-    return {target:`${target.specialty} em ${target.city}/${target.state_code}`,fetched:0,eligible:0,inserted:0,updated:0,error:message}
+    return {target:`${target.specialty} em ${target.city}/${target.state_code}`,fetched:collectedRows.length,eligible:collectedRows.length,inserted:0,updated:0,error:message}
   }
 }
 
@@ -342,5 +367,5 @@ export default async function handler(req, res) {
   if (!targets?.length) return json(res,200,{ok:true,message:'Nenhum alvo habilitado.'})
   const results=[]
   for (const target of targets) results.push(await processTarget(db,target))
-  return json(res,200,{ok:true,batchSize:results.length,results,target:results.map(x=>x.target).join('; '),fetched:results.reduce((s,x)=>s+x.fetched,0),eligible:results.reduce((s,x)=>s+(x.eligible||0),0),inserted:results.reduce((s,x)=>s+x.inserted,0),updated:results.reduce((s,x)=>s+x.updated,0),publication:'Somente registros com WhatsApp profissional público validado são cadastrados; o número permanece privado no backoffice.'})
+  return json(res,200,{ok:true,batchSize:results.length,results,target:results.map(x=>x.target).join('; '),fetched:results.reduce((s,x)=>s+x.fetched,0),eligible:results.reduce((s,x)=>s+(x.eligible||0),0),inserted:results.reduce((s,x)=>s+x.inserted,0),updated:results.reduce((s,x)=>s+x.updated,0),publication:'Todos os registros públicos válidos são publicados automaticamente; telefone e WhatsApp permanecem privados no backoffice.'})
 }
