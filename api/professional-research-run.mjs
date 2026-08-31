@@ -344,13 +344,16 @@ async function processTarget(db, target) {
       }
       throw new Error('Não foi possível adaptar o cadastro ao schema atual de clinic_prospects.')
     }
-    for (const row of rows) {
+    // Process records concurrently: external source requests can approach the
+    // cron provider's 30s limit, so avoid serial database round-trips.
+    const outcomes = await Promise.all(rows.map(async row => {
       const canonical = `${row.name}|${row.city}|${row.state_code}`.toLowerCase().replace(/[^a-z0-9]+/g,'')
       const { data: existing } = await db.from('clinic_prospects').select('id').eq('canonical_key',canonical).maybeSingle()
       await persistProspect(row, existing?.id)
-      if (existing) updated += 1
-      else inserted += 1
-    }
+      return existing ? 'updated' : 'inserted'
+    }))
+    inserted = outcomes.filter(outcome => outcome === 'inserted').length
+    updated = outcomes.length - inserted
     await Promise.all([
       db.from('professional_research_runs').update({status:'completed',fetched_count:rows.length,inserted_count:inserted,updated_count:updated,finished_at:new Date().toISOString()}).eq('id',run.id),
       db.from('professional_research_targets').update({last_run_at:new Date().toISOString(),last_status:'completed',last_result_count:rows.length}).eq('id',target.id),
