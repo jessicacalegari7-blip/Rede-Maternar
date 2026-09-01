@@ -314,13 +314,6 @@ async function collect(target) {
 }
 
 async function processTarget(db, target) {
-  const normalizedSpecialty = canonicalSpecialty(target.specialty, target.specialty_slug)
-  const { error: specialtyError } = await db.from('specialties').upsert({
-    name: normalizedSpecialty.name,
-    slug: normalizedSpecialty.slug,
-    active: true,
-  }, { onConflict: 'slug', ignoreDuplicates: false })
-  if (specialtyError) throw specialtyError
   const { data: run, error: runError } = await db.from('professional_research_runs')
     .insert({target_id:target.id,source_name:process.env.GOOGLE_MAPS_API_KEY?'Google Places + sites oficiais + OpenStreetMap':SOURCE,status:'running'}).select('id').single()
   if (runError) throw runError
