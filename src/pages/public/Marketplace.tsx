@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useState } from 'react'
 import { CheckCircle2, Heart, MapPin, MessageCircle, Search, Star, Users } from 'lucide-react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Logo } from '../../components/Logo'
-import { maternalChildSpecialties } from '../../data/specialties'
+import { CityAutocomplete, useDirectorySpecialties } from '../../components/DirectorySearchFields'
 import { listMarketplaceProfessionals, listNearbyMarketplaceProfessionals } from '../../lib/operations'
 import { listPortalArticles, type PortalArticle } from '../../lib/news'
 import { LegalFooter } from './Legal'
@@ -17,6 +17,7 @@ export function Marketplace() {
   const [nearbyLoading,setNearbyLoading]=useState(false)
   const specialty = params.get('especialidade') || ''
   const city = params.get('cidade') || ''
+  const directorySpecialties = useDirectorySpecialties(specialty)
 
   useEffect(() => { listMarketplaceProfessionals().then(setRows).catch(e => setError(e instanceof Error ? e.message : 'Não foi possível carregar profissionais.'));listPortalArticles(20).then(setArticles).catch(()=>undefined) }, [])
   const normalize=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
@@ -74,8 +75,8 @@ export function Marketplace() {
       <form onSubmit={searchProfessionals}>
         <label><span>Seu Nome</span><input name="name" defaultValue={params.get('nome') || ''} placeholder="Ex.: Maria Silva" /></label>
         <label><span>Seu Telefone</span><input name="phone" defaultValue={params.get('telefone') || ''} placeholder="Ex.: (11) 99999-9999" /></label>
-        <label><span>Especialidade</span><select name="specialty" defaultValue={specialty}><option value="">Escolha uma especialidade</option>{maternalChildSpecialties.map(item => <option key={item}>{item}</option>)}</select></label>
-        <label><span>Cidade</span><input name="city" defaultValue={city} placeholder="Ex.: São Paulo, SP" /></label>
+        <label><span>Especialidade</span><select name="specialty" defaultValue={specialty}><option value="">Escolha uma especialidade</option>{directorySpecialties.map(item => <option key={item}>{item}</option>)}</select></label>
+        <label className="city-field"><span>Cidade</span><CityAutocomplete defaultValue={city} /></label>
         <button className="portal-search-button"><Search /> Buscar agora</button>
       </form>
       <div className="patient-search-note"><Heart /> Paciente, insira seu nome e telefone e faça sua busca por profissionais gratuitamente.</div>

@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useState } from 'react'
 import { Baby, Bell, BookOpen, ChevronRight, Heart, Menu, Mic2, Play, Search, Sparkles, Users } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Logo } from '../../components/Logo'
-import { maternalChildSpecialties } from '../../data/specialties'
+import { CityAutocomplete, useDirectorySpecialties } from '../../components/DirectorySearchFields'
 import { cachedPortalArticles, listPortalArticles, listPortalVideos, type PortalArticle, type PortalVideo } from '../../lib/news'
 import { LegalFooter } from './Legal'
 
@@ -16,6 +16,7 @@ export function PortalHome() {
   const [videos,setVideos]=useState<PortalVideo[]>([])
   const [articlesLoading,setArticlesLoading]=useState(()=>cachedPortalArticles().length===0)
   const [articlesError,setArticlesError]=useState(false)
+  const directorySpecialties = useDirectorySpecialties()
   useEffect(() => {
     let active=true
     const loadArticles=()=>{if(!cachedPortalArticles().length)setArticlesLoading(true);setArticlesError(false);void listPortalArticles().then(items=>{if(active)setArticles(items)}).catch(()=>{if(active)setArticlesError(true)}).finally(()=>{if(active)setArticlesLoading(false)})}
@@ -63,8 +64,8 @@ export function PortalHome() {
       <form onSubmit={searchProfessionals}>
         <label><span>Seu Nome</span><input name="name" placeholder="Ex.: Maria Silva" /></label>
         <label><span>Seu Telefone</span><input name="phone" placeholder="Ex.: (11) 99999-9999" /></label>
-        <label><span>Especialidade</span><select name="specialty"><option value="">Escolha uma especialidade</option>{maternalChildSpecialties.map(item => <option key={item}>{item}</option>)}</select></label>
-        <label><span>Cidade</span><input name="city" placeholder="Ex.: São Paulo, SP" /></label>
+        <label><span>Especialidade</span><select name="specialty"><option value="">Escolha uma especialidade</option>{directorySpecialties.map(item => <option key={item}>{item}</option>)}</select></label>
+        <label className="city-field"><span>Cidade</span><CityAutocomplete /></label>
         <button className="portal-search-button"><Search /> Buscar agora</button>
       </form>
       <div className="patient-search-note"><Heart /> Paciente, insira seu nome e telefone e faça sua busca por profissionais gratuitamente.</div>
