@@ -34,6 +34,10 @@ const SPECIALTY_ALIASES = new Map([
   ['gastroenterologia-pediatrica', { name: 'Gastroenterologista Infantil', slug: 'gastroenterologista-infantil' }],
   ['fono-infantil', { name: 'Fonoaudiologa Infantil', slug: 'fonoaudiologa-infantil' }],
   ['fonoaudiologia-infantil', { name: 'Fonoaudiologa Infantil', slug: 'fonoaudiologa-infantil' }],
+  ['consultoria-de-amamentacao', { name: 'Consultora de Amamentação', slug: 'consultora-de-amamentacao' }],
+  ['consultor-de-amamentacao', { name: 'Consultora de Amamentação', slug: 'consultora-de-amamentacao' }],
+  ['consultora-em-amamentacao', { name: 'Consultora de Amamentação', slug: 'consultora-de-amamentacao' }],
+  ['consultoria-em-amamentacao', { name: 'Consultora de Amamentação', slug: 'consultora-de-amamentacao' }],
   ['pediatria', { name: 'Pediatra', slug: 'pediatra' }],
 ])
 
