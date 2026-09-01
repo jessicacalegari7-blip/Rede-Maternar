@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Check, RefreshCw, Search, ShieldBan, X } from 'lucide-react'
 import type { UserStatus } from '../../lib/auth'
+import { useSearchParams } from 'react-router-dom'
 import {
   listAdminProfessionals,
   setAdminProfessionalPlan,
@@ -16,9 +17,10 @@ const statusLabels: Record<UserStatus, string> = {
 }
 
 export function AdminProfessionals() {
+  const [params]=useSearchParams()
   const [professionals, setProfessionals] = useState<AdminProfessional[]>([])
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<UserStatus | 'all'>('all')
+  const [filter, setFilter] = useState<UserStatus | 'all'>(params.get('status')==='pending'?'pending':'all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [changingId, setChangingId] = useState('')

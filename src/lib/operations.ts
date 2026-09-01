@@ -475,6 +475,23 @@ export async function recordProfessionalProfileView(professionalId:string) {
   if(error) throw new Error(error.message)
 }
 
+export type PublicProfessionalReview={id:string;reviewer_name:string;rating:number;comment:string|null;created_at:string}
+
+export async function listProfessionalReviews(professionalId:string) {
+  const {data,error}=await client().from('public_professional_reviews').select('*').eq('professional_id',professionalId).order('created_at',{ascending:false}).limit(30)
+  if(error) throw new Error(error.message)
+  return (data??[]) as PublicProfessionalReview[]
+}
+
+export async function submitProfessionalReview(input:{professionalId:string;name:string;email:string;rating:number;comment:string}) {
+  const {error}=await client().rpc('submit_professional_review',{
+    target_professional_id:input.professionalId,
+    reviewer_name:input.name.trim(),reviewer_email:input.email.trim().toLowerCase(),
+    review_rating:input.rating,review_comment:input.comment.trim()||null,
+  })
+  if(error) throw new Error(error.message)
+}
+
 export async function listMyProfileViewCounts() {
   const {data,error}=await client().rpc('my_profile_view_counts')
   if(error) throw new Error(error.message)
