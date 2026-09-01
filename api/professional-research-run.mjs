@@ -314,6 +314,13 @@ async function collect(target) {
 }
 
 async function processTarget(db, target) {
+  const normalizedSpecialty = canonicalSpecialty(target.specialty, target.specialty_slug)
+  const { error: specialtyError } = await db.from('specialties').upsert({
+    name: normalizedSpecialty.name,
+    slug: normalizedSpecialty.slug,
+    active: true,
+  }, { onConflict: 'slug', ignoreDuplicates: false })
+  if (specialtyError) throw specialtyError
   const { data: run, error: runError } = await db.from('professional_research_runs')
     .insert({target_id:target.id,source_name:process.env.GOOGLE_MAPS_API_KEY?'Google Places + sites oficiais + OpenStreetMap':SOURCE,status:'running'}).select('id').single()
   if (runError) throw runError
@@ -379,8 +386,12 @@ export default async function handler(req, res) {
   }
   const requestedBatch = Number(req.body?.batchSize || process.env.RESEARCH_TARGETS_PER_RUN || 1)
   const batchSize = Math.min(Math.max(Number.isFinite(requestedBatch)?requestedBatch:3,1),10)
-  const { data: targets, error: targetError } = await db.from('professional_research_targets').select('*')
-    .eq('enabled',true).order('last_run_at',{ascending:true,nullsFirst:true}).order('priority').limit(batchSize)
+  let { data: targets, error: targetError } = await db.rpc('claim_professional_research_targets', { requested_limit: batchSize })
+  if (targetError && /claim_professional_research_targets/i.test(errorMessage(targetError))) {
+    const fallback = await db.from('professional_research_targets').select('*')
+      .eq('enabled',true).order('last_run_at',{ascending:true,nullsFirst:true}).order('priority').limit(batchSize)
+    targets = fallback.data; targetError = fallback.error
+  }
   if (targetError) return json(res,500,{error:targetError.message})
   if (!targets?.length) return json(res,200,{ok:true,message:'Nenhum alvo habilitado.'})
   const results=[]
