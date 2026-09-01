@@ -6,6 +6,9 @@ const USER_AGENT = 'MaterPlaceDirectoryBot/1.0 (https://materplace.com.br/contat
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'
 const GOOGLE_PLACES_URL = 'https://places.googleapis.com/v1/places:searchText'
 const MAX_GOOGLE_PAGES = 1
+const DEFAULT_GOOGLE_MONTHLY_LIMIT = 1000
+
+class GoogleMonthlyQuotaError extends Error {}
 
 function errorMessage(error, fallback = 'Falha desconhecida') {
   if (error instanceof Error && error.message) return error.message
@@ -212,11 +215,19 @@ async function verifyOfficialWebsite(place, target) {
   } catch { return baseRow }
 }
 
-async function collectFromGooglePlaces(target) {
+function googleMonthlyLimit() {
+  const configured = Number(process.env.GOOGLE_PLACES_MONTHLY_LIMIT || DEFAULT_GOOGLE_MONTHLY_LIMIT)
+  return Math.min(Math.max(Number.isFinite(configured) ? Math.floor(configured) : DEFAULT_GOOGLE_MONTHLY_LIMIT, 1), DEFAULT_GOOGLE_MONTHLY_LIMIT)
+}
+
+async function collectFromGooglePlaces(db, target) {
   const apiKey = process.env.GOOGLE_MAPS_API_KEY?.trim()
   if (!apiKey) return []
   const collected = new Map(); let pageToken = null
   for (let page = 0; page < MAX_GOOGLE_PAGES; page += 1) {
+    const { data: quotaGranted, error: quotaError } = await db.rpc('consume_google_places_monthly_quota', { requested_limit: googleMonthlyLimit() })
+    if (quotaError) throw new GoogleMonthlyQuotaError(`Controle mensal do Google indisponível: ${errorMessage(quotaError)}`)
+    if (!quotaGranted) throw new GoogleMonthlyQuotaError('Limite mensal gratuito do Google Places atingido.')
     const body = { textQuery: `${target.specialty} em ${target.city} ${target.state_code}, Brasil`, languageCode: 'pt-BR', regionCode: 'BR', pageSize: 20 }
     if (pageToken) body.pageToken = pageToken
     const response = await fetch(GOOGLE_PLACES_URL, {
@@ -272,13 +283,14 @@ async function seedTargets(db) {
   return { cities:topCities.length,specialties:canonicalSpecialties.length,targets:rows.length }
 }
 
-async function collect(target) {
+async function collect(db, target) {
   const failures = []
   let googleRows = []
   try {
-    googleRows = await collectFromGooglePlaces(target)
+    googleRows = await collectFromGooglePlaces(db, target)
     if (!googleRows.length && process.env.GOOGLE_MAPS_API_KEY?.trim()) failures.push('Google Places: nenhum resultado')
   } catch (error) {
+    if (error instanceof GoogleMonthlyQuotaError) throw error
     failures.push(`Google Places: ${errorMessage(error, 'falha na consulta')}`)
   }
   if (googleRows.length) return googleRows
@@ -319,7 +331,7 @@ async function processTarget(db, target) {
   if (runError) throw runError
   let collectedRows = []
   try {
-    collectedRows = await collect(target)
+    collectedRows = await collect(db, target)
     const rows = collectedRows
       .map(row => withCanonicalSpecialty(row, target))
       .map(row => ({
@@ -361,11 +373,12 @@ async function processTarget(db, target) {
     return {target:`${target.specialty} em ${target.city}/${target.state_code}`,fetched:collectedRows.length,eligible:rows.length,inserted,updated}
   } catch (error) {
     const message = errorMessage(error)
+    const quotaPaused = error instanceof GoogleMonthlyQuotaError
     await Promise.all([
       db.from('professional_research_runs').update({status:'failed',error_message:message,finished_at:new Date().toISOString()}).eq('id',run.id),
-      db.from('professional_research_targets').update({last_run_at:new Date().toISOString(),last_status:'failed'}).eq('id',target.id),
+      db.from('professional_research_targets').update({last_run_at:new Date().toISOString(),last_status:quotaPaused?'quota_paused':'failed'}).eq('id',target.id),
     ])
-    return {target:`${target.specialty} em ${target.city}/${target.state_code}`,fetched:collectedRows.length,eligible:collectedRows.length,inserted:0,updated:0,error:message}
+    return {target:`${target.specialty} em ${target.city}/${target.state_code}`,fetched:collectedRows.length,eligible:collectedRows.length,inserted:0,updated:0,error:message,paused:quotaPaused}
   }
 }
 
@@ -376,6 +389,12 @@ export default async function handler(req, res) {
   if (req.method==='POST' && req.body?.action==='seed') {
     try { return json(res,200,{ok:true,...await seedTargets(db)}) }
     catch (error) { return json(res,502,{error:error instanceof Error?error.message:'Falha ao gerar fila.'}) }
+  }
+  if (process.env.GOOGLE_MAPS_API_KEY?.trim()) {
+    const { data: quotaRows, error: quotaError } = await db.rpc('google_places_monthly_quota_status', { requested_limit: googleMonthlyLimit() })
+    if (quotaError) return json(res,503,{ok:false,paused:true,error:'Controle de custo do Google indisponível. A execução foi bloqueada por segurança.'})
+    const quota = Array.isArray(quotaRows) ? quotaRows[0] : quotaRows
+    if (quota && Number(quota.remaining_count) <= 0) return json(res,200,{ok:true,paused:true,message:'Limite mensal de 1.000 consultas do Google Places atingido. O robô retomará automaticamente no próximo mês.',quota})
   }
   const requestedBatch = Number(req.body?.batchSize || process.env.RESEARCH_TARGETS_PER_RUN || 1)
   const batchSize = Math.min(Math.max(Number.isFinite(requestedBatch)?requestedBatch:3,1),10)
