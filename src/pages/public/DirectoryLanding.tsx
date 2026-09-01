@@ -58,7 +58,7 @@ export function DirectoryLanding(){
   const newsCard=(article:PortalArticle,label='Conteúdo MaterPlace')=><article className="directory-news-card"><Link to={`/noticias/${article.slug}`}>{article.coverImageUrl&&<img src={article.coverImageUrl} alt={`Capa: ${article.title}`} loading="lazy" decoding="async" width="480" height="270"/>}<span>{label}</span><h3>{article.title}</h3>{article.excerpt&&<p>{article.excerpt}</p>}</Link></article>
 
   return <div className="marketplace-page">
-    <Seo appendBrand={false} title={`${specialtyName} em ${cityName} - ${state} | Encontre Especialistas na MaterPlace`} description={`Procurando ${specialtyName} em ${cityName}? Encontre profissionais qualificados, consulte registros profissionais informados e conheça os perfis disponíveis na MaterPlace.`} schema={schema}/>
+    <Seo appendBrand={false} title={`${specialtyName} em ${cityName} - ${state} | Encontre Especialistas na MaterPlace`} description={`Procurando ${specialtyName} em ${cityName}? Encontre profissionais qualificados, consulte registros profissionais informados e conheça os perfis disponíveis na MaterPlace.`} schema={schema} index={loading||rows.length>0}/>
     <header className="portal-topbar"><Link to="/"><Logo/></Link><Link className="btn btn-secondary" to="/cadastro-profissional">Cadastre-se</Link></header>
     <main className="directory-shell">
       <header className="directory-hero"><span className="badge">Diretório MaterPlace</span><h1>{specialtyName} em {cityName}, {state}</h1><p>Encontre profissionais de {specialtyName} em {locationLabel}. Confira sempre o registro no conselho de classe antes de contratar um atendimento.</p></header>

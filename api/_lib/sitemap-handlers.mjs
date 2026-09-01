@@ -15,14 +15,9 @@ export async function posts(request,response){
 
 export async function directory(request,response){
   const db=adminClient();const page=pageNumber(request)
-  const {count:targetCount,error:countError}=await db.from('professional_research_targets').select('id',{count:'exact',head:true}).eq('enabled',true)
-  const availableTargets=countError?0:(targetCount||0)
-  const globalOffset=(page-1)*MAX_URLS;const targetsAvailable=Math.max(0,availableTargets-globalOffset);const targetLimit=Math.min(MAX_URLS,targetsAvailable)
-  const targets=targetLimit?await fetchWindow(()=>db.from('professional_research_targets').select('*').eq('enabled',true).order('priority'),globalOffset,targetLimit):[]
-  const profileLimit=MAX_URLS-targets.length;const profileOffset=Math.max(0,globalOffset-availableTargets)
-  const profiles=profileLimit?await fetchWindow(()=>db.from('published_clinic_directory').select('*').order('id',{ascending:true}),profileOffset,profileLimit):[]
+  const profiles=await fetchRange(()=>db.from('published_clinic_directory').select('*').order('id',{ascending:true}),page)
   const nodes=[];const seen=new Set()
-  for(const item of [...targets,...profiles]){const specialty=item.specialty_slug||slugify(item.primary_specialty||item.specialty);const city=item.city_slug||slugify(item.city);const state=String(item.state_code||'').toLowerCase();const key=`${specialty}/${state}/${city}`;if(!specialty||!state||!city||seen.has(key))continue;seen.add(key);nodes.push(urlNode({loc:`${SITE_URL}/profissionais/${key}`,lastmod:item.updated_at||item.last_run_at||item.created_at,changefreq:'daily',priority:'0.9'}))}
+  for(const item of profiles){const specialty=item.specialty_slug||slugify(item.primary_specialty);const city=item.city_slug||slugify(item.city);const state=String(item.state_code||'').toLowerCase();const key=`${specialty}/${state}/${city}`;if(!specialty||!state||!city||seen.has(key))continue;seen.add(key);nodes.push(urlNode({loc:`${SITE_URL}/profissionais/${key}`,lastmod:item.updated_at||item.created_at,changefreq:'daily',priority:'0.9'}))}
   for(const item of profiles){const specialty=item.specialty_slug||slugify(item.primary_specialty);const city=item.city_slug||slugify(item.city);const state=String(item.state_code||'').toLowerCase();if(specialty&&state&&city)nodes.push(urlNode({loc:`${SITE_URL}/profissionais/${specialty}/${state}/${city}/${slugify(item.name)}-${item.id}`,lastmod:item.updated_at,changefreq:'weekly',priority:'0.8'}))}
   return sendXml(response,urlset(nodes))
 }

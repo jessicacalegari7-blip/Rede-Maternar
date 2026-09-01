@@ -1,5 +1,7 @@
-export const SITE_URL = 'https://materplace.com.br'
-export const MAX_URLS = 50000
+export const SITE_URL = 'https://www.materplace.com.br'
+// Cada perfil também pode gerar uma página de listagem; 25 mil registros mantêm
+// cada arquivo abaixo do limite oficial de 50 mil URLs.
+export const MAX_URLS = 25000
 
 export const escapeXml = value => String(value ?? '').replace(/[<>&'"]/g, char => ({
   '<':'&lt;','>':'&gt;','&':'&amp;',"'":'&apos;','"':'&quot;',

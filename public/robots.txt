@@ -3,5 +3,10 @@ Allow: /
 Disallow: /admin/
 Disallow: /profissional/
 Disallow: /paciente/
+Disallow: /login
+Disallow: /definir-senha
+Disallow: /recuperar-senha
+Disallow: /convite/
 
-Sitemap: https://materplace.com.br/sitemap.xml
+Sitemap: https://www.materplace.com.br/sitemap.xml
+Sitemap: https://www.materplace.com.br/sitemap-news.xml

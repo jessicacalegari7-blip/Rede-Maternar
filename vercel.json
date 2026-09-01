@@ -10,12 +10,17 @@
   ],
   "headers": [
     { "source": "/assets/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },
-    { "source": "/brand/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=2592000, stale-while-revalidate=86400" }] }
+    { "source": "/brand/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=2592000, stale-while-revalidate=86400" }] },
+    { "source": "/(admin|profissional|paciente)/(.*)", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }] },
+    { "source": "/(login|definir-senha|recuperar-senha|convite)/(.*)", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }] }
+  ],
+  "redirects": [
+    { "source": "/(.*)", "has": [{ "type": "host", "value": "materplace.com.br" }], "destination": "https://www.materplace.com.br/$1", "permanent": true }
   ],
   "rewrites": [
     { "source": "/profissionais/:specialty/:uf/:city/:profile", "has": [{ "type": "header", "key": "user-agent", "value": ".*(Googlebot|bingbot|facebookexternalhit|Facebot|Twitterbot|LinkedInBot|WhatsApp|TelegramBot).*" }], "destination": "/api/directory-share?specialty=:specialty&uf=:uf&city=:city&profile=:profile" },
     { "source": "/profissionais/:specialty/:uf/:city", "has": [{ "type": "header", "key": "user-agent", "value": ".*(Googlebot|bingbot|facebookexternalhit|Facebot|Twitterbot|LinkedInBot|WhatsApp|TelegramBot).*" }], "destination": "/api/directory-share?specialty=:specialty&uf=:uf&city=:city" },
-    { "source": "/noticias/:slug", "has": [{ "type": "header", "key": "user-agent", "value": ".*(facebookexternalhit|Facebot|Twitterbot|LinkedInBot|WhatsApp|TelegramBot).*" }], "destination": "/api/article-share?slug=:slug" },
+    { "source": "/noticias/:slug", "has": [{ "type": "header", "key": "user-agent", "value": ".*(Googlebot|bingbot|facebookexternalhit|Facebot|Twitterbot|LinkedInBot|WhatsApp|TelegramBot).*" }], "destination": "/api/article-share?slug=:slug" },
     { "source": "/sitemap.xml", "destination": "/api/sitemap" },
     { "source": "/sitemap-posts.xml", "destination": "/api/sitemap?type=posts&page=1" },
     { "source": "/sitemap-posts-:page.xml", "destination": "/api/sitemap?type=posts&page=:page" },

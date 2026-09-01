@@ -5,6 +5,7 @@ import { Logo } from '../../components/Logo'
 import { CityAutocomplete, useDirectorySpecialties } from '../../components/DirectorySearchFields'
 import { cachedPortalArticles, listPortalArticles, listPortalVideos, type PortalArticle, type PortalVideo } from '../../lib/news'
 import { LegalFooter } from './Legal'
+import { Seo, baseSchemas } from '../../components/Seo'
 
 const articleDate = (article: PortalArticle) => new Date(article.publishedAt || article.createdAt).toLocaleDateString('pt-BR')
 
@@ -49,6 +50,7 @@ export function PortalHome() {
   const otherArticles = visibleArticles.slice(8)
 
   return <div className="portal-home">
+    <Seo title={selectedCategory?`${selectedCategory}: conteúdos para famílias`:'MaterPlace — saúde materno-infantil e profissionais'} description={selectedCategory?`Conteúdos informativos da MaterPlace sobre ${selectedCategory}, com autoria, fontes e orientação para buscar atendimento profissional.`:'Encontre profissionais materno-infantis por especialidade e cidade e acesse conteúdo informativo para cada fase da maternidade.'} path={selectedCategory?`/categoria/${categorySlug}`:'/'} appendBrand={false} schema={baseSchemas}/>
     <header className="portal-topbar">
       <Link to="/" aria-label="Início"><Logo /></Link>
       <Link className="professional-access" to="/login"><span><Users /></span><strong>Profissional de Saúde<small>Login na plataforma</small></strong></Link>

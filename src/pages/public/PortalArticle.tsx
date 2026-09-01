@@ -5,6 +5,7 @@ import { Logo } from '../../components/Logo'
 import { getPortalArticle, listPortalArticles, type PortalArticle } from '../../lib/news'
 import { LegalFooter } from './Legal'
 import { WebPushPrompt } from '../../components/WebPushPrompt'
+import { Seo } from '../../components/Seo'
 
 export function PortalArticlePage() {
   const navigate = useNavigate()
@@ -20,20 +21,6 @@ export function PortalArticlePage() {
       .then(([current, all]) => { setArticle(current); setSuggestions(all.filter(item => item.slug !== current.slug).slice(0, 16)) })
       .catch(error => setError(error instanceof Error ? error.message : 'Não foi possível carregar esta notícia.'))
   }, [slug])
-
-  useEffect(() => {
-    if (!article) return
-    const canonical=`https://www.materplace.com.br/noticias/${article.slug}`
-    const image=article.coverImageUrl||'https://www.materplace.com.br/brand/materplace-logo.png'
-    document.title=article.seoTitle||article.title
-    const setMeta=(key:string,value:string,attribute='name')=>{let element=document.head.querySelector(`meta[${attribute}="${key}"]`) as HTMLMetaElement|null;if(!element){element=document.createElement('meta');element.setAttribute(attribute,key);document.head.appendChild(element)}element.content=value}
-    setMeta('robots','index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1')
-    ;[['og:title',article.title],['og:description',article.excerpt],['og:image',image],['og:url',canonical],['og:type','article']].forEach(([key,value])=>setMeta(key,value,'property'))
-    ;[['twitter:card','summary_large_image'],['twitter:title',article.title],['twitter:description',article.excerpt],['twitter:image',image]].forEach(([key,value])=>setMeta(key,value))
-    let link=document.head.querySelector('link[rel="canonical"]') as HTMLLinkElement|null;if(!link){link=document.createElement('link');link.rel='canonical';document.head.appendChild(link)}link.href=canonical
-    document.getElementById('article-jsonld')?.remove();const script=document.createElement('script');script.id='article-jsonld';script.type='application/ld+json';script.text=JSON.stringify({'@context':'https://schema.org','@type':'NewsArticle',headline:article.title,image:[image],datePublished:article.publishedAt||article.createdAt,dateModified:article.publishedAt||article.createdAt,author:{'@type':'Person',name:article.authorName},publisher:{'@type':'Organization',name:'MaterPlace',url:'https://www.materplace.com.br',logo:{'@type':'ImageObject',url:'https://www.materplace.com.br/brand/materplace-logo.png'}},mainEntityOfPage:canonical});document.head.appendChild(script)
-    return()=>{script.remove()}
-  },[article])
 
   function returnToHomeTop() {
     navigate('/')
@@ -53,6 +40,10 @@ export function PortalArticlePage() {
   function renderBlock(block:string,index:number){const h3=block.match(/^###\s+(.+)$/);if(h3)return <h3 key={index}>{inline(h3[1])}</h3>;const h2=block.match(/^##\s+(.+)$/);if(h2)return <h2 key={index}>{inline(h2[1])}</h2>;const image=block.match(/^!\[(.*?)\]\((https?:\/\/[^)]+)\)$/);if(image)return <figure key={index}><img src={image[2]} alt={image[1]||"Imagem ilustrativa da matéria"} loading="lazy" decoding="async" width="1200" height="675"/>{image[1]&&<figcaption>{image[1]}</figcaption>}</figure>;const youtube=block.match(/^\[youtube:([A-Za-z0-9_-]{11})\]$/);if(youtube)return <div className="article-youtube" key={index}><iframe loading="lazy" src={`https://www.youtube-nocookie.com/embed/${youtube[1]}`} title="Vídeo do YouTube" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen/></div>;const lines=block.split('\n');if(lines.every(x=>x.startsWith('- ')))return <ul key={index}>{lines.map((x,i)=><li key={i}>{inline(x.slice(2))}</li>)}</ul>;if(block.startsWith('> '))return <blockquote key={index}>{inline(block.slice(2))}</blockquote>;return <p key={index}>{inline(block)}</p>}
 
   return <div className="portal-home">
+    {article&&<Seo appendBrand={false} title={article.seoTitle||article.title} description={article.excerpt} path={`/noticias/${article.slug}`} image={article.coverImageUrl} type="article" schema={[
+      {'@context':'https://schema.org','@type':'NewsArticle',headline:article.title,description:article.excerpt,image:[article.coverImageUrl||'https://www.materplace.com.br/brand/materplace-logo.png'],datePublished:article.publishedAt||article.createdAt,dateModified:article.publishedAt||article.createdAt,author:{'@type':'Person',name:article.authorName},publisher:{'@type':'Organization',name:'MaterPlace',url:'https://www.materplace.com.br',logo:{'@type':'ImageObject',url:'https://www.materplace.com.br/brand/materplace-logo.png'}},mainEntityOfPage:`https://www.materplace.com.br/noticias/${article.slug}`},
+      {'@context':'https://schema.org','@type':'BreadcrumbList',itemListElement:[{'@type':'ListItem',position:1,name:'Início',item:'https://www.materplace.com.br/'},{'@type':'ListItem',position:2,name:article.category,item:`https://www.materplace.com.br/categoria/${article.category.toLowerCase()}`},{'@type':'ListItem',position:3,name:article.title,item:`https://www.materplace.com.br/noticias/${article.slug}`}]},
+    ]}/>}
     <header className="portal-topbar article-topbar">
       <Link to="/" aria-label="Início e topo da página"><Logo /></Link>
       <Link className="professional-access" to="/login"><span><Users /></span><strong>Profissional de Saúde<small>Login na plataforma</small></strong></Link>
@@ -66,7 +57,8 @@ export function PortalArticlePage() {
         {article && <article>
           <header className="article-heading"><span>{article.category}</span><h1>{article.title}</h1><p>{article.excerpt}</p><small><CalendarDays /> {new Date(article.publishedAt || article.createdAt).toLocaleDateString('pt-BR')} · {article.authorName}</small></header>
           {article.coverImageUrl && <img className="article-cover" src={article.coverImageUrl} alt={`Imagem de capa: ${article.title}`} width="1600" height="900" decoding="async" />}
-          <div className="article-share" aria-label="Compartilhar matéria"><strong>Compartilhar:</strong><a href={`https://wa.me/?text=${encodeURIComponent(`${article.title} https://materplace.com.br/noticias/${article.slug}`)}`} target="_blank" rel="noreferrer"><MessageCircle/>WhatsApp</a><a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`https://materplace.com.br/noticias/${article.slug}`)}`} target="_blank" rel="noreferrer"><Facebook/>Facebook</a><a className="instagram-follow" href="https://www.instagram.com/materplace/" target="_blank" rel="noreferrer" aria-label="Seguir a MaterPlace no Instagram"><Instagram/>Siga @materplace</a></div><div className="article-content">{renderContent()}</div>
+          <div className="article-share" aria-label="Compartilhar matéria"><strong>Compartilhar:</strong><a href={`https://wa.me/?text=${encodeURIComponent(`${article.title} https://www.materplace.com.br/noticias/${article.slug}`)}`} target="_blank" rel="noreferrer"><MessageCircle/>WhatsApp</a><a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(`https://www.materplace.com.br/noticias/${article.slug}`)}`} target="_blank" rel="noreferrer"><Facebook/>Facebook</a><a className="instagram-follow" href="https://www.instagram.com/materplace/" target="_blank" rel="noreferrer" aria-label="Seguir a MaterPlace no Instagram"><Instagram/>Siga @materplace</a></div><div className="article-content">{renderContent()}</div>
+          <aside className="article-health-notice"><strong>Conteúdo educativo de saúde</strong><p>Esta matéria não substitui diagnóstico, prescrição ou atendimento individual. Consulte um profissional habilitado e, em caso de urgência, procure um serviço de saúde.</p><Link to="/expediente">Conheça nosso expediente editorial</Link> · <Link to="/isencao-de-responsabilidade">Leia a isenção de responsabilidade</Link></aside>
           {article.isDemo && <div className="demo-content-note">Conteúdo demonstrativo para composição inicial do portal. Será substituído gradualmente por publicações editoriais da MaterPlace.</div>}
         </article>}
         <aside className="article-marketplace-cta"><div><strong>Precisa de apoio materno-infantil?</strong><p>Encontre profissionais e clínicas na sua região.</p></div><button className="btn btn-primary" type="button" onClick={returnToHomeTop}>Buscar profissionais</button></aside>

@@ -9,26 +9,33 @@
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
     <meta property="og:title" content="MaterPlace — Ecossistema Materno-Infantil" />
     <meta property="og:description" content="Encontre profissionais materno-infantis e informação confiável para cada fase." />
-    <meta property="og:image" content="https://materplace.com.br/brand/materplace-logo.png" />
-    <meta property="og:url" content="https://materplace.com.br/" />
+    <meta property="og:image" content="https://www.materplace.com.br/brand/materplace-logo.png" />
+    <meta property="og:url" content="https://www.materplace.com.br/" />
     <meta property="og:type" content="website" />
     <link rel="icon" type="image/png" href="/brand/materplace-symbol.png" />
     <link rel="apple-touch-icon" href="/brand/materplace-symbol.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="MaterPlace — Ecossistema Materno-Infantil" />
     <meta name="twitter:description" content="Encontre profissionais materno-infantis e informação confiável para cada fase." />
-    <meta name="twitter:image" content="https://materplace.com.br/brand/materplace-logo.png" />
-    <link rel="canonical" href="https://materplace.com.br/" />
+    <meta name="twitter:image" content="https://www.materplace.com.br/brand/materplace-logo.png" />
+    <link rel="canonical" href="https://www.materplace.com.br/" />
     <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
     <title>MaterPlace</title>
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-BQF6TWTN36"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
+      gtag('consent', 'default', {
+        analytics_storage: localStorage.getItem('materplace-cookie-consent') === 'accepted' ? 'granted' : 'denied',
+        ad_storage: localStorage.getItem('materplace-cookie-consent') === 'accepted' ? 'granted' : 'denied',
+        ad_user_data: localStorage.getItem('materplace-cookie-consent') === 'accepted' ? 'granted' : 'denied',
+        ad_personalization: localStorage.getItem('materplace-cookie-consent') === 'accepted' ? 'granted' : 'denied',
+        wait_for_update: 500
+      });
       gtag('js', new Date());
       gtag('config', 'G-BQF6TWTN36');
     </script>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-BQF6TWTN36"></script>
   </head>
   <body>
     <div id="root"></div>

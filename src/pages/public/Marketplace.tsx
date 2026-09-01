@@ -6,6 +6,7 @@ import { CityAutocomplete, useDirectorySpecialties } from '../../components/Dire
 import { listMarketplaceProfessionals, listNearbyMarketplaceProfessionals } from '../../lib/operations'
 import { listPortalArticles, type PortalArticle } from '../../lib/news'
 import { LegalFooter } from './Legal'
+import { Seo } from '../../components/Seo'
 
 export function Marketplace() {
   const navigate = useNavigate()
@@ -68,6 +69,7 @@ export function Marketplace() {
   }
 
   return <div className="marketplace-page">
+    <Seo title="Encontre profissionais materno-infantis" description="Busque profissionais materno-infantis por especialidade e cidade. Confira perfis e informações profissionais na MaterPlace." path="/profissionais" index={!specialty&&!city}/>
     <header className="portal-topbar"><Link to="/" aria-label="Início"><Logo /></Link><Link className="professional-access" to="/login"><span><Users /></span><strong>Profissional de Saúde<small>Login na plataforma</small></strong></Link></header>
     <section className="portal-search">
       <span className="brand-manifesto">Conecta · Acolhe · Transforma</span>

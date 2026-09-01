@@ -13,12 +13,11 @@ export default async function handler(request,response) {
     if(type==='categories')return await categories(request,response)
     if(type==='pages')return staticPages(request,response)
     const db=adminClient()
-    const [postCount,targetCount,profileCount]=await Promise.all([
+    const [postCount,profileCount]=await Promise.all([
       countOrZero(db.from('news_articles').select('id',{count:'exact',head:true}).eq('status','published')),
-      countOrZero(db.from('professional_research_targets').select('id',{count:'exact',head:true}).eq('enabled',true)),
       countOrZero(db.from('published_clinic_directory').select('id',{count:'exact',head:true})),
     ])
-    const urls=[...pageUrls('posts',postCount||0),...pageUrls('diretorio',(targetCount||0)+(profileCount||0)),`${SITE_URL}/sitemap-categorias.xml`,`${SITE_URL}/sitemap-paginas.xml`]
+    const urls=[...pageUrls('posts',postCount||0),...pageUrls('diretorio',profileCount||0),`${SITE_URL}/sitemap-categorias.xml`,`${SITE_URL}/sitemap-paginas.xml`]
     const xml=`<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map(url=>sitemapNode(url,new Date())).join('')}</sitemapindex>`
     return sendXml(response,xml)
   } catch(error) { return response.status(500).json({error:error?.message||'Erro ao gerar sitemap.'}) }
