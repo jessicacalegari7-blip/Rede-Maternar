@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Eye, Save, Trash2 } from 'lucide-react'
+import { Eye, MapPin, Plus, Save, Trash2 } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
-import { getMyProfessionalProfile, getProfessionalServiceCities, getProfessionalSpecialtyEditor, listMyProfileViewCounts, saveProfessionalServiceCities, saveProfessionalSpecialties, updateMyProfessionalProfile, uploadMarketplaceMedia, type RealProfessionalProfile } from '../../lib/operations'
+import { getMyProfessionalProfile, getProfessionalServiceCities, getProfessionalServiceLocations, getProfessionalSpecialtyEditor, listMyProfileViewCounts, saveProfessionalServiceCities, saveProfessionalServiceLocations, saveProfessionalSpecialties, updateMyProfessionalProfile, uploadMarketplaceMedia, type ProfessionalServiceLocation, type RealProfessionalProfile } from '../../lib/operations'
 import { specialtyLimitForPlan } from '../../lib/plans'
 import { CityAutocomplete } from '../../components/DirectorySearchFields'
 
@@ -11,6 +11,7 @@ export function ProfessionalProfilePage() {
   const [specialtyOptions,setSpecialtyOptions]=useState<string[]>([])
   const [selectedSpecialties,setSelectedSpecialties]=useState<string[]>([])
   const [visibilityCities,setVisibilityCities]=useState<string[]>([])
+  const [serviceLocations,setServiceLocations]=useState<ProfessionalServiceLocation[]>([])
   const [viewCount,setViewCount]=useState(0)
   const [notice,setNotice]=useState('')
   const [saving,setSaving]=useState(false)
@@ -23,6 +24,7 @@ export function ProfessionalProfilePage() {
     const specialties=await getProfessionalSpecialtyEditor(loaded.id)
     setSpecialtyOptions(specialties.options.map(item=>item.name)); setSelectedSpecialties(specialties.selected)
     setVisibilityCities(await getProfessionalServiceCities(loaded.id))
+    setServiceLocations(await getProfessionalServiceLocations(loaded.id))
     const counts=await listMyProfileViewCounts(); setViewCount(Number(counts.find(item=>item.professional_id===loaded.id)?.view_count??0))
   }).catch(e=>setError(e.message))},[])
 
@@ -45,7 +47,7 @@ export function ProfessionalProfilePage() {
   }
   const save=async()=>{
     setNotice('Salvando e confirmando no banco de dados...');setSaving(true)
-    try{const saved=await updateMyProfessionalProfile(profile.id,{...profile,profile_completed:Boolean(profile.full_name&&profile.city&&profile.whatsapp)});await saveProfessionalSpecialties(profile.id,selectedSpecialties,specialtyLimit);await saveProfessionalServiceCities(profile.id,visibilityCities);setProfile(saved);setNotice(saved.marketplace_visible?'Salvo com sucesso. As alterações já estão publicadas no Marketplace.':'Salvo com sucesso. O perfil aguarda aprovação da administração.')}
+    try{const saved=await updateMyProfessionalProfile(profile.id,{...profile,profile_completed:Boolean(profile.full_name&&profile.city&&profile.whatsapp)});await saveProfessionalSpecialties(profile.id,selectedSpecialties,specialtyLimit);await saveProfessionalServiceCities(profile.id,visibilityCities);await saveProfessionalServiceLocations(profile.id,serviceLocations);setProfile(saved);setNotice(saved.marketplace_visible?'Salvo com sucesso. As alterações e locais de atendimento já estão publicados no Marketplace.':'Salvo com sucesso. O perfil aguarda aprovação da administração.')}
     catch(e){setNotice(e instanceof Error?e.message:'Erro ao salvar.')}
     finally{setSaving(false)}
   }
@@ -74,6 +76,7 @@ export function ProfessionalProfilePage() {
       <div className="field"><label>Número</label><input value={profile.address_number||''} onChange={e=>set('address_number',e.target.value)}/></div>
       <div className="field"><label>Complemento</label><input value={profile.address_complement||''} onChange={e=>set('address_complement',e.target.value)}/></div>
       <div className="field"><label>Horários de atendimento</label><input value={profile.opening_hours||''} onChange={e=>set('opening_hours',e.target.value)}/></div>
+      <section className="field grid-span-2 service-location-editor"><div className="section-heading"><div><label>Locais de atendimento</label><small>Cadastre todos os consultórios, clínicas ou unidades onde você atende.</small></div><button type="button" className="btn btn-secondary btn-small" onClick={()=>setServiceLocations(current=>[...current,{name:'',address_line:'',address_number:'',address_complement:'',neighborhood:'',city:'',state_code:'',postal_code:''}])}><Plus size={16}/> Adicionar local</button></div>{serviceLocations.map((location,index)=><article className="service-location-form" key={location.id||index}><div className="service-location-form-title"><strong><MapPin size={17}/> Local {index+1}</strong><button type="button" className="icon-btn" aria-label={`Remover local ${index+1}`} onClick={()=>setServiceLocations(current=>current.filter((_,itemIndex)=>itemIndex!==index))}><Trash2 size={16}/></button></div><div className="form-grid"><label className="field field-span-2"><span>Nome do local</span><input placeholder="Ex.: Clínica MaterCare — Unidade Centro" value={location.name} onChange={e=>setServiceLocations(current=>current.map((item,itemIndex)=>itemIndex===index?{...item,name:e.target.value}:item))}/></label><label className="field field-span-2"><span>Endereço</span><input placeholder="Rua, avenida ou alameda" value={location.address_line} onChange={e=>setServiceLocations(current=>current.map((item,itemIndex)=>itemIndex===index?{...item,address_line:e.target.value}:item))}/></label>{(['address_number','address_complement','neighborhood','postal_code'] as const).map(field=><label className="field" key={field}><span>{{address_number:'Número',address_complement:'Complemento',neighborhood:'Bairro',postal_code:'CEP'}[field]}</span><input value={location[field]} onChange={e=>setServiceLocations(current=>current.map((item,itemIndex)=>itemIndex===index?{...item,[field]:e.target.value}:item))}/></label>)}<label className="field"><span>Cidade</span><input value={location.city} onChange={e=>setServiceLocations(current=>current.map((item,itemIndex)=>itemIndex===index?{...item,city:e.target.value}:item))}/></label><label className="field"><span>UF</span><input maxLength={2} value={location.state_code} onChange={e=>setServiceLocations(current=>current.map((item,itemIndex)=>itemIndex===index?{...item,state_code:e.target.value.toUpperCase()}:item))}/></label></div></article>)}{!serviceLocations.length&&<div className="empty-inline">Nenhum local adicional cadastrado. O endereço principal acima continuará aparecendo como referência.</div>}</section>
       <div className="field grid-span-2"><label>Especialidades {specialtyLimit===null?'(ilimitadas)':`(${selectedSpecialties.length} de ${specialtyLimit})`}</label><div className="specialty-picker">{specialtyOptions.map(name=>{const selected=selectedSpecialties.includes(name);const disabled=!selected&&specialtyLimit!==null&&selectedSpecialties.length>=specialtyLimit;return <label className={`specialty-choice ${selected?'selected':''}`} key={name}><input type="checkbox" checked={selected} disabled={disabled} onChange={()=>setSelectedSpecialties(current=>selected?current.filter(item=>item!==name):[...current,name])}/><span>{name}</span></label>})}</div></div>
       <div className="field grid-span-2"><label>Apresentação profissional</label><textarea rows={5} value={profile.bio||''} onChange={e=>set('bio',e.target.value)}/></div>
       <div className="field grid-span-2"><label>Sobre a clínica ou consultório</label><textarea rows={5} value={profile.clinic_description||''} onChange={e=>set('clinic_description',e.target.value)}/></div>

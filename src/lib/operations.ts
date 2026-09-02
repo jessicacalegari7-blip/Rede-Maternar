@@ -583,6 +583,37 @@ export async function saveProfessionalServiceCities(professionalId:string,cities
   const {error}=await db.from('professional_service_cities').insert(rows);if(error)throw new Error(error.message)
 }
 
+export interface ProfessionalServiceLocation {
+  id?:string
+  name:string
+  address_line:string
+  address_number:string
+  address_complement:string
+  neighborhood:string
+  city:string
+  state_code:string
+  postal_code:string
+}
+
+export async function getProfessionalServiceLocations(professionalId:string) {
+  const {data,error}=await client().from('professional_service_locations').select('id,name,address_line,address_number,address_complement,neighborhood,city,state_code,postal_code').eq('professional_id',professionalId).eq('active',true).order('sort_order').order('name')
+  if(error) throw new Error(error.message)
+  return (data??[]) as ProfessionalServiceLocation[]
+}
+
+export async function saveProfessionalServiceLocations(professionalId:string,locations:ProfessionalServiceLocation[]) {
+  const rows=locations.map((location,index)=>({
+    professional_id:professionalId,name:location.name.trim(),address_line:location.address_line.trim(),
+    address_number:location.address_number.trim()||null,address_complement:location.address_complement.trim()||null,
+    neighborhood:location.neighborhood.trim()||null,city:location.city.trim(),state_code:location.state_code.trim().toUpperCase(),
+    postal_code:location.postal_code.trim()||null,sort_order:index,active:true,
+  })).filter(location=>location.name&&location.address_line&&location.city&&location.state_code.length===2)
+  if(rows.length!==locations.length) throw new Error('Preencha nome, endereço, cidade e UF de todos os locais de atendimento.')
+  const db=client(); const removed=await db.from('professional_service_locations').delete().eq('professional_id',professionalId)
+  if(removed.error) throw new Error(removed.error.message)
+  if(rows.length){const {error}=await db.from('professional_service_locations').insert(rows);if(error)throw new Error(error.message)}
+}
+
 export const uploadMarketplaceImage=uploadMarketplaceMedia
 
 export async function getProfessionalSpecialtyEditor(professionalId:string) {
