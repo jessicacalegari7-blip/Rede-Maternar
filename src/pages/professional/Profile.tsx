@@ -1,25 +1,28 @@
 import { useEffect, useState } from 'react'
 import { Eye, Save, Trash2 } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
-import { getMyProfessionalProfile, getProfessionalSpecialtyEditor, listMyProfileViewCounts, saveProfessionalSpecialties, updateMyProfessionalProfile, uploadMarketplaceMedia, type RealProfessionalProfile } from '../../lib/operations'
-import { isClinicPlan } from '../../lib/plans'
+import { getMyProfessionalProfile, getProfessionalServiceCities, getProfessionalSpecialtyEditor, listMyProfileViewCounts, saveProfessionalServiceCities, saveProfessionalSpecialties, updateMyProfessionalProfile, uploadMarketplaceMedia, type RealProfessionalProfile } from '../../lib/operations'
+import { specialtyLimitForPlan } from '../../lib/plans'
+import { CityAutocomplete } from '../../components/DirectorySearchFields'
 
 export function ProfessionalProfilePage() {
   const { user } = useAuth()
   const [profile,setProfile]=useState<RealProfessionalProfile|null>(null)
   const [specialtyOptions,setSpecialtyOptions]=useState<string[]>([])
   const [selectedSpecialties,setSelectedSpecialties]=useState<string[]>([])
+  const [visibilityCities,setVisibilityCities]=useState<string[]>([])
   const [viewCount,setViewCount]=useState(0)
   const [notice,setNotice]=useState('')
   const [saving,setSaving]=useState(false)
   const [error,setError]=useState('')
-  const specialtyLimit=isClinicPlan(user?.plan)?null:3
+  const specialtyLimit=specialtyLimitForPlan(user?.plan)
 
   useEffect(()=>{void getMyProfessionalProfile().then(async loaded=>{
     if(!loaded) throw new Error('Perfil profissional não encontrado.')
     setProfile(loaded)
     const specialties=await getProfessionalSpecialtyEditor(loaded.id)
     setSpecialtyOptions(specialties.options.map(item=>item.name)); setSelectedSpecialties(specialties.selected)
+    setVisibilityCities(await getProfessionalServiceCities(loaded.id))
     const counts=await listMyProfileViewCounts(); setViewCount(Number(counts.find(item=>item.professional_id===loaded.id)?.view_count??0))
   }).catch(e=>setError(e.message))},[])
 
@@ -42,7 +45,7 @@ export function ProfessionalProfilePage() {
   }
   const save=async()=>{
     setNotice('Salvando e confirmando no banco de dados...');setSaving(true)
-    try{const saved=await updateMyProfessionalProfile(profile.id,{...profile,profile_completed:Boolean(profile.full_name&&profile.city&&profile.whatsapp)});await saveProfessionalSpecialties(profile.id,selectedSpecialties,specialtyLimit);setProfile(saved);setNotice(saved.marketplace_visible?'Alterações salvas e publicadas no Marketplace.':'Alterações salvas. O perfil aguarda aprovação para publicação.')}
+    try{const saved=await updateMyProfessionalProfile(profile.id,{...profile,profile_completed:Boolean(profile.full_name&&profile.city&&profile.whatsapp)});await saveProfessionalSpecialties(profile.id,selectedSpecialties,specialtyLimit);await saveProfessionalServiceCities(profile.id,visibilityCities);setProfile(saved);setNotice(saved.marketplace_visible?'Alterações salvas e publicadas no Marketplace.':'Alterações salvas. O perfil aguarda aprovação para publicação.')}
     catch(e){setNotice(e instanceof Error?e.message:'Erro ao salvar.')}
     finally{setSaving(false)}
   }
@@ -64,6 +67,7 @@ export function ProfessionalProfilePage() {
       <div className="field"><label>Site</label><input value={profile.website_url||''} onChange={e=>set('website_url',e.target.value)}/></div>
       <div className="field"><label>Cidade</label><input value={profile.city} onChange={e=>set('city',e.target.value)}/></div>
       <div className="field"><label>UF</label><input maxLength={2} value={profile.state_code} onChange={e=>set('state_code',e.target.value.toUpperCase())}/></div>
+      <div className="field grid-span-2"><label>Cidades de divulgação</label><CityAutocomplete name="visibilityCity" onSelect={label=>setVisibilityCities(current=>current.includes(label)?current:[...current,label])}/><div className="selected-city-tags">{visibilityCities.map(city=><button type="button" key={city} onClick={()=>setVisibilityCities(current=>current.filter(item=>item!==city))}>{city} ×</button>)}</div><small>O endereço acima continua sendo o endereço físico da clínica.</small></div>
       <div className="field"><label>Bairro</label><input value={profile.neighborhood||''} onChange={e=>set('neighborhood',e.target.value)}/></div>
       <div className="field"><label>CEP</label><input value={profile.postal_code||''} onChange={e=>set('postal_code',e.target.value)}/></div>
       <div className="field"><label>Endereço</label><input value={profile.address_line||''} onChange={e=>set('address_line',e.target.value)}/></div>

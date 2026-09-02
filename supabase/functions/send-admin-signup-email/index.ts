@@ -16,7 +16,6 @@ Deno.serve(async (request) => {
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
   const resendKey = Deno.env.get('RESEND_API_KEY')
   const fromEmail = Deno.env.get('ADMIN_NOTIFICATION_FROM_EMAIL')
-  const recipient = Deno.env.get('ADMIN_NOTIFICATION_EMAIL') || 'jessica.calegari7@gmail.com'
   if (!supabaseUrl || !serviceRoleKey || !resendKey || !fromEmail) {
     return new Response(JSON.stringify({ error: 'Configuração de e-mail incompleta' }), { status: 500, headers })
   }
@@ -48,7 +47,13 @@ Deno.serve(async (request) => {
   }).eq('id', notification.id)
 
   const profile = notification.payload
-  const html = `
+  const isApproval = notification.event_type === 'professional_approved'
+  const html = isApproval ? `
+    <h1>Cadastro aprovado</h1>
+    <p>Olá${profile.full_name ? `, ${profile.full_name}` : ''}! Seu cadastro profissional foi aprovado na MaterPlace.</p>
+    <p>Você já pode entrar com o mesmo e-mail e a senha criada no cadastro.</p>
+    <p><a href="https://www.materplace.com.br/login">Entrar na MaterPlace</a></p>
+  ` : `
     <h1>Novo cadastro profissional</h1>
     <p>Um novo cadastro foi recebido na Rede Maternar.</p>
     <ul>
@@ -67,7 +72,7 @@ Deno.serve(async (request) => {
     headers: { Authorization: `Bearer ${resendKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       from: fromEmail,
-      to: [recipient],
+      to: [notification.recipient],
       subject: notification.subject,
       html,
     }),

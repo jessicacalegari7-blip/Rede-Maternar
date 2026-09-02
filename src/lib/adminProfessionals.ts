@@ -54,11 +54,13 @@ export async function listAdminProfessionals(): Promise<AdminProfessional[]> {
 }
 
 export async function setAdminProfessionalStatus(userId: string, status: UserStatus) {
-  const { error } = await requireSupabase().rpc('admin_set_professional_status', {
-    target_user_id: userId,
-    new_status: status,
-  })
-  if (error) throw new Error(error.message)
+  const db=requireSupabase()
+  const {data:session}=await db.auth.getSession()
+  const token=session.session?.access_token
+  if(!token) throw new Error('Sua sessão administrativa expirou.')
+  const response=await fetch('/api/admin-professional-status',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({userId,status})})
+  const payload=await response.json().catch(()=>({}))
+  if(!response.ok) throw new Error(payload.error||'Não foi possível alterar o cadastro.')
 }
 
 export async function setAdminProfessionalPlan(organizationId: string, plan: AdminProfessional['plan']) {

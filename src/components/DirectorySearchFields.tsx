@@ -37,7 +37,7 @@ export function useDirectorySpecialties(selected = '') {
   return useMemo(() => [...new Set([...maternalChildSpecialties, ...remote, selected].filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')), [remote, selected])
 }
 
-export function CityAutocomplete({ defaultValue = '' }: { defaultValue?: string }) {
+export function CityAutocomplete({ defaultValue = '', name='city', onSelect, required=false }: { defaultValue?: string; name?: string; onSelect?:(label:string)=>void; required?:boolean }) {
   const [value, setValue] = useState(defaultValue)
   const [cities, setCities] = useState<City[]>([])
   const [open, setOpen] = useState(false)
@@ -61,7 +61,7 @@ export function CityAutocomplete({ defaultValue = '' }: { defaultValue?: string 
   const suggestions = useMemo(() => value.trim().length < 2 ? [] : cities.map(city => ({ city, score: cityScore(city, value) })).filter(item => item.score >= 0).sort((a, b) => b.score - a.score || a.city.label.localeCompare(b.city.label, 'pt-BR')).slice(0, 8).map(item => item.city), [cities, value])
 
   return <span className="city-autocomplete">
-    <input name="city" value={value} autoComplete="off" placeholder="Comece a digitar a cidade" onFocus={() => setOpen(true)} onBlur={() => window.setTimeout(() => setOpen(false), 120)} onChange={event => { setValue(event.target.value); setOpen(true) }} aria-autocomplete="list" aria-expanded={open && suggestions.length > 0} />
-    {open && suggestions.length > 0 && <span className="city-suggestions" role="listbox">{suggestions.map(city => <button type="button" role="option" key={`${city.state}-${city.name}`} onMouseDown={event => event.preventDefault()} onClick={() => { setValue(city.label); setOpen(false) }}>{city.name}<small>{city.state}</small></button>)}</span>}
+    <input name={name} value={value} required={required} autoComplete="off" placeholder="Comece a digitar a cidade" onFocus={() => setOpen(true)} onBlur={() => window.setTimeout(() => setOpen(false), 120)} onChange={event => { setValue(event.target.value); setOpen(true) }} aria-autocomplete="list" aria-expanded={open && suggestions.length > 0} />
+    {open && suggestions.length > 0 && <span className="city-suggestions" role="listbox">{suggestions.map(city => <button type="button" role="option" key={`${city.state}-${city.name}`} onMouseDown={event => event.preventDefault()} onClick={() => { setValue(onSelect?'':city.label);setOpen(false);onSelect?.(city.label) }}>{city.name}<small>{city.state}</small></button>)}</span>}
   </span>
 }

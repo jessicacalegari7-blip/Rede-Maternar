@@ -93,11 +93,13 @@ export async function registerProfessionalWithSupabase(input: RegisterProfession
         phone: input.phone.trim(),
         professional_registration: input.registration?.trim() || null,
         specialty: input.specialty,
+        specialties: input.specialties?.length ? input.specialties : [input.specialty],
         city: cityParts[0],
         state_code: (cityParts[1] || 'SP').slice(0, 2).toUpperCase(),
         plan,
         organization_name: input.organizationName?.trim() || input.name.trim(),
         insurances: input.insurances || [],
+        visibility_cities: input.visibilityCities?.length ? input.visibilityCities : [input.city],
       },
     },
   })

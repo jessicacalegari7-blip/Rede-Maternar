@@ -28,7 +28,7 @@ export function Marketplace() {
     let common=0; while(common<left.length&&common<right.length&&left[common]===right[common])common+=1
     return common>=7
   }
-  const visible = rows.filter(p => (!specialty || (p.specialties || []).some((item:string)=>specialtyMatches(item,specialty))) && (!city || `${p.city}, ${p.state_code}`.toLocaleLowerCase().includes(city.toLocaleLowerCase())))
+  const visible = rows.filter(p => (!specialty || (p.specialties || []).some((item:string)=>specialtyMatches(item,specialty))) && (!city || [...(p.visibility_cities||[]),`${p.city}, ${p.state_code}`].some((item:string)=>item.toLocaleLowerCase().includes(city.toLocaleLowerCase()))))
   useEffect(()=>{
     if(!specialty||!city||visible.length){setNearby([]);return}
     let active=true;setNearbyLoading(true)

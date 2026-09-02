@@ -577,6 +577,7 @@ body { overflow-x:hidden; }
 @media(max-width:760px){.news-featured{grid-template-columns:1fr}.news-featured>img{min-height:220px}.news-real-grid{grid-template-columns:1fr}.news-featured h2{font-size:1.5rem}}
 
 .specialty-picker { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:8px; max-height:290px; overflow:auto; padding:10px; border:1px solid var(--border); border-radius:14px; background:#f7f4ee; }
+.selected-city-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.selected-city-tags button{border:1px solid #b9c9c0;border-radius:999px;background:#eef5f1;color:#123b31;padding:7px 11px;font:inherit;cursor:pointer}.selected-city-tags button:hover{background:#dfece5}
 .specialty-choice { display:flex; align-items:center; gap:9px; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:white; cursor:pointer; font-size:.92rem; }
 .specialty-choice.selected { border-color:var(--wine); background:#f3eee2; }
 .specialty-choice input { width:auto; margin:0; }

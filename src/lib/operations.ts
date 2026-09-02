@@ -561,6 +561,20 @@ export async function uploadMarketplaceMedia(file:File,kind:'profile'|'cover'|'g
   return db.storage.from('marketplace-media').getPublicUrl(path).data.publicUrl
 }
 
+export async function getProfessionalServiceCities(professionalId:string) {
+  const {data,error}=await client().from('professional_service_cities').select('city,state_code').eq('professional_id',professionalId).eq('active',true).order('is_primary',{ascending:false}).order('city')
+  if(error) throw new Error(error.message)
+  return (data??[]).map(item=>`${item.city}, ${item.state_code}`)
+}
+
+export async function saveProfessionalServiceCities(professionalId:string,cities:string[]) {
+  const unique=[...new Set(cities.map(item=>item.trim()).filter(Boolean))]
+  if(!unique.length) throw new Error('Informe ao menos uma cidade de divulgação.')
+  const rows=unique.map((label,index)=>{const parts=label.split(',').map(item=>item.trim());const state=parts.at(-1)||'';if(parts.length<2||state.length!==2)throw new Error(`Selecione novamente a cidade "${label}".`);return {professional_id:professionalId,city:parts.slice(0,-1).join(', '),state_code:state.toUpperCase(),is_primary:index===0,active:true}})
+  const db=client();const removed=await db.from('professional_service_cities').delete().eq('professional_id',professionalId);if(removed.error)throw new Error(removed.error.message)
+  const {error}=await db.from('professional_service_cities').insert(rows);if(error)throw new Error(error.message)
+}
+
 export const uploadMarketplaceImage=uploadMarketplaceMedia
 
 export async function getProfessionalSpecialtyEditor(professionalId:string) {

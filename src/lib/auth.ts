@@ -94,7 +94,9 @@ export interface RegisterProfessionalInput {
   email: string
   password: string
   specialty: string
+  specialties?: string[]
   city: string
+  visibilityCities?: string[]
   phone: string
   registration?: string
   plan?: ProfessionalPlan

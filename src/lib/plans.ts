@@ -59,3 +59,8 @@ export function hasManagement(plan?: ProfessionalPlan) {
 export function isClinicPlan(plan?: ProfessionalPlan) {
   return plan === 'clinic' || plan === 'business' || plan === 'annual'
 }
+
+export function specialtyLimitForPlan(plan?: ProfessionalPlan): number | null {
+  if (isClinicPlan(plan)) return null
+  return plan === 'independent' ? 3 : 1
+}
