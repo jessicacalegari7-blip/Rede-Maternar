@@ -23,6 +23,7 @@ export const maternalChildSpecialties = [
   'Ginecologista e Obstetra',
   'Hematologista Infantil',
   'Infectologista Infantil',
+  'Laserterapia',
   'Musicoterapeuta Infantil',
   'Nefrologista Infantil',
   'Neonatologista',

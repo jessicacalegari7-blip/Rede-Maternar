@@ -20,7 +20,7 @@ export function Marketplace() {
   const city = params.get('cidade') || ''
   const directorySpecialties = useDirectorySpecialties(specialty)
 
-  useEffect(() => { listMarketplaceProfessionals().then(setRows).catch(e => setError(e instanceof Error ? e.message : 'Não foi possível carregar profissionais.'));listPortalArticles(20).then(setArticles).catch(()=>undefined) }, [])
+  useEffect(() => { listMarketplaceProfessionals(specialty,city).then(setRows).catch(e => setError(e instanceof Error ? e.message : 'Não foi possível carregar profissionais.'));listPortalArticles(20).then(setArticles).catch(()=>undefined) }, [specialty,city])
   const normalize=(value:string)=>value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
   const specialtyMatches=(candidate:string,requested:string)=>{
     const left=normalize(candidate); const right=normalize(requested)

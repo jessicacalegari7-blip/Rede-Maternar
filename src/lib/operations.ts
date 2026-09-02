@@ -444,11 +444,19 @@ export async function getDirectoryProfessional(id:string) {
   return data as DirectoryProfessional|null
 }
 
-export async function listMarketplaceProfessionals() {
+export async function listMarketplaceProfessionals(specialty='',city='') {
   const db=client()
+  const directoryPromise=(async()=>{
+    if(!specialty||!city)return db.from('published_clinic_directory').select('*').order('plan_type',{ascending:false}).order('name')
+    const specialtySlug=specialty.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
+    const citySlug=city.split(',')[0].normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
+    const collected:any[]=[];let page=1;let total=1
+    while(collected.length<total&&page<=20){const result=await db.rpc('directory_search_by_city',{requested_specialty_slug:specialtySlug,requested_city_slug:citySlug,requested_page:page,requested_page_size:50});if(result.error)return result;const batch=result.data??[];collected.push(...batch);total=Number(batch[0]?.total_count??collected.length);if(!batch.length)break;page+=1}
+    return {data:collected,error:null}
+  })()
   const [profilesResult,directoryResult]=await Promise.all([
     db.from('marketplace_professionals').select('*').order('verified',{ascending:false}).order('full_name'),
-    db.from('published_clinic_directory').select('*').order('plan_type',{ascending:false}).order('name'),
+    directoryPromise,
   ])
   if(profilesResult.error) throw new Error(profilesResult.error.message)
   if(directoryResult.error) throw new Error(directoryResult.error.message)

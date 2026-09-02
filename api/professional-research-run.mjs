@@ -7,6 +7,9 @@ const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search'
 const GOOGLE_PLACES_URL = 'https://places.googleapis.com/v1/places:searchText'
 const MAX_GOOGLE_PAGES = 1
 const DEFAULT_GOOGLE_MONTHLY_LIMIT = 1000
+const HEALTH_PLACE_TYPES = new Set(['doctor','hospital','medical_clinic','medical_lab','physiotherapist','dentist','health','healthcare'])
+const FORBIDDEN_PLACE_TYPES = new Set(['bar','restaurant','cafe','night_club','liquor_store','lodging','store','shopping_mall','supermarket'])
+const FORBIDDEN_NAME = /\b(bar|boteco|pub|restaurante|pizzaria|lanchonete|churrascaria|cervejaria|adega|hotel|motel|mercado|supermercado)\b/i
 
 class GoogleMonthlyQuotaError extends Error {}
 
@@ -38,7 +41,12 @@ const SPECIALTY_ALIASES = new Map([
   ['consultor-de-amamentacao', { name: 'Consultora de Amamentação', slug: 'consultora-de-amamentacao' }],
   ['consultora-em-amamentacao', { name: 'Consultora de Amamentação', slug: 'consultora-de-amamentacao' }],
   ['consultoria-em-amamentacao', { name: 'Consultora de Amamentação', slug: 'consultora-de-amamentacao' }],
-  ['pediatria', { name: 'Pediatra', slug: 'pediatra' }],
+  ['pediatra', { name: 'Pediatria', slug: 'pediatria' }],
+  ['cardiologista-pediatrico', { name: 'Cardiologista Infantil', slug: 'cardiologista-infantil' }],
+  ['cardiologia-pediatrica', { name: 'Cardiologista Infantil', slug: 'cardiologista-infantil' }],
+  ['especialista-em-sono-infantil', { name: 'Sono Infantil', slug: 'sono-infantil' }],
+  ['especialista-do-sono', { name: 'Sono Infantil', slug: 'sono-infantil' }],
+  ['sono-do-bebe', { name: 'Sono Infantil', slug: 'sono-infantil' }],
 ])
 
 export function slugify(value = '') {
@@ -78,9 +86,18 @@ export function overpassQuery({ city, state_code, specialty }) {
 function sourceUrl(item) { return `https://www.openstreetmap.org/${item.type}/${item.id}` }
 function displayName(item) { return item.tags?.name || item.tags?.operator || item.tags?.brand || '' }
 
+function isPlausibleHealthProvider(name, types = [], tags = {}) {
+  if (!name || FORBIDDEN_NAME.test(name)) return false
+  const normalizedTypes = types.map(value => slugify(String(value)).replace(/-/g,'_'))
+  if (normalizedTypes.some(type => FORBIDDEN_PLACE_TYPES.has(type))) return false
+  if (normalizedTypes.some(type => HEALTH_PLACE_TYPES.has(type))) return true
+  const category = `${tags.amenity||''} ${tags.healthcare||''} ${tags.category||''} ${tags.type||''}`
+  return /clinic|doctor|hospital|health|medical|dentist|physio|therapy|midwife/i.test(category)
+}
+
 export function mapOsmItem(item, target) {
   const name = displayName(item).trim()
-  if (!name) return null
+  if (!name || !isPlausibleHealthProvider(name,[],item.tags||{})) return null
   const tags = item.tags || {}
   const safeTags = Object.fromEntries(Object.entries(tags).filter(([key]) => ![
     'addr:street','addr:housenumber','addr:unit','addr:postcode','contact:email','email',
@@ -118,7 +135,7 @@ function nominatimQueries(target) {
 
 function mapNominatimItem(item, target) {
   const name = String(item.name || item.display_name || '').split(',')[0].trim()
-  if (!name || !item.osm_type || !item.osm_id) return null
+  if (!name || !item.osm_type || !item.osm_id || !isPlausibleHealthProvider(name,[],{category:item.category,type:item.type})) return null
   const address = item.address || {}
   const extras = item.extratags || {}
   const osmType = String(item.osm_type).toLowerCase() === 'node'
@@ -186,7 +203,7 @@ function extractPublicBusinessPhone(html = '') {
 async function verifyOfficialWebsite(place, target) {
   const website = String(place.websiteUri || '').trim()
   const name = String(place.displayName?.text || '').trim()
-  if (!name) return null
+  if (!name || place.businessStatus==='CLOSED_PERMANENTLY' || !isPlausibleHealthProvider(name,place.types||[])) return null
   const baseRow = {
     name, primary_specialty: canonicalSpecialty(target.specialty, target.specialty_slug).name,
     specialty_slug: canonicalSpecialty(target.specialty, target.specialty_slug).slug,
@@ -198,7 +215,7 @@ async function verifyOfficialWebsite(place, target) {
     source_name: 'Google Places (dados públicos)',
     source_record_id: place.id ? `google-place/${place.id}` : `website/${slugify(name)}`,
     source_checked_at: new Date().toISOString(), last_seen_at: new Date().toISOString(),
-    source_payload: { google_place_id: place.id || null, verified_on_official_website: false },
+    source_payload: { google_place_id: place.id || null, primary_type: place.primaryType || null, types: place.types || [], verified_on_official_website: false },
   }
   if (!website || !/^https?:\/\//i.test(website)) return baseRow
   try {
@@ -213,7 +230,7 @@ async function verifyOfficialWebsite(place, target) {
       ...baseRow, whatsapp,
       source_url: response.url || website,
       source_name: 'Site oficial público',
-      source_payload: { google_place_id: place.id || null, verified_on_official_website: true },
+      source_payload: { google_place_id: place.id || null, primary_type: place.primaryType || null, types: place.types || [], verified_on_official_website: true },
       legal_basis_note: 'Contato profissional/empresarial divulgado publicamente no site oficial; uso restrito à prospecção B2B com opção de oposição.',
     }
   } catch { return baseRow }
@@ -237,7 +254,7 @@ async function collectFromGooglePlaces(db, target) {
     const response = await fetch(GOOGLE_PLACES_URL, {
       method: 'POST', headers: {
         'content-type': 'application/json', 'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': 'places.id,places.displayName,places.websiteUri,places.location,nextPageToken',
+        'X-Goog-FieldMask': 'places.id,places.displayName,places.websiteUri,places.location,places.types,places.primaryType,places.businessStatus,nextPageToken',
       }, body: JSON.stringify(body), signal: AbortSignal.timeout(8000),
     })
     if (!response.ok) {

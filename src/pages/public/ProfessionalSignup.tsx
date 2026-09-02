@@ -2,11 +2,10 @@ import { useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Logo } from '../../components/Logo'
 import { registerProfessional } from '../../lib/auth'
-import { maternalChildSpecialties } from '../../data/specialties'
 import { isSupabaseConfigured } from '../../lib/supabase'
 import { registerProfessionalWithSupabase } from '../../lib/supabaseAuth'
 import { specialtyLimitForPlan, type ProfessionalPlan } from '../../lib/plans'
-import { CityAutocomplete } from '../../components/DirectorySearchFields'
+import { CityAutocomplete, useDirectorySpecialties } from '../../components/DirectorySearchFields'
 
 export function ProfessionalSignup() {
   const [searchParams] = useSearchParams()
@@ -20,6 +19,7 @@ export function ProfessionalSignup() {
   const [specialties,setSpecialties]=useState<string[]>([])
   const [visibilityCities,setVisibilityCities]=useState<string[]>([])
   const specialtyLimit=specialtyLimitForPlan(plan)
+  const directorySpecialties=useDirectorySpecialties()
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -77,7 +77,7 @@ export function ProfessionalSignup() {
           <div className="field"><label>Nome da clínica ou perfil</label><input name="organizationName" placeholder="Nome que será exibido" required minLength={3} /></div>
           <div className="field"><label>E-mail profissional</label><input name="email" type="email" placeholder="voce@email.com" required /></div>
           <div className="field"><label>WhatsApp</label><input name="phone" placeholder="(11) 99999-9999" required /></div>
-          <div className="field field-span-2"><label>Especialidades {specialtyLimit===null?'(ilimitadas)':`(${specialties.length} de ${specialtyLimit})`}</label><div className="specialty-picker">{maternalChildSpecialties.map(name=>{const selected=specialties.includes(name);const disabled=!selected&&specialtyLimit!==null&&specialties.length>=specialtyLimit;return <label className={`specialty-choice ${selected?'selected':''}`} key={name}><input type="checkbox" checked={selected} disabled={disabled} onChange={()=>setSpecialties(current=>selected?current.filter(item=>item!==name):[...current,name])}/><span>{name}</span></label>})}</div></div>
+          <div className="field field-span-2"><label>Especialidades {specialtyLimit===null?'(ilimitadas)':`(${specialties.length} de ${specialtyLimit})`}</label><div className="specialty-picker">{directorySpecialties.map(name=>{const selected=specialties.includes(name);const disabled=!selected&&specialtyLimit!==null&&specialties.length>=specialtyLimit;return <label className={`specialty-choice ${selected?'selected':''}`} key={name}><input type="checkbox" checked={selected} disabled={disabled} onChange={()=>setSpecialties(current=>selected?current.filter(item=>item!==name):[...current,name])}/><span>{name}</span></label>})}</div></div>
           <div className="field"><label>Registro profissional</label><input name="registration" placeholder="Quando aplicável" /></div>
           <div className="field field-span-2"><label>Cidade da clínica/endereço</label><CityAutocomplete required /></div>
           <div className="field field-span-2"><label>Cidades de divulgação</label><CityAutocomplete name="visibilityCity" onSelect={label=>setVisibilityCities(current=>current.includes(label)?current:[...current,label])}/><div className="selected-city-tags">{visibilityCities.map(city=><button type="button" key={city} onClick={()=>setVisibilityCities(current=>current.filter(item=>item!==city))}>{city} ×</button>)}</div><small>Escolha uma cidade por vez. Você poderá alterar esta lista no perfil.</small></div>

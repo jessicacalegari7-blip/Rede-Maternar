@@ -45,7 +45,7 @@ export function ProfessionalProfilePage() {
   }
   const save=async()=>{
     setNotice('Salvando e confirmando no banco de dados...');setSaving(true)
-    try{const saved=await updateMyProfessionalProfile(profile.id,{...profile,profile_completed:Boolean(profile.full_name&&profile.city&&profile.whatsapp)});await saveProfessionalSpecialties(profile.id,selectedSpecialties,specialtyLimit);await saveProfessionalServiceCities(profile.id,visibilityCities);setProfile(saved);setNotice(saved.marketplace_visible?'Alterações salvas e publicadas no Marketplace.':'Alterações salvas. O perfil aguarda aprovação para publicação.')}
+    try{const saved=await updateMyProfessionalProfile(profile.id,{...profile,profile_completed:Boolean(profile.full_name&&profile.city&&profile.whatsapp)});await saveProfessionalSpecialties(profile.id,selectedSpecialties,specialtyLimit);await saveProfessionalServiceCities(profile.id,visibilityCities);setProfile(saved);setNotice(saved.marketplace_visible?'Salvo com sucesso. As alterações já estão publicadas no Marketplace.':'Salvo com sucesso. O perfil aguarda aprovação da administração.')}
     catch(e){setNotice(e instanceof Error?e.message:'Erro ao salvar.')}
     finally{setSaving(false)}
   }
