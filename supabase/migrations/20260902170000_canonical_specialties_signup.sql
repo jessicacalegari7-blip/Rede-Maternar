@@ -15,7 +15,6 @@ do $$ declare item record;canonical_id uuid;duplicate_id uuid; begin
    insert into public.professional_specialties(professional_id,specialty_id,is_primary)
     select professional_id,canonical_id,is_primary from public.professional_specialties where specialty_id=duplicate_id
     on conflict(professional_id,specialty_id) do update set is_primary=public.professional_specialties.is_primary or excluded.is_primary;
-   delete from public.professional_specialties where specialty_id=duplicate_id;
    update public.specialties set active=false where id=duplicate_id;
   end if;
   duplicate_id:=null;
