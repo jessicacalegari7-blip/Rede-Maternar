@@ -36,7 +36,10 @@ export default async function handler(request,response){
     const title=`${specialtyName} em ${cityName} - ${state} | Encontre Especialistas na MaterPlace`
     const description=`Procurando ${specialtyName} em ${cityName}? Encontre profissionais qualificados e conheça os perfis disponíveis na MaterPlace.`
     const schema={'@context':'https://schema.org','@type':'ItemList',name:`${specialtyName} em ${cityName}`,numberOfItems:data.length,itemListElement:data.map((item,index)=>({'@type':'ListItem',position:index+1,name:item.name,url:`${canonical}/${String(item.name).toLowerCase().replace(/[^a-z0-9]+/g,'-')}-${item.id}`}))}
+    const hasProfessionals=data.length>0
+    response.setHeader('X-Robots-Tag',hasProfessionals?'index, follow':'noindex, follow')
     const cards=data.map(item=>`<article><h2>${escape(item.name)}</h2><p>${escape(item.primary_specialty)} · ${escape(item.city)}/${escape(item.state_code)}</p></article>`).join('')
-    return response.status(200).send(page({title,description,canonical,schema,content:`<h1>${escape(specialtyName)} em ${escape(cityName)}, ${escape(state)}</h1>${cards||'<p>Novos profissionais estão em validação.</p>'}`,index:data.length>0}))
+    const empty=`<section><h2>Ainda não há profissionais publicados nesta busca</h2><p>Novos cadastros são incluídos depois da validação das informações profissionais.</p><p><a href="${ORIGIN}/cadastro-profissional"><strong>Sou profissional ou clínica e quero me cadastrar</strong></a></p><p><a href="${ORIGIN}/profissionais">Pesquisar outra especialidade ou cidade</a></p></section>`
+    return response.status(200).send(page({title,description,canonical,schema,content:`<h1>${escape(specialtyName)} em ${escape(cityName)}, ${escape(state)}</h1>${cards||empty}`,index:hasProfessionals}))
   }catch(error){return response.status(500).json({error:error instanceof Error?error.message:'Erro ao renderizar o diretório.'})}
 }
