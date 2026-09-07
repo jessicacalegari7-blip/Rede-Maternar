@@ -33,6 +33,7 @@ export const maternalChildSpecialties = [
   'Nutricionista Gestacional',
   'Nutricionista Infantil',
   'Nutricionista Materno-Infantil',
+  'Nutrólogo Infantil',
   'Odontopediatra',
   'Oftalmologista Infantil',
   'Ortopedista Infantil',
