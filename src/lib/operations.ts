@@ -190,9 +190,47 @@ export async function setServiceActive(id:string, active:boolean) {
 
 export type FinancialEntryType = 'receivable'|'payable'|'income'|'expense'|'tax'|'payroll'
 export interface RealFinancialEntry {
-  id:string; type:FinancialEntryType; status:'pending'|'paid'|'overdue'|'cancelled'
+  id:string; type:FinancialEntryType; status:'pending'|'partially_paid'|'paid'|'overdue'|'cancelled'|'refunded'
   category:string; description:string; amount_cents:number; due_date:string|null
   paid_at:string|null; payment_method:string|null; recurring:boolean; created_at:string
+  received_amount_cents:number; financial_fee_cents:number; net_received_cents:number
+  category_id:string|null; payment_method_id:string|null; cash_account_id:string|null; cost_center_id:string|null
+}
+
+export interface FinancialCategory {id:string;name:string;kind:'revenue'|'direct_cost'|'operating_expense'|'personnel'|'marketing'|'administrative'|'infrastructure'|'tax'|'financial_fee'}
+export interface PaymentMethod {id:string;name:string;method_type:string;percentage_fee:number;fixed_fee_cents:number;settlement_days:number;max_installments:number}
+export interface CashAccount {id:string;name:string;account_type:string;opening_balance_cents:number}
+export interface CostCenter {id:string;name:string;center_type:string}
+export interface ProfessionalPayout {id:string;professional_id:string;payout_amount_cents:number;gross_amount_cents:number;status:'forecast'|'pending_release'|'released'|'paid'|'cancelled';due_date:string|null;paid_at:string|null;professional_profiles:{full_name:string}|null}
+
+export async function listFinanceDictionaries() {
+  const db=client(); const {organizationId}=await getCurrentOrganization()
+  const [categories,methods,accounts,centers]=await Promise.all([
+    db.from('financial_categories').select('id,name,kind').eq('organization_id',organizationId).eq('active',true).order('name'),
+    db.from('payment_methods').select('id,name,method_type,percentage_fee,fixed_fee_cents,settlement_days,max_installments').eq('organization_id',organizationId).eq('active',true).order('name'),
+    db.from('cash_accounts').select('id,name,account_type,opening_balance_cents').eq('organization_id',organizationId).eq('active',true).order('name'),
+    db.from('cost_centers').select('id,name,center_type').eq('organization_id',organizationId).eq('active',true).order('name'),
+  ])
+  const failure=[categories.error,methods.error,accounts.error,centers.error].find(Boolean)
+  if(failure) throw new Error(failure.message)
+  return {categories:(categories.data??[]) as FinancialCategory[],methods:(methods.data??[]) as PaymentMethod[],accounts:(accounts.data??[]) as CashAccount[],centers:(centers.data??[]) as CostCenter[]}
+}
+
+export async function listProfessionalPayouts() {
+  const db=client(); const {organizationId}=await getCurrentOrganization()
+  const {data,error}=await db.from('professional_payouts').select('*,professional_profiles(full_name)').eq('organization_id',organizationId).order('created_at',{ascending:false})
+  if(error) throw new Error(error.message)
+  return (data??[]) as unknown as ProfessionalPayout[]
+}
+
+export async function recordFinancialPayment(input:{entryId:string;amount:number;paymentMethodId?:string;cashAccountId?:string;notes?:string}) {
+  const {data,error}=await client().rpc('record_financial_payment',{
+    target_entry_id:input.entryId,payment_amount_cents:Math.round(input.amount*100),
+    target_payment_method_id:input.paymentMethodId||null,target_cash_account_id:input.cashAccountId||null,
+    idempotency_key:crypto.randomUUID(),payment_notes:input.notes?.trim()||null,
+  })
+  if(error) throw new Error(error.message)
+  return data as RealFinancialEntry
 }
 
 export async function listFinancialEntries() {
@@ -203,7 +241,7 @@ export async function listFinancialEntries() {
   return (data ?? []) as RealFinancialEntry[]
 }
 
-export async function createFinancialEntry(input: { type:FinancialEntryType; category:string; description:string; amount:number; dueDate?:string; status?:RealFinancialEntry['status']; paymentMethod?:string; recurring?:boolean }) {
+export async function createFinancialEntry(input: { type:FinancialEntryType; category:string; description:string; amount:number; dueDate?:string; status?:RealFinancialEntry['status']; paymentMethod?:string; recurring?:boolean; categoryId?:string; paymentMethodId?:string; cashAccountId?:string; costCenterId?:string }) {
   const db = client()
   const { organizationId, userId } = await getCurrentOrganization()
   const status = input.status ?? 'pending'
@@ -212,17 +250,19 @@ export async function createFinancialEntry(input: { type:FinancialEntryType; cat
     description: input.description.trim(), amount_cents: Math.round(input.amount * 100),
     due_date: input.dueDate || null, paid_at: status === 'paid' ? new Date().toISOString() : null,
     payment_method: input.paymentMethod || null, recurring: Boolean(input.recurring), created_by: userId,
+    category_id:input.categoryId||null,payment_method_id:input.paymentMethodId||null,cash_account_id:input.cashAccountId||null,cost_center_id:input.costCenterId||null,
   })
   if (error) throw new Error(error.message)
 }
 
-export async function updateFinancialEntry(id:string,input:{type:FinancialEntryType;category:string;description:string;amount:number;dueDate?:string;status:RealFinancialEntry['status'];paymentMethod?:string;recurring?:boolean}) {
+export async function updateFinancialEntry(id:string,input:{type:FinancialEntryType;category:string;description:string;amount:number;dueDate?:string;status:RealFinancialEntry['status'];paymentMethod?:string;recurring?:boolean;categoryId?:string;paymentMethodId?:string;cashAccountId?:string;costCenterId?:string}) {
   const status=input.status
   const {data,error}=await client().from('financial_entries').update({
     type:input.type,status,category:input.category.trim(),description:input.description.trim(),
     amount_cents:Math.round(input.amount*100),due_date:input.dueDate||null,
     paid_at:status==='paid'?new Date().toISOString():null,payment_method:input.paymentMethod||null,
-    recurring:Boolean(input.recurring),
+    recurring:Boolean(input.recurring),category_id:input.categoryId||null,payment_method_id:input.paymentMethodId||null,
+    cash_account_id:input.cashAccountId||null,cost_center_id:input.costCenterId||null,
   }).eq('id',id).select('*').single()
   if(error) throw new Error(error.message)
   return data as RealFinancialEntry
@@ -283,7 +323,7 @@ export async function getWhatsAppQrCode(id:string){return internalApi(`/api/evol
 export async function refreshWhatsAppStatus(id:string){return internalApi(`/api/evolution/status?id=${encodeURIComponent(id)}`)}
 
 export interface RealAppointment {
-  id:string; starts_at:string; ends_at:string; status:'scheduled'|'confirmed'|'in_service'|'completed'|'cancelled'|'no_show'
+  id:string; starts_at:string; ends_at:string; status:'scheduled'|'confirmed'|'waiting'|'in_service'|'completed'|'cancelled'|'no_show'|'rescheduled'
   is_return:boolean; is_paid_return:boolean; is_online:boolean; price_cents:number; payment_method:string|null; notes:string|null
   patient_id:string; professional_id:string
   patient_profiles:{full_name:string;phone:string|null}|null
@@ -440,6 +480,15 @@ export async function listAdminProspects() {
   const {data,error}=await client().rpc('admin_list_prospects')
   if(error) throw new Error(error.message)
   return data??[]
+}
+
+export async function rescheduleAppointment(id:string,startsAt:string,endsAt:string,reason?:string) {
+  const db=client(); const {organizationId,userId}=await getCurrentOrganization()
+  const {data:current,error:loadError}=await db.from('appointments').select('starts_at,ends_at,notes').eq('organization_id',organizationId).eq('id',id).single()
+  if(loadError) throw new Error(loadError.message)
+  const history=JSON.stringify({previous_starts_at:current.starts_at,previous_ends_at:current.ends_at,rescheduled_by:userId,rescheduled_at:new Date().toISOString(),reason:reason||null})
+  const {error}=await db.from('appointments').update({starts_at:startsAt,ends_at:endsAt,status:'rescheduled',notes:[current.notes,reason?`Reagendamento: ${reason}`:'Reagendado',`[history:${history}]`].filter(Boolean).join('\n')}).eq('organization_id',organizationId).eq('id',id)
+  if(error) throw new Error(error.message)
 }
 
 export async function createCrmInteraction(patientId:string,leadId:string|null,type:'note'|'call'|'email'|'whatsapp'|'meeting',summary:string) {
