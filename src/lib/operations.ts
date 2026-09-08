@@ -244,22 +244,27 @@ export async function listFinancialEntries() {
 export async function createFinancialEntry(input: { type:FinancialEntryType; category:string; description:string; amount:number; dueDate?:string; status?:RealFinancialEntry['status']; paymentMethod?:string; recurring?:boolean; categoryId?:string; paymentMethodId?:string; cashAccountId?:string; costCenterId?:string }) {
   const db = client()
   const { organizationId, userId } = await getCurrentOrganization()
-  const status = input.status ?? 'pending'
-  const { error } = await db.from('financial_entries').insert({
-    organization_id: organizationId, type: input.type, status, category: input.category.trim(),
-    description: input.description.trim(), amount_cents: Math.round(input.amount * 100),
-    due_date: input.dueDate || null, paid_at: status === 'paid' ? new Date().toISOString() : null,
+  const requestedStatus = input.status ?? 'pending',amountCents=Math.round(input.amount*100)
+  if(!Number.isFinite(input.amount)||amountCents<0) throw new Error('Informe um valor financeiro válido.')
+  const initialStatus=requestedStatus==='paid'?'pending':requestedStatus
+  const { data, error } = await db.from('financial_entries').insert({
+    organization_id: organizationId, type: input.type, status:initialStatus, category: input.category.trim(),
+    description: input.description.trim(), amount_cents:amountCents,gross_amount_cents:amountCents,
+    competence_date:input.dueDate||new Date().toISOString().slice(0,10),due_date: input.dueDate || null, paid_at:null,
     payment_method: input.paymentMethod || null, recurring: Boolean(input.recurring), created_by: userId,
     category_id:input.categoryId||null,payment_method_id:input.paymentMethodId||null,cash_account_id:input.cashAccountId||null,cost_center_id:input.costCenterId||null,
-  })
+  }).select('id').single()
   if (error) throw new Error(error.message)
+  if(requestedStatus==='paid'&&amountCents>0) await recordFinancialPayment({entryId:data.id,amount:input.amount,paymentMethodId:input.paymentMethodId,cashAccountId:input.cashAccountId,notes:'Baixa registrada na criação do lançamento'})
 }
 
 export async function updateFinancialEntry(id:string,input:{type:FinancialEntryType;category:string;description:string;amount:number;dueDate?:string;status:RealFinancialEntry['status'];paymentMethod?:string;recurring?:boolean;categoryId?:string;paymentMethodId?:string;cashAccountId?:string;costCenterId?:string}) {
   const status=input.status
+  const amountCents=Math.round(input.amount*100)
+  if(!Number.isFinite(input.amount)||amountCents<0) throw new Error('Informe um valor financeiro válido.')
   const {data,error}=await client().from('financial_entries').update({
     type:input.type,status,category:input.category.trim(),description:input.description.trim(),
-    amount_cents:Math.round(input.amount*100),due_date:input.dueDate||null,
+    amount_cents:amountCents,gross_amount_cents:amountCents,due_date:input.dueDate||null,competence_date:input.dueDate||new Date().toISOString().slice(0,10),
     paid_at:status==='paid'?new Date().toISOString():null,payment_method:input.paymentMethod||null,
     recurring:Boolean(input.recurring),category_id:input.categoryId||null,payment_method_id:input.paymentMethodId||null,
     cash_account_id:input.cashAccountId||null,cost_center_id:input.costCenterId||null,
