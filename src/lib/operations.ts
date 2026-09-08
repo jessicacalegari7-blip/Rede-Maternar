@@ -29,42 +29,80 @@ export interface RealLead {
   created_at: string
   patient_id?: string | null
   assigned_professional_id?: string | null
+  pipeline_id?: string | null
+  stage_id?: string | null
+  position?: number
+  interest?: string | null
+  next_action?: string | null
+  last_interaction_at?: string | null
+}
+
+export interface CrmPipelineStage {
+  id:string; pipeline_id:string; name:string; color:string; position:number
+  legacy_status:LeadStage|null; is_won:boolean; is_lost:boolean
+}
+
+export async function listCrmStages() {
+  const db=client(); const {organizationId}=await getCurrentOrganization()
+  const {data,error}=await db.from('crm_pipeline_stages').select('*').eq('organization_id',organizationId).eq('active',true).is('archived_at',null).order('position')
+  if(error) throw new Error(error.message)
+  return (data??[]) as CrmPipelineStage[]
 }
 
 export async function listLeads() {
   const db = client()
   const { organizationId } = await getCurrentOrganization()
-  const { data, error } = await db.from('leads').select('*').eq('organization_id', organizationId).order('updated_at', { ascending: false })
+  const { data, error } = await db.from('leads').select('*').eq('organization_id', organizationId).is('archived_at',null).order('position').order('updated_at', { ascending: false })
   if (error) throw new Error(error.message)
   return (data ?? []) as RealLead[]
 }
 
 export async function createPatientAndLead(input: {
-  name: string; phone: string; email?: string; cpf?:string; source: string; stage: LeadStage; notes?: string; serviceInterest?:string
+  name:string; socialName?:string; phone:string; whatsapp?:string; email?:string; cpf?:string; rg?:string
+  birthDate?:string; gender?:string; postalCode?:string; addressLine?:string; addressNumber?:string
+  addressComplement?:string; neighborhood?:string; city?:string; stateCode?:string; source:string
+  stage:LeadStage; stageId?:string; notes?:string; serviceInterest?:string; professionalId?:string
+  serviceId?:string; unitId?:string; nextAction?:string; nextContactAt?:string
 }) {
   const db = client()
   const { organizationId } = await getCurrentOrganization()
-  const { error } = await db.rpc('upsert_crm_contact', { p_organization_id:organizationId, p_name:input.name.trim(), p_phone:input.phone.trim(), p_email:input.email?.trim()||null, p_cpf:input.cpf?.replace(/\D/g,'')||null, p_source:input.source, p_status:input.stage, p_notes:input.notes?.trim()||null, p_service_interest:input.serviceInterest?.trim()||null })
+  const {data,error}=await db.rpc('create_crm_contact',{contact:{
+    organization_id:organizationId,full_name:input.name,social_name:input.socialName||null,phone:input.phone,
+    whatsapp:input.whatsapp||input.phone,email:input.email||null,cpf:input.cpf||null,rg:input.rg||null,
+    birth_date:input.birthDate||null,gender:input.gender||null,postal_code:input.postalCode||null,
+    address_line:input.addressLine||null,address_number:input.addressNumber||null,address_complement:input.addressComplement||null,
+    neighborhood:input.neighborhood||null,city:input.city||null,state_code:input.stateCode||null,
+    source:input.source,stage_id:input.stageId||null,interest:input.serviceInterest||null,notes:input.notes||null,
+    assigned_professional_id:input.professionalId||null,service_id:input.serviceId||null,unit_id:input.unitId||null,
+    next_action:input.nextAction||null,next_contact_at:input.nextContactAt||null,
+  }})
   if (error) throw new Error(error.message)
+  return data as {patient_id:string;lead_id:string}
 }
 
 export async function getContactDetail(patientId:string) {
   const db=client(); const {organizationId}=await getCurrentOrganization()
-  const [patient,lead,records,appointments,conversations]=await Promise.all([
+  const [patient,lead]=await Promise.all([
     db.from('patient_profiles').select('*').eq('organization_id',organizationId).eq('id',patientId).single(),
     db.from('leads').select('*').eq('organization_id',organizationId).eq('patient_id',patientId).order('updated_at',{ascending:false}).limit(1).maybeSingle(),
+  ])
+  if(patient.error||lead.error)throw new Error((patient.error||lead.error)!.message)
+  const [records,appointments,conversations,interactions,stageHistory,finance]=await Promise.all([
     db.from('patient_records').select('*').eq('organization_id',organizationId).eq('patient_id',patientId).order('created_at',{ascending:false}),
     db.from('appointments').select('*').eq('organization_id',organizationId).eq('patient_id',patientId).order('starts_at',{ascending:false}),
     db.from('conversations').select('*').eq('organization_id',organizationId).eq('patient_id',patientId).order('updated_at',{ascending:false}),
+    db.from('crm_interactions').select('*').eq('organization_id',organizationId).eq('patient_id',patientId).order('occurred_at',{ascending:false}),
+    lead.data?.id?db.from('crm_lead_stage_history').select('*,from_stage:crm_pipeline_stages!crm_lead_stage_history_from_stage_id_fkey(name),to_stage:crm_pipeline_stages!crm_lead_stage_history_to_stage_id_fkey(name)').eq('organization_id',organizationId).eq('lead_id',lead.data.id).order('changed_at',{ascending:false}):Promise.resolve({data:[],error:null}),
+    db.from('financial_entries').select('*').eq('organization_id',organizationId).eq('patient_id',patientId).order('created_at',{ascending:false}),
   ])
-  const error=patient.error||lead.error||records.error||appointments.error||conversations.error
+  const error=records.error||appointments.error||conversations.error||interactions.error||stageHistory.error||finance.error
   if(error) throw new Error(error.message)
-  return {patient:patient.data,lead:lead.data,records:records.data??[],appointments:appointments.data??[],conversations:conversations.data??[]}
+  return {patient:patient.data,lead:lead.data,records:records.data??[],appointments:appointments.data??[],conversations:conversations.data??[],interactions:interactions.data??[],stageHistory:stageHistory.data??[],finance:finance.data??[]}
 }
 
-export async function updateContact(patientId:string,input:{name:string;phone:string;email?:string;cpf?:string;notes?:string}) {
+export async function updateContact(patientId:string,input:{name:string;socialName?:string;phone:string;whatsapp?:string;email?:string;cpf?:string;rg?:string;birthDate?:string;gender?:string;postalCode?:string;addressLine?:string;addressNumber?:string;addressComplement?:string;neighborhood?:string;city?:string;stateCode?:string;notes?:string}) {
   const db=client(); const {organizationId}=await getCurrentOrganization()
-  const payload={full_name:input.name.trim(),phone:input.phone.trim(),email:input.email?.trim()||null,cpf:input.cpf?.replace(/\D/g,'')||null,notes:input.notes?.trim()||null}
+  const payload={full_name:input.name.trim(),social_name:input.socialName?.trim()||null,phone:input.phone.trim(),whatsapp:input.whatsapp?.trim()||input.phone.trim(),email:input.email?.trim()||null,cpf:input.cpf?.replace(/\D/g,'')||null,rg:input.rg?.trim()||null,birth_date:input.birthDate||null,gender:input.gender||null,postal_code:input.postalCode?.replace(/\D/g,'')||null,address_line:input.addressLine?.trim()||null,address_number:input.addressNumber?.trim()||null,address_complement:input.addressComplement?.trim()||null,neighborhood:input.neighborhood?.trim()||null,city:input.city?.trim()||null,state_code:input.stateCode?.trim().toUpperCase()||null,notes:input.notes?.trim()||null}
   const {error}=await db.from('patient_profiles').update(payload).eq('organization_id',organizationId).eq('id',patientId)
   if(error) throw new Error(error.message)
   const {error:leadError}=await db.from('leads').update({full_name:payload.full_name,phone:payload.phone,email:payload.email}).eq('organization_id',organizationId).eq('patient_id',patientId)
@@ -76,12 +114,23 @@ export async function updateLeadStage(id: string, status: LeadStage) {
   if (error) throw new Error(error.message)
 }
 
-export async function listPatients() {
-  const db = client()
-  const { organizationId } = await getCurrentOrganization()
-  const { data, error } = await db.from('patient_profiles').select('*').eq('organization_id', organizationId).order('full_name')
+export async function moveLeadToStage(id:string,stageId:string,position?:number) {
+  const {error}=await client().rpc('move_crm_lead',{target_lead_id:id,target_stage_id:stageId,target_position:position??null})
+  if(error) throw new Error(error.message)
+}
+
+export async function listPatients(search='',page=0,pageSize=50) {
+  const { data, error } = await client().rpc('search_crm_patients',{search_text:search,page_offset:page*pageSize,page_limit:pageSize})
   if (error) throw new Error(error.message)
   return data ?? []
+}
+
+export async function findDuplicateContacts(input:{cpf?:string;phone?:string;whatsapp?:string;email?:string}) {
+  const {data,error}=await client().rpc('find_duplicate_crm_contacts',{
+    contact_cpf:input.cpf||null,contact_phone:input.phone||null,contact_whatsapp:input.whatsapp||null,contact_email:input.email||null,
+  })
+  if(error) throw new Error(error.message)
+  return data??[]
 }
 
 export interface RealService {
@@ -391,6 +440,13 @@ export async function listAdminProspects() {
   const {data,error}=await client().rpc('admin_list_prospects')
   if(error) throw new Error(error.message)
   return data??[]
+}
+
+export async function createCrmInteraction(patientId:string,leadId:string|null,type:'note'|'call'|'email'|'whatsapp'|'meeting',summary:string) {
+  const db=client();const {organizationId,userId}=await getCurrentOrganization()
+  const {error}=await db.from('crm_interactions').insert({organization_id:organizationId,patient_id:patientId,lead_id:leadId,interaction_type:type,summary:summary.trim(),created_by:userId})
+  if(error) throw new Error(error.message)
+  if(leadId)await db.from('leads').update({last_interaction_at:new Date().toISOString()}).eq('organization_id',organizationId).eq('id',leadId)
 }
 
 export async function reviewAdminProspect(id:string,status:'approved'|'rejected'|'duplicate',publish=false) {
