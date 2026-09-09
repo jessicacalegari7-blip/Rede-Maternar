@@ -44,10 +44,16 @@ export function PortalHome() {
   const publishedCategories = Array.from(categoryMap.values()).sort((a, b) => a.localeCompare(b, 'pt-BR'))
   useEffect(()=>{if(!categorySlug){setSelectedCategory('');return}const match=publishedCategories.find(category=>categoryKey(category).replace(/\s+/g,'-')===categorySlug);setSelectedCategory(match||'')},[categorySlug,articles])
   const visibleArticles = selectedCategory ? articles.filter(article => categoryKey(article.category) === categoryKey(selectedCategory)) : articles
-  const featured = visibleArticles[0]
-  const headlineArticles = visibleArticles.slice(1, 4)
-  const mostReadArticles = visibleArticles.slice(4, 8)
-  const otherArticles = visibleArticles.slice(8)
+  const newestFirst=[...visibleArticles].sort((a,b)=>new Date(b.publishedAt||b.createdAt).getTime()-new Date(a.publishedAt||a.createdAt).getTime())
+  const usedArticleIds=new Set<string>()
+  const takeUnique=(items:PortalArticle[],limit:number)=>items.filter(article=>!usedArticleIds.has(article.id)).slice(0,limit).map(article=>{usedArticleIds.add(article.id);return article})
+  const highlightArticles=takeUnique(newestFirst,4)
+  const featured=highlightArticles[0]
+  const headlineArticles=highlightArticles.slice(1)
+  const articleCategoryArticles=takeUnique(newestFirst.filter(article=>categoryKey(article.category)==='artigos'),5)
+  const mostRead=takeUnique([...visibleArticles].sort((a,b)=>b.views-a.views||new Date(b.publishedAt||b.createdAt).getTime()-new Date(a.publishedAt||a.createdAt).getTime()),10)
+  const mostReadArticles=mostRead.slice(0,5)
+  const moreMostReadArticles=mostRead.slice(5,10)
 
   return <div className="portal-home">
     <Seo title={selectedCategory?`${selectedCategory}: conteúdos para famílias`:'MaterPlace — saúde materno-infantil e profissionais'} description={selectedCategory?`Conteúdos informativos da MaterPlace sobre ${selectedCategory}, com autoria, fontes e orientação para buscar atendimento profissional.`:'Encontre profissionais materno-infantis por especialidade e cidade e acesse conteúdo informativo para cada fase da maternidade.'} path={selectedCategory?`/categoria/${categorySlug}`:'/'} appendBrand={false} schema={baseSchemas}/>
@@ -81,6 +87,7 @@ export function PortalHome() {
 
     <main className="portal-content">
 
+      <div className="portal-section-title portal-block-heading"><h2>Destaques</h2></div>
       <div className="portal-lead-grid">
         <article className={`lead-story${featured?.coverImageUrl ? ' has-real-image' : ''}`}>
           {featured && <Link className="news-card-click-target" to={`/noticias/${featured.slug}`} aria-label={`Abrir matéria: ${featured.title}`} />}
@@ -92,11 +99,15 @@ export function PortalHome() {
         <aside className="portal-ad"><span>Espaço de cuidado</span><h3>Conteúdo que acolhe cada fase.</h3><Baby /><button>Conheça agora</button></aside>
       </div>
 
-      <section className="most-read-section"><div className="portal-section-title"><h2>Mais lidas</h2><a href="#noticias">Ver todas</a></div><div className="most-read-grid">
+      <section className="most-read-section"><div className="portal-section-title"><h2>Artigos</h2><Link to="/categoria/artigos">Ver mais</Link></div><div className="most-read-grid editorial-five-grid">
+        {articleCategoryArticles.map((article,index) => <article key={article.id}><Link className="news-card-click-target" to={`/noticias/${article.slug}`} aria-label={`Abrir matéria: ${article.title}`} /><span>{index + 1}</span>{article.coverImageUrl ? <img className="most-read-image" src={article.coverImageUrl} alt={`Capa: ${article.title}`} loading="lazy" decoding="async" width="360" height="200" /> : <div className={`most-read-art art-${index % 4 + 1}`}>📰</div>}<small>{article.category}</small><h3>{article.title}</h3><p>{article.excerpt}</p><Link className="news-read-link" to={`/noticias/${article.slug}`} aria-label={`Abrir matéria: ${article.title}`}>Ler matéria</Link></article>)}
+      </div></section>
+
+      <section className="most-read-section"><div className="portal-section-title"><h2>Mais lidas</h2><a href="#mais-lidas-parte-2">Ver mais</a></div><div className="most-read-grid editorial-five-grid">
         {mostReadArticles.map((article,index) => <article key={article.id}><Link className="news-card-click-target" to={`/noticias/${article.slug}`} aria-label={`Abrir matéria: ${article.title}`} /><span>{index + 1}</span>{article.coverImageUrl ? <img className="most-read-image" src={article.coverImageUrl} alt={`Capa: ${article.title}`} loading="lazy" decoding="async" width="360" height="200" /> : <div className={`most-read-art art-${index + 1}`}>📰</div>}<small>{article.category}</small><h3>{article.title}</h3><p>{article.excerpt}</p><Link className="news-read-link" to={`/noticias/${article.slug}`} aria-label={`Abrir matéria: ${article.title}`}>Ler notícia</Link></article>)}
       </div></section>
 
-      {otherArticles.length>0&&<section id="noticias" className="all-news-section"><div className="portal-section-title"><h2>Outras notícias</h2></div><div className="all-news-grid">{otherArticles.map(article=><article className="all-news-card" key={article.id}><Link to={`/noticias/${article.slug}`} aria-label={`Abrir matéria: ${article.title}`}>{article.coverImageUrl?<img src={article.coverImageUrl} alt={`Capa: ${article.title}`} loading="lazy" decoding="async" width="480" height="270"/>:<div className="news-placeholder">MaterPlace</div>}<span>{article.category}</span><h3>{article.title}</h3><p>{article.excerpt}</p></Link></article>)}</div></section>}
+      {moreMostReadArticles.length>0&&<section id="mais-lidas-parte-2" className="most-read-section"><div className="portal-section-title"><h2>Mais lidas — continue lendo</h2></div><div className="most-read-grid editorial-five-grid">{moreMostReadArticles.map((article,index)=><article key={article.id}><Link className="news-card-click-target" to={`/noticias/${article.slug}`} aria-label={`Abrir matéria: ${article.title}`} /><span>{index+6}</span>{article.coverImageUrl?<img className="most-read-image" src={article.coverImageUrl} alt={`Capa: ${article.title}`} loading="lazy" decoding="async" width="360" height="200"/>:<div className={`most-read-art art-${index%4+1}`}>📰</div>}<small>{article.category}</small><h3>{article.title}</h3><p>{article.excerpt}</p><Link className="news-read-link" to={`/noticias/${article.slug}`}>Ler notícia</Link></article>)}</div></section>}
 
       <section className="newsletter-card"><div><BookOpen /><span><strong>Receba conteúdos exclusivos para uma maternidade mais leve</strong><small>Artigos, dicas e novidades direto no seu e-mail.</small></span></div><form onSubmit={event => event.preventDefault()}><input type="email" placeholder="Seu melhor e-mail" /><button>Quero receber</button></form></section>
       <div className="portal-bottom-grid">
@@ -104,6 +115,21 @@ export function PortalHome() {
         <section id="videos" className="portal-media-section"><div className="portal-section-title"><h2>Vídeos em destaque</h2><a href="#videos">Ver todos</a></div><div className="video-cards">{videos.length?videos.slice(0,3).map(video=><article key={video.id}><a href={`https://youtube.com/watch?v=${video.youtubeId}`} target="_blank" rel="noreferrer"><img src={`https://img.youtube.com/vi/${video.youtubeId}/hqdefault.jpg`} alt={`Miniatura do vídeo: ${video.title}`} loading="lazy" decoding="async" width="480" height="360"/><Play/></a><strong>{video.title}</strong></article>):['Alongamento na gravidez','Como escolher a melhor chupeta','Banho de ofurô'].map((title,index)=><article key={title}><div>{index===0?'🤰':index===1?'👶':'🛁'}<Play/></div><strong>{title}</strong></article>)}</div></section>
       </div>
       <section className="professional-cta"><div><span>Para profissionais</span><h2>Quer divulgar seu trabalho e organizar sua clínica?</h2><p>Conheça o Marketplace + CRM + ERP da MaterPlace.</p></div><Link className="btn btn-primary" to="/para-profissionais">Conhecer a plataforma <ChevronRight /></Link></section>
-    </main><LegalFooter />
+    </main>
+    <footer className="portal-home-footer">
+      <section className="portal-search portal-footer-search" aria-labelledby="footer-professional-search-title">
+        <Logo />
+        <h2 id="footer-professional-search-title">Encontre profissionais materno-infantis</h2>
+        <p>Busque por especialidade e localização.</p>
+        <form onSubmit={searchProfessionals}>
+          <label><span>Seu Nome</span><input name="name" placeholder="Ex.: Maria Silva" /></label>
+          <label><span>Seu Telefone</span><input name="phone" placeholder="Ex.: (11) 99999-9999" /></label>
+          <label><span>Especialidade</span><select name="specialty"><option value="">Escolha uma especialidade</option>{directorySpecialties.map(item => <option key={item}>{item}</option>)}</select></label>
+          <label className="city-field"><span>Cidade</span><CityAutocomplete /></label>
+          <button className="portal-search-button"><Search /> Buscar agora</button>
+        </form>
+      </section>
+      <LegalFooter />
+    </footer>
   </div>
 }
