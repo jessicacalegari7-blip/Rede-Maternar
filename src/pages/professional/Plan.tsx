@@ -2,7 +2,7 @@ import { Check, Eye, Sparkles } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
 import { planFeatures, planLabels, type ProfessionalPlan } from '../../lib/plans'
 
-const prices: Record<ProfessionalPlan,string> = { free:'Plano legado', marketplace:'R$ 59,90/ano', independent:'R$ 99,99/mês', clinic:'R$ 199,99/mês', business:'R$ 199,99/mês', annual:'R$ 59,90/ano' }
+const prices: Record<ProfessionalPlan,string> = { free:'Plano legado', marketplace:'R$ 9,99/mês', independent:'A partir de R$ 59,90/mês', clinic:'A partir de R$ 99,90/mês', business:'Sob consulta', annual:'Plano legado' }
 
 export function ProfessionalPlanPage() {
   const { user } = useAuth()

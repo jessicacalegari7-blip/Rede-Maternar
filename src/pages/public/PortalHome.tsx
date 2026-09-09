@@ -80,7 +80,6 @@ export function PortalHome() {
     </nav>
 
     <main className="portal-content">
-      <section className="sponsor-strip"><span>Apoiam uma maternidade mais leve</span>{['Pampers', 'Mustela', 'Philips Avent', 'Unimed', "Johnson's"].map(name => <strong key={name}>{name}</strong>)}<button>Seja um patrocinador</button></section>
 
       <div className="portal-lead-grid">
         <article className={`lead-story${featured?.coverImageUrl ? ' has-real-image' : ''}`}>

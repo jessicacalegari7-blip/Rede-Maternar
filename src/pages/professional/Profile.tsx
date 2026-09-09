@@ -1,16 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Eye, MapPin, Plus, Save, Trash2 } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
-import { getMyProfessionalProfile, getProfessionalServiceCities, getProfessionalServiceLocations, getProfessionalSpecialtyEditor, listMyProfileViewCounts, saveProfessionalServiceCities, saveProfessionalServiceLocations, saveProfessionalSpecialties, updateMyProfessionalProfile, uploadMarketplaceMedia, type ProfessionalServiceLocation, type RealProfessionalProfile } from '../../lib/operations'
+import { getMyProfessionalProfile, getProfessionalServiceLocations, getProfessionalSpecialtyEditor, listMyProfileViewCounts, saveProfessionalServiceCities, saveProfessionalServiceLocations, saveProfessionalSpecialties, updateMyProfessionalProfile, uploadMarketplaceMedia, type ProfessionalServiceLocation, type RealProfessionalProfile } from '../../lib/operations'
 import { specialtyLimitForPlan } from '../../lib/plans'
-import { CityAutocomplete } from '../../components/DirectorySearchFields'
 
 export function ProfessionalProfilePage() {
   const { user } = useAuth()
   const [profile,setProfile]=useState<RealProfessionalProfile|null>(null)
   const [specialtyOptions,setSpecialtyOptions]=useState<string[]>([])
   const [selectedSpecialties,setSelectedSpecialties]=useState<string[]>([])
-  const [visibilityCities,setVisibilityCities]=useState<string[]>([])
   const [serviceLocations,setServiceLocations]=useState<ProfessionalServiceLocation[]>([])
   const [viewCount,setViewCount]=useState(0)
   const [notice,setNotice]=useState('')
@@ -23,7 +21,6 @@ export function ProfessionalProfilePage() {
     setProfile(loaded)
     const specialties=await getProfessionalSpecialtyEditor(loaded.id)
     setSpecialtyOptions(specialties.options.map(item=>item.name)); setSelectedSpecialties(specialties.selected)
-    setVisibilityCities(await getProfessionalServiceCities(loaded.id))
     setServiceLocations(await getProfessionalServiceLocations(loaded.id))
     const counts=await listMyProfileViewCounts(); setViewCount(Number(counts.find(item=>item.professional_id===loaded.id)?.view_count??0))
   }).catch(e=>setError(e.message))},[])
@@ -45,9 +42,10 @@ export function ProfessionalProfilePage() {
       setNotice('Arquivo enviado. Clique em Salvar perfil real para confirmar.')
     }catch(e){setNotice(e instanceof Error?e.message:'Erro ao enviar imagem.')}
   }
+  const lookupLocationPostalCode=async(index:number,value:string)=>{const postal=value.replace(/\D/g,'');if(postal.length!==8)return;try{const response=await fetch(`https://viacep.com.br/ws/${postal}/json/`),address=await response.json();if(!response.ok||address.erro)throw new Error('CEP não encontrado.');setServiceLocations(current=>current.map((item,itemIndex)=>itemIndex===index?{...item,postal_code:value,address_line:String(address.logradouro||item.address_line),neighborhood:String(address.bairro||item.neighborhood),city:String(address.localidade||item.city),state_code:String(address.uf||item.state_code).toUpperCase()}:item))}catch(reason){setNotice(reason instanceof Error?reason.message:'Não foi possível consultar o CEP.')}}
   const save=async()=>{
     setNotice('Salvando e confirmando no banco de dados...');setSaving(true)
-    try{const saved=await updateMyProfessionalProfile(profile.id,{...profile,profile_completed:Boolean(profile.full_name&&profile.city&&profile.whatsapp)});await saveProfessionalSpecialties(profile.id,selectedSpecialties,specialtyLimit);await saveProfessionalServiceCities(profile.id,visibilityCities);await saveProfessionalServiceLocations(profile.id,serviceLocations);setProfile(saved);setNotice(saved.marketplace_visible?'Salvo com sucesso. As alterações e locais de atendimento já estão publicados no Marketplace.':'Salvo com sucesso. O perfil aguarda aprovação da administração.')}
+    try{const first=serviceLocations[0],nextProfile=first?{...profile,address_line:first.address_line,address_number:first.address_number,address_complement:first.address_complement,neighborhood:first.neighborhood,city:first.city,state_code:first.state_code,postal_code:first.postal_code}:profile;await saveProfessionalSpecialties(profile.id,selectedSpecialties,specialtyLimit);await saveProfessionalServiceLocations(profile.id,serviceLocations);await saveProfessionalServiceCities(profile.id,[...new Set(serviceLocations.map(item=>`${item.city}, ${item.state_code}`).filter(item=>!item.startsWith(',')))]);const saved=await updateMyProfessionalProfile(profile.id,{...nextProfile,profile_completed:Boolean(nextProfile.full_name&&nextProfile.whatsapp&&selectedSpecialties.length&&serviceLocations.length)});setProfile(saved);setNotice(saved.marketplace_visible?'Salvo com sucesso. As alterações e locais de atendimento já estão publicados no Marketplace.':'Salvo com sucesso. O perfil aguarda aprovação da administração.')}
     catch(e){setNotice(e instanceof Error?e.message:'Erro ao salvar.')}
     finally{setSaving(false)}
   }
@@ -69,7 +67,6 @@ export function ProfessionalProfilePage() {
       <div className="field"><label>Site</label><input value={profile.website_url||''} onChange={e=>set('website_url',e.target.value)}/></div>
       <div className="field"><label>Cidade</label><input value={profile.city} onChange={e=>set('city',e.target.value)}/></div>
       <div className="field"><label>UF</label><input maxLength={2} value={profile.state_code} onChange={e=>set('state_code',e.target.value.toUpperCase())}/></div>
-      <div className="field grid-span-2"><label>Cidades de divulgação</label><CityAutocomplete name="visibilityCity" onSelect={label=>setVisibilityCities(current=>current.includes(label)?current:[...current,label])}/><div className="selected-city-tags">{visibilityCities.map(city=><button type="button" key={city} onClick={()=>setVisibilityCities(current=>current.filter(item=>item!==city))}>{city} ×</button>)}</div><small>O endereço acima continua sendo o endereço físico da clínica.</small></div>
       <div className="field"><label>Bairro</label><input value={profile.neighborhood||''} onChange={e=>set('neighborhood',e.target.value)}/></div>
       <div className="field"><label>CEP</label><input value={profile.postal_code||''} onChange={e=>set('postal_code',e.target.value)}/></div>
       <div className="field"><label>Endereço</label><input value={profile.address_line||''} onChange={e=>set('address_line',e.target.value)}/></div>

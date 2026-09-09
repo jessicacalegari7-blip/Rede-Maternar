@@ -517,6 +517,11 @@ button { cursor: pointer; }
 html, body, #root { max-width:100%; }
 body { overflow-x:hidden; }
 .portal-categories, .sponsor-strip { max-width:100%; overflow-x:auto; overscroll-behavior-inline:contain; scrollbar-width:thin; }
+.agenda-period-title{font-size:1.15rem;letter-spacing:.04em;color:#0d2b23;white-space:nowrap}
+@media(max-width:760px){
+  .portal-search{padding:12px 14px}.portal-search h1{font-size:1.28rem;line-height:1.15;margin-bottom:4px}.portal-search>p{font-size:.86rem;margin:0 0 9px}.portal-search form{grid-template-columns:1fr 1fr;gap:7px}.portal-search form label{padding:6px 9px;min-width:0}.portal-search form label span{font-size:.69rem}.portal-search form input,.portal-search form select{font-size:.84rem}.portal-search-button{grid-column:1/-1;min-height:38px}.portal-content{padding-top:8px}
+  .agenda-toolbar{align-items:flex-start}.agenda-period-title{width:100%;font-size:1.05rem}.agenda-toolbar>.row{width:100%;justify-content:center}
+}
 .crm-table, .finance-table-card, .pipeline-board { max-width:100%; }
 
 @media (max-width: 760px) {

@@ -5,9 +5,9 @@ import { LegalFooter } from './Legal'
 import { Seo } from '../../components/Seo'
 
 const plans = [
-  { name:'Marketplace Ilimitado', price:'R$ 59,90/ano', note:'Perfil profissional completo para ampliar sua presença e ser encontrada.', features:['Visitas e serviços ilimitados','Selo de perfil verificado','Destaque nas buscas','Relatório completo do perfil'], action:'Quero o Marketplace Ilimitado', plan:'marketplace' },
-  { name:'Profissional Individual', price:'R$ 99,99/mês', note:'Marketplace + Sistema de Gestão e Vendas Completo (CRM + ERP).', features:['Marketplace Ilimitado incluso','Conta para uma profissional','Até 3 especialidades','CRM, agenda, WhatsApp e ERP financeiro'], action:'Quero minha gestão completa', plan:'independent', featured:true },
-  { name:'Plano para Clínicas', price:'R$ 199,99/mês', note:'Marketplace + Sistema de Gestão e Vendas Completo (CRM + ERP).', features:['Cadastro de profissionais ilimitados','Especialidades ilimitadas','Agendas e repasses individuais','CRM, ERP e equipe com permissões'], action:'Quero gerenciar minha clínica', plan:'clinic', featured:false },
+  { name:'Plano Essencial', price:'R$ 9,99/mês', note:'Perfil público para começar a ser encontrada.', features:['Uma profissional','1 especialidade','Presença no diretório MaterPlace'], action:'Quero o Plano Essencial', plan:'marketplace' },
+  { name:'Profissional Individual', price:'A partir de R$ 59,90/mês', note:'Marketplace + CRM para contatos e agenda + ERP para controle financeiro.', features:['Conta para uma profissional','Até 3 especialidades','CRM, agenda e ERP financeiro'], action:'Quero minha gestão completa', plan:'independent', featured:true },
+  { name:'Clínica', price:'A partir de R$ 99,90/mês', note:'Marketplace + CRM e ERP para equipes. Integrações externas podem ter cobrança própria.', features:['Profissionais ilimitados','Especialidades ilimitadas','Agendas e repasses individuais','Equipe com permissões'], action:'Quero gerenciar minha clínica', plan:'clinic', featured:false },
 ]
 
 export function Landing() {

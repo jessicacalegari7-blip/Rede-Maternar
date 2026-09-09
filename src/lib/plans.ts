@@ -2,9 +2,9 @@ export type ProfessionalPlan = 'free' | 'marketplace' | 'independent' | 'clinic'
 
 export const planLabels: Record<ProfessionalPlan, string> = {
   free: 'Marketplace Gratuito',
-  marketplace: 'Marketplace Ilimitado',
-  independent: 'Profissional Independente',
-  clinic: 'Plano para Clínicas',
+  marketplace: 'Plano Essencial',
+  independent: 'Profissional Individual',
+  clinic: 'Clínica',
   business: 'Plano para Clínicas',
   annual: 'Plano para Clínicas',
 }
@@ -17,22 +17,23 @@ export const planFeatures: Record<ProfessionalPlan, string[]> = {
     'Relatório básico de visualizações',
   ],
   marketplace: [
-    'Visitas ilimitadas no perfil',
-    'Serviços ilimitados',
-    'Destaque nas buscas por especialidade',
-    'Relatório completo de desempenho',
+    'Perfil público para uma profissional',
+    '1 especialidade no diretório',
+    'Presença nas buscas da MaterPlace',
   ],
   independent: [
-    'Marketplace Ilimitado, CRM e ERP',
+    'Marketplace, CRM e ERP',
     'Conta exclusiva para uma profissional',
     'Até 3 especialidades no perfil',
-    'Agenda, atendimentos, financeiro e WhatsApp',
+    'CRM para organizar contatos e agenda',
+    'ERP para controlar o financeiro',
   ],
   clinic: [
     'Marketplace, CRM e ERP completos',
     'Profissionais e especialidades ilimitados',
     'Agendas, acessos e repasses individuais',
     'Gestão de equipe, recepção e financeiro',
+    'Integrações externas podem ter custo próprio',
   ],
   business: [
     'Tudo do Marketplace Ilimitado',
