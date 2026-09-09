@@ -50,7 +50,8 @@ export function PortalHome() {
   const highlightArticles=takeUnique(newestFirst,4)
   const featured=highlightArticles[0]
   const headlineArticles=highlightArticles.slice(1)
-  const articleCategoryArticles=takeUnique(newestFirst.filter(article=>categoryKey(article.category)==='artigos'),5)
+  const articlesCategoryPool=newestFirst.filter(article=>categoryKey(article.category)==='artigos')
+  const articleCategoryArticles=takeUnique(articlesCategoryPool.length>=5?articlesCategoryPool:newestFirst,5)
   const mostRead=takeUnique([...visibleArticles].sort((a,b)=>b.views-a.views||new Date(b.publishedAt||b.createdAt).getTime()-new Date(a.publishedAt||a.createdAt).getTime()),10)
   const mostReadArticles=mostRead.slice(0,5)
   const moreMostReadArticles=mostRead.slice(5,10)
