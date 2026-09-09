@@ -262,6 +262,10 @@ export async function updateFinancialEntry(id:string,input:{type:FinancialEntryT
   const status=input.status
   const amountCents=Math.round(input.amount*100)
   if(!Number.isFinite(input.amount)||amountCents<0) throw new Error('Informe um valor financeiro válido.')
+  const {data:current,error:loadError}=await client().from('financial_entries').select('received_amount_cents').eq('id',id).single()
+  if(loadError) throw new Error(loadError.message)
+  if(amountCents<(current.received_amount_cents||0)) throw new Error('O valor não pode ser menor que o total já pago.')
+  if(status==='cancelled'&&(current.received_amount_cents||0)>0) throw new Error('Um lançamento com pagamentos não pode ser cancelado. Registre o estorno antes.')
   const {data,error}=await client().from('financial_entries').update({
     type:input.type,status,category:input.category.trim(),description:input.description.trim(),
     amount_cents:amountCents,gross_amount_cents:amountCents,due_date:input.dueDate||null,competence_date:input.dueDate||new Date().toISOString().slice(0,10),
