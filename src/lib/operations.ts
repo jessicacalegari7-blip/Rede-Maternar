@@ -365,14 +365,8 @@ export async function updateAppointment(id:string, changes:Partial<Pick<RealAppo
 }
 
 export async function markAppointmentPaid(appointment:RealAppointment,paymentMethod:string) {
-  const db=client()
-  await updateAppointment(appointment.id,{status:'completed',payment_method:paymentMethod})
-  if(appointment.price_cents>0) {
-    await createFinancialEntry({
-      type:'income',category:'Atendimento',description:`Atendimento — ${appointment.patient_profiles?.full_name||'Paciente'}`,
-      amount:appointment.price_cents/100,status:'paid',paymentMethod,
-    })
-  }
+  const {error}=await client().rpc('record_appointment_payment',{target_appointment_id:appointment.id,payment_method_name:paymentMethod.trim()})
+  if(error) throw new Error(error.message)
 }
 
 export async function listOrganizationProfessionals() {
@@ -723,9 +717,9 @@ export async function saveProfessionalServiceLocations(professionalId:string,loc
     postal_code:location.postal_code.trim()||null,sort_order:index,active:true,
   })).filter(location=>location.name&&location.address_line&&location.city&&location.state_code.length===2)
   if(rows.length!==locations.length) throw new Error('Preencha nome, endereço, cidade e UF de todos os locais de atendimento.')
-  const db=client(); const removed=await db.from('professional_service_locations').delete().eq('professional_id',professionalId)
-  if(removed.error) throw new Error(removed.error.message)
-  if(rows.length){const {error}=await db.from('professional_service_locations').insert(rows);if(error)throw new Error(error.message)}
+  const {data,error}=await client().rpc('save_professional_service_locations',{target_professional_id:professionalId,location_rows:rows.map((row,index)=>({...row,id:locations[index]?.id||null}))})
+  if(error) throw new Error(error.message)
+  return (data??[]) as ProfessionalServiceLocation[]
 }
 
 export const uploadMarketplaceImage=uploadMarketplaceMedia
