@@ -717,7 +717,7 @@ export async function saveProfessionalServiceLocations(professionalId:string,loc
     postal_code:location.postal_code.trim()||null,sort_order:index,active:true,
   })).filter(location=>location.name&&location.address_line&&location.city&&location.state_code.length===2)
   if(rows.length!==locations.length) throw new Error('Preencha nome, endereço, cidade e UF de todos os locais de atendimento.')
-  const {data,error}=await client().rpc('save_professional_service_locations',{target_professional_id:professionalId,location_rows:rows.map((row,index)=>({...row,id:locations[index]?.id||null}))})
+  const {data,error}=await client().rpc('save_professional_service_locations',{p:professionalId,rows:rows.map((row,index)=>({...row,id:locations[index]?.id||null}))})
   if(error) throw new Error(error.message)
   return (data??[]) as ProfessionalServiceLocation[]
 }
