@@ -224,8 +224,10 @@ export async function listProfessionalPayouts() {
 }
 
 export async function recordFinancialPayment(input:{entryId:string;amount:number;paymentMethodId?:string;cashAccountId?:string;notes?:string}) {
+  const amountCents=Math.round(input.amount*100)
+  if(!Number.isFinite(input.amount)||!Number.isSafeInteger(amountCents)||amountCents<=0) throw new Error('Informe um valor de pagamento maior que zero.')
   const {data,error}=await client().rpc('record_financial_payment',{
-    target_entry_id:input.entryId,payment_amount_cents:Math.round(input.amount*100),
+    target_entry_id:input.entryId,payment_amount_cents:amountCents,
     target_payment_method_id:input.paymentMethodId||null,target_cash_account_id:input.cashAccountId||null,
     idempotency_key:crypto.randomUUID(),payment_notes:input.notes?.trim()||null,
   })
@@ -233,9 +235,26 @@ export async function recordFinancialPayment(input:{entryId:string;amount:number
   return data as RealFinancialEntry
 }
 
+export async function savePaymentMethod(input:{id?:string;name:string;methodType:string;percentageFee:number;fixedFee:number;settlementDays:number;maxInstallments:number}) {
+  const db=client(); const {organizationId}=await getCurrentOrganization()
+  const name=input.name.trim(),fixedFeeCents=Math.round(input.fixedFee*100)
+  if(name.length<2) throw new Error('Informe o nome da forma de pagamento.')
+  if(!['cash','pix','debit_card','credit_card','boleto','bank_transfer','insurance','other'].includes(input.methodType)) throw new Error('Selecione um tipo de pagamento válido.')
+  if(!Number.isFinite(input.percentageFee)||input.percentageFee<0||input.percentageFee>100) throw new Error('A taxa percentual deve ficar entre 0% e 100%.')
+  if(!Number.isFinite(input.fixedFee)||fixedFeeCents<0) throw new Error('A taxa fixa não pode ser negativa.')
+  if(!Number.isInteger(input.settlementDays)||input.settlementDays<0) throw new Error('O prazo de recebimento deve ser informado em dias inteiros.')
+  if(!Number.isInteger(input.maxInstallments)||input.maxInstallments<1) throw new Error('Informe pelo menos uma parcela.')
+  const payload={organization_id:organizationId,name,method_type:input.methodType,percentage_fee:input.percentageFee,fixed_fee_cents:fixedFeeCents,settlement_days:input.settlementDays,max_installments:input.maxInstallments,active:true}
+  const result=input.id?await db.from('payment_methods').update(payload).eq('organization_id',organizationId).eq('id',input.id):await db.from('payment_methods').insert(payload)
+  if(result.error) throw new Error(result.error.code==='23505'?'Já existe uma forma de pagamento com esse nome.':result.error.message)
+}
+
 export async function listFinancialEntries() {
   const db = client()
   const { organizationId } = await getCurrentOrganization()
+  const today=new Date().toISOString().slice(0,10)
+  const {error:overdueError}=await db.from('financial_entries').update({status:'overdue'}).eq('organization_id',organizationId).eq('status','pending').lt('due_date',today)
+  if(overdueError) throw new Error(overdueError.message)
   const { data, error } = await db.from('financial_entries').select('*').eq('organization_id', organizationId).order('created_at', { ascending:false })
   if (error) throw new Error(error.message)
   return (data ?? []) as RealFinancialEntry[]
@@ -245,7 +264,8 @@ export async function createFinancialEntry(input: { type:FinancialEntryType; cat
   const db = client()
   const { organizationId, userId } = await getCurrentOrganization()
   const requestedStatus = input.status ?? 'pending',amountCents=Math.round(input.amount*100)
-  if(!Number.isFinite(input.amount)||amountCents<0) throw new Error('Informe um valor financeiro válido.')
+  if(!input.description.trim()) throw new Error('Informe a descrição do lançamento.')
+  if(!Number.isFinite(input.amount)||!Number.isSafeInteger(amountCents)||amountCents<=0) throw new Error('Informe um valor financeiro maior que zero.')
   const initialStatus=requestedStatus==='paid'?'pending':requestedStatus
   const { data, error } = await db.from('financial_entries').insert({
     organization_id: organizationId, type: input.type, status:initialStatus, category: input.category.trim(),
@@ -261,15 +281,16 @@ export async function createFinancialEntry(input: { type:FinancialEntryType; cat
 export async function updateFinancialEntry(id:string,input:{type:FinancialEntryType;category:string;description:string;amount:number;dueDate?:string;status:RealFinancialEntry['status'];paymentMethod?:string;recurring?:boolean;categoryId?:string;paymentMethodId?:string;cashAccountId?:string;costCenterId?:string}) {
   const status=input.status
   const amountCents=Math.round(input.amount*100)
-  if(!Number.isFinite(input.amount)||amountCents<0) throw new Error('Informe um valor financeiro válido.')
-  const {data:current,error:loadError}=await client().from('financial_entries').select('received_amount_cents').eq('id',id).single()
+  if(!input.description.trim()) throw new Error('Informe a descrição do lançamento.')
+  if(!Number.isFinite(input.amount)||!Number.isSafeInteger(amountCents)||amountCents<=0) throw new Error('Informe um valor financeiro maior que zero.')
+  const {data:current,error:loadError}=await client().from('financial_entries').select('received_amount_cents,status,paid_at').eq('id',id).single()
   if(loadError) throw new Error(loadError.message)
   if(amountCents<(current.received_amount_cents||0)) throw new Error('O valor não pode ser menor que o total já pago.')
   if(status==='cancelled'&&(current.received_amount_cents||0)>0) throw new Error('Um lançamento com pagamentos não pode ser cancelado. Registre o estorno antes.')
   const {data,error}=await client().from('financial_entries').update({
     type:input.type,status,category:input.category.trim(),description:input.description.trim(),
     amount_cents:amountCents,gross_amount_cents:amountCents,due_date:input.dueDate||null,competence_date:input.dueDate||new Date().toISOString().slice(0,10),
-    paid_at:status==='paid'?new Date().toISOString():null,payment_method:input.paymentMethod||null,
+    paid_at:status==='paid'?(current.paid_at||new Date().toISOString()):null,payment_method:input.paymentMethod||null,
     recurring:Boolean(input.recurring),category_id:input.categoryId||null,payment_method_id:input.paymentMethodId||null,
     cash_account_id:input.cashAccountId||null,cost_center_id:input.costCenterId||null,
   }).eq('id',id).select('*').single()
@@ -289,6 +310,7 @@ export async function getOpenCashSession() {
 }
 
 export async function openCashSession(openingBalance:number) {
+  if(!Number.isFinite(openingBalance)||openingBalance<0) throw new Error('Informe um saldo inicial válido, igual ou maior que zero.')
   const db = client()
   const { organizationId, userId } = await getCurrentOrganization()
   const existing = await getOpenCashSession()
@@ -466,6 +488,7 @@ export async function updateFinancialEntryStatus(id:string,status:RealFinancialE
 }
 
 export async function closeCashSession(id:string,closingBalance:number) {
+  if(!Number.isFinite(closingBalance)||closingBalance<0) throw new Error('Informe um saldo final válido, igual ou maior que zero.')
   const db=client(); const {userId}=await getCurrentOrganization()
   const {error}=await db.from('cash_sessions').update({
     closed_by:userId,closed_at:new Date().toISOString(),closing_balance_cents:Math.round(closingBalance*100),
