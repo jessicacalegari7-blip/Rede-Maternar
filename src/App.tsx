@@ -38,6 +38,8 @@ const AdminUsers=lazy(()=>import('./pages/admin/Backoffice').then(m=>({default:m
 const SocialIntegrations=lazy(()=>import('./pages/professional/SocialIntegrations').then(m=>({default:m.SocialIntegrations})))
 const ClinicTeam=lazy(()=>import('./pages/professional/ClinicTeam').then(m=>({default:m.ClinicTeam})))
 const AdminNewsPortal=lazy(()=>import('./pages/admin/NewsPortal').then(m=>({default:m.AdminNewsPortal})))
+const EcosystemAdmin=lazy(()=>import('./pages/admin/EcosystemAdmin').then(m=>({default:m.EcosystemAdmin})))
+const EcosystemManager=lazy(()=>import('./pages/professional/EcosystemManager').then(m=>({default:m.EcosystemManager})))
 
 function ProfessionalEntry() {
   const { user } = useAuth()
@@ -103,6 +105,9 @@ export default function App() {
         <Route path="perfil" element={<ProfessionalProfilePage />} />
         <Route path="servicos" element={<ErpServices />} />
         <Route path="plano" element={<ProfessionalPlanPage />} />
+        <Route path="produtos" element={<EcosystemManager kind="marketplace" />} />
+        <Route path="cursos" element={<EcosystemManager kind="courses" />} />
+        <Route path="vagas" element={<EcosystemManager kind="jobs" />} />
         <Route element={<PlanGate requires="management" />}>
           <Route path="funil" element={<CrmPipeline />} />
           <Route path="clientes" element={<CrmCustomers />} />
@@ -129,6 +134,7 @@ export default function App() {
         <Route path="usuarios" element={<AdminUsers />} />
         <Route path="financeiro" element={<Placeholder title="Financeiro administrativo" description="Aguardando integração real de pagamentos e assinaturas." />} />
         <Route path="noticias" element={<AdminNewsPortal />} />
+        <Route path="ecossistema" element={<EcosystemAdmin />} />
         <Route path="operacao" element={<AdminOperations />} />
         <Route path="configuracoes" element={<AdminOperations />} />
       </Route>

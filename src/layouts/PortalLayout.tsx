@@ -26,6 +26,7 @@ const menus: Partial<Record<UserRole, Item[]>> = {
     ['Agendamentos', '/admin/agendamentos', CalendarDays],
     ['Financeiro', '/admin/financeiro', BadgeDollarSign],
     ['Notícias do portal', '/admin/noticias', Newspaper],
+    ['Marketplace, cursos e vagas', '/admin/ecossistema', BriefcaseBusiness],
     ['Central do backoffice', '/admin/operacao', BriefcaseBusiness],
     ['Configurações', '/admin/configuracoes', Settings],
   ],
@@ -42,11 +43,17 @@ const management: Item[] = [
   ['Financeiro ERP', '/profissional/financeiro', Wallet],
   ['Relatórios', '/profissional/relatorios', BarChart3],
   ['Perfil no Marketplace', '/profissional/perfil', UserRound],
+  ['Meus produtos', '/profissional/produtos', BriefcaseBusiness],
+  ['Meus cursos', '/profissional/cursos', Newspaper],
+  ['Minhas vagas', '/profissional/vagas', Users],
   ['Meu plano', '/profissional/plano', Sparkles],
 ]
 
 const marketplace: Item[] = [
   ['Perfil no Marketplace', '/profissional/perfil', UserRound],
+  ['Meus produtos', '/profissional/produtos', BriefcaseBusiness],
+  ['Meus cursos', '/profissional/cursos', Newspaper],
+  ['Minhas vagas', '/profissional/vagas', Users],
   ['Serviços do perfil', '/profissional/servicos', BriefcaseBusiness],
   ['Meu plano', '/profissional/plano', Sparkles],
 ]
