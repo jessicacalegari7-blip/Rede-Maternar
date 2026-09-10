@@ -2,7 +2,7 @@ import { adminClient } from './supabase-admin.mjs'
 import { MAX_URLS, SITE_URL, fetchRange, pageNumber, sendXml, urlNode, urlset } from './sitemap-xml.mjs'
 
 const slugify=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
-const pages=['','profissionais','para-profissionais','sobre','expediente','contato','privacidade','termos','lgpd','cookies','isencao-de-responsabilidade']
+const pages=['','profissionais','marketplace','universidade','vagas','para-profissionais','sobre','expediente','contato','privacidade','termos','lgpd','cookies','isencao-de-responsabilidade']
 
 async function fetchWindow(buildQuery,offset,limit){const rows=[];for(let cursor=offset;cursor<offset+limit;cursor+=1000){const end=Math.min(cursor+999,offset+limit-1);const {data,error}=await buildQuery().range(cursor,end);if(error)throw error;rows.push(...(data||[]));if(!data||data.length<end-cursor+1)break}return rows}
 
@@ -32,4 +32,11 @@ export async function categories(_request,response){
 export function staticPages(_request,response){
   const lastmod=new Date().toISOString()
   return sendXml(response,urlset(pages.map(path=>urlNode({loc:`${SITE_URL}/${path}`,lastmod,changefreq:'monthly',priority:path===''?'1.0':'0.3'}))),3600)
+}
+
+export async function ecosystem(_request,response){
+  const db=adminClient(),nodes=[]
+  const definitions=[['marketplace_items','marketplace/produto'],['courses','universidade/curso'],['jobs','vagas']]
+  for(const [table,path] of definitions){const {data,error}=await db.from(table).select('slug,published_at,created_at,demo').eq('status','published').eq('demo',false).order('published_at',{ascending:false}).limit(MAX_URLS);if(error){if(error.code==='42P01')continue;throw error}for(const item of data||[])nodes.push(urlNode({loc:`${SITE_URL}/${path}/${item.slug}`,lastmod:item.published_at||item.created_at,changefreq:'weekly',priority:'0.7'}))}
+  return sendXml(response,urlset(nodes))
 }

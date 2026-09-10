@@ -370,13 +370,14 @@ export async function listAppointments() {
   return (data??[]) as unknown as RealAppointment[]
 }
 
-export async function createAppointment(input:{patientId:string;professionalId:string;startsAt:string;endsAt:string;price:number;isOnline:boolean;isReturn:boolean;isPaidReturn:boolean;notes?:string}) {
+export async function createAppointment(input:{patientId:string;professionalId:string;startsAt:string;endsAt:string;price:number;isOnline:boolean;isReturn:boolean;isPaidReturn:boolean;notes?:string;serviceId?:string;procedureName?:string;paymentMethod?:string}) {
   const db=client(); const {organizationId,userId}=await getCurrentOrganization()
   const {error}=await db.from('appointments').insert({
     organization_id:organizationId,patient_id:input.patientId,professional_id:input.professionalId,
     starts_at:input.startsAt,ends_at:input.endsAt,price_cents:Math.round(input.price*100),
     is_online:input.isOnline,is_return:input.isReturn,is_paid_return:input.isPaidReturn,
-    notes:input.notes?.trim()||null,created_by:userId,
+    notes:input.notes?.trim()||null,service_id:input.serviceId||null,procedure_name:input.procedureName?.trim()||null,
+    payment_method:input.paymentMethod?.trim()||null,created_by:userId,
   })
   if(error) throw new Error(error.message)
 }
@@ -507,6 +508,10 @@ export async function listAdminProspects() {
   if(error) throw new Error(error.message)
   return data??[]
 }
+
+export interface PatientDocument {id:string;patient_id:string;appointment_id:string|null;professional_id:string|null;document_type:'prescription'|'certificate'|'invoice'|'attachment';title:string;content:string|null;document_number:string|null;amount_cents:number|null;status:'draft'|'pending'|'issued'|'cancelled';file_url:string|null;issued_at:string|null;created_at:string}
+export async function listPatientDocuments(patientId:string){const {data,error}=await client().from('patient_documents').select('*').eq('patient_id',patientId).order('created_at',{ascending:false});if(error)throw new Error(error.message);return(data??[]) as PatientDocument[]}
+export async function createPatientDocument(input:{patientId:string;appointmentId?:string;professionalId?:string;type:PatientDocument['document_type'];title:string;content?:string;number?:string;amount?:number;status?:PatientDocument['status'];fileUrl?:string}){const db=client(),{organizationId,userId}=await getCurrentOrganization();const {data,error}=await db.from('patient_documents').insert({organization_id:organizationId,patient_id:input.patientId,appointment_id:input.appointmentId||null,professional_id:input.professionalId||null,document_type:input.type,title:input.title.trim(),content:input.content?.trim()||null,document_number:input.number?.trim()||null,amount_cents:input.amount==null?null:Math.round(input.amount*100),status:input.status||'issued',file_url:input.fileUrl?.trim()||null,issued_at:(input.status||'issued')==='issued'?new Date().toISOString():null,created_by:userId}).select('*').single();if(error)throw new Error(error.message);return data as PatientDocument}
 
 export async function rescheduleAppointment(id:string,startsAt:string,endsAt:string,reason?:string) {
   const db=client(); const {organizationId,userId}=await getCurrentOrganization()

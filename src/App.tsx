@@ -20,6 +20,7 @@ import { RecoverPassword } from './pages/public/RecoverPassword'
 import { AboutPage, ContactPage, CookiePolicy, DisclaimerPage, EditorialStaffPage, LgpdPage, PrivacyPolicy, TermsOfUse } from './pages/public/Legal'
 import { PortalArticlePage } from './pages/public/PortalArticle'
 import { CookieConsent } from './components/CookieConsent'
+import { EcosystemDetail, EcosystemListing } from './pages/public/Ecosystem'
 
 const ProfessionalPatients=lazy(()=>import('./pages/professional/Patients').then(m=>({default:m.ProfessionalPatients})))
 const ProfessionalProfilePage=lazy(()=>import('./pages/professional/Profile').then(m=>({default:m.ProfessionalProfilePage})))
@@ -79,6 +80,12 @@ export default function App() {
     <Route path="/isencao-de-responsabilidade" element={<DisclaimerPage />} />
     <Route path="/perfil/:slug" element={<PublicProfessionalProfile />} />
     <Route path="/convite/:token" element={<PatientInvitation />} />
+    <Route path="/marketplace" element={<EcosystemListing kind="marketplace" />} />
+    <Route path="/marketplace/produto/:slug" element={<EcosystemDetail kind="marketplace" />} />
+    <Route path="/universidade" element={<EcosystemListing kind="courses" />} />
+    <Route path="/universidade/curso/:slug" element={<EcosystemDetail kind="courses" />} />
+    <Route path="/vagas" element={<EcosystemListing kind="jobs" />} />
+    <Route path="/vagas/:slug" element={<EcosystemDetail kind="jobs" />} />
 
     <Route element={<ProtectedRoute role="patient" />}>
       <Route path="/paciente" element={<PortalLayout role="patient" />}>
