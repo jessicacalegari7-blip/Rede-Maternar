@@ -56,11 +56,10 @@ export function ProfessionalProfilePage() {
     lastPostalLookup.current[clientKey]=postal
     setPostalLookup(current=>({...current,[clientKey]:{loading:true,message:'Buscando endereço…',error:false}}))
     try{
-      const response=await fetch(`https://viacep.com.br/ws/${postal}/json/`)
-      if(!response.ok)throw new Error('service')
+      const response=await fetch(`/api/postal-code?postal=${postal}`)
       const address=await response.json()
-      if(address.erro){setPostalLookup(current=>({...current,[clientKey]:{loading:false,message:'CEP não encontrado. Confira o número ou preencha o endereço manualmente.',error:true}}));return}
-      updateLocation(clientKey,{postal_code:formatPostalCode(postal),address_line:String(address.logradouro||''),neighborhood:String(address.bairro||''),city:String(address.localidade||''),state_code:String(address.uf||'').toUpperCase()})
+      if(!response.ok){setPostalLookup(current=>({...current,[clientKey]:{loading:false,message:String(address.error||'Não foi possível consultar o CEP agora. Você pode preencher o endereço manualmente.'),error:true}}));delete lastPostalLookup.current[clientKey];return}
+      updateLocation(clientKey,{postal_code:formatPostalCode(address.postal_code),address_line:String(address.address_line||''),neighborhood:String(address.neighborhood||''),city:String(address.city||''),state_code:String(address.state_code||'').toUpperCase()})
       setPostalLookup(current=>({...current,[clientKey]:{loading:false,message:'Endereço encontrado. Informe o número e confira os dados.',error:false}}))
       window.setTimeout(()=>numberInputs.current[clientKey]?.focus(),0)
     }catch{
