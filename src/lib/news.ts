@@ -134,7 +134,7 @@ export async function listPortalArticles(limit = PORTAL_ARTICLE_LIST_LIMIT): Pro
   if (Date.now() < portalArticlesRetryAfter) {
     const stored = readStoredPortalArticles()
     if (stored.length) return stored.slice(0, limit)
-    throw new Error('O conteúdo está temporariamente indisponível. Tente novamente em alguns minutos.')
+    return demoArticles.slice(0, limit)
   }
   if (!portalArticlesRequest) portalArticlesRequest = (async () => {
     let lastError: unknown = null
@@ -157,7 +157,8 @@ export async function listPortalArticles(limit = PORTAL_ARTICLE_LIST_LIMIT): Pro
       portalArticlesCache = stored
       return stored
     }
-    throw lastError
+    console.warn('Portal em modo de contingência:', lastError)
+    return demoArticles
   })().finally(() => { portalArticlesRequest = null })
   return (await portalArticlesRequest).slice(0, limit)
 }
@@ -170,6 +171,8 @@ export async function getPortalArticle(slug: string): Promise<PortalArticle> {
       return mapRow(data)
     }
   }
+  const fallback = demoArticles.find(article => article.slug === slug)
+  if (fallback) return fallback
   throw new Error('Notícia não encontrada.')
 }
 
