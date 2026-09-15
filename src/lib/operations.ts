@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { optimizePublicImage } from './publicMedia'
 
 function client() {
   if (!supabase) throw new Error('A conexão com o banco não está configurada.')
@@ -700,9 +701,10 @@ export async function uploadMarketplaceMedia(file:File,kind:'profile'|'cover'|'g
   if(isVideo&&!file.type.startsWith('video/')) throw new Error('Escolha um arquivo de vídeo.')
   if(!isVideo&&!file.type.startsWith('image/')) throw new Error('Escolha um arquivo de imagem.')
   if(file.size>(isVideo?80:8)*1024*1024) throw new Error(isVideo?'Cada vídeo deve ter no máximo 80 MB.':'Cada imagem deve ter no máximo 8 MB.')
-  const extension=(file.name.split('.').pop()||'jpg').toLowerCase()
+  const uploadFile=isVideo?file:await optimizePublicImage(file)
+  const extension=(uploadFile.name.split('.').pop()||'jpg').toLowerCase()
   const path=`${userId}/${kind}-${crypto.randomUUID()}.${extension}`
-  const {error}=await db.storage.from('marketplace-media').upload(path,file,{upsert:false,contentType:file.type})
+  const {error}=await db.storage.from('marketplace-media').upload(path,uploadFile,{upsert:false,contentType:uploadFile.type,cacheControl:'31536000'})
   if(error) throw new Error(error.message)
   return db.storage.from('marketplace-media').getPublicUrl(path).data.publicUrl
 }

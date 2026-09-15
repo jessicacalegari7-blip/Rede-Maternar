@@ -145,7 +145,7 @@ async function generateImage(prompt, alt, runId) {
   if (!response.ok || !body.data?.[0]?.b64_json) throw new Error(`Imagem OpenAI: ${body.error?.message || response.status}`)
   const image = await sharp(Buffer.from(body.data[0].b64_json, 'base64')).resize(1600, 900, { fit: 'cover', position: 'attention' }).webp({ quality: 84 }).toBuffer()
   const path = `editorial/${new Date().toISOString().slice(0, 10)}/${runId}.webp`
-  const upload = await fetch(`${required('SUPABASE_URL')}/storage/v1/object/news-media/${path}`, { method: 'POST', headers: { apikey: required('SUPABASE_SERVICE_ROLE_KEY'), Authorization: `Bearer ${required('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'image/webp', 'x-upsert': 'false', 'x-image-alt': encodeURIComponent(alt) }, body: image })
+  const upload = await fetch(`${required('SUPABASE_URL')}/storage/v1/object/news-media/${path}`, { method: 'POST', headers: { apikey: required('SUPABASE_SERVICE_ROLE_KEY'), Authorization: `Bearer ${required('SUPABASE_SERVICE_ROLE_KEY')}`, 'Content-Type': 'image/webp', 'Cache-Control': 'max-age=31536000', 'x-upsert': 'false', 'x-image-alt': encodeURIComponent(alt) }, body: image })
   if (!upload.ok) throw new Error(`Storage: ${upload.status} ${await upload.text()}`)
   return `${required('SUPABASE_URL')}/storage/v1/object/public/news-media/${path}`
 }

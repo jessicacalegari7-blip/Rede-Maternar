@@ -1,4 +1,5 @@
 import { isSupabaseConfigured, supabase } from './supabase'
+import { optimizePublicImage } from './publicMedia'
 
 export type NewsStatus = 'draft' | 'published' | 'archived'
 
@@ -26,7 +27,11 @@ export type NewsInput = Pick<PortalArticle, 'title' | 'seoTitle' | 'slug' | 'exc
 
 let portalArticlesCache: PortalArticle[] | null = null
 let portalArticlesRequest: Promise<PortalArticle[]> | null = null
-const PORTAL_ARTICLES_STORAGE_KEY = 'materplace.portal-articles.v1'
+const PORTAL_ARTICLES_STORAGE_KEY = 'materplace.portal-articles.v2'
+const PORTAL_ARTICLE_LIST_FIELDS = 'id,slug,title,seo_title,excerpt,category,cover_image_url,author_name,status,featured,published_at,created_at,is_demo,views'
+const PORTAL_ARTICLE_LIST_LIMIT = 100
+const PORTAL_FAILURE_COOLDOWN_MS = 5 * 60 * 1000
+let portalArticlesRetryAfter = 0
 
 function readStoredPortalArticles(): PortalArticle[] {
   if (typeof window === 'undefined') return []
@@ -123,21 +128,30 @@ function mapRow(row: Record<string, unknown>): PortalArticle {
   }
 }
 
-export async function listPortalArticles(limit = 500): Promise<PortalArticle[]> {
+export async function listPortalArticles(limit = PORTAL_ARTICLE_LIST_LIMIT): Promise<PortalArticle[]> {
   if (!isSupabaseConfigured || !supabase) return readStoredPortalArticles().slice(0, limit)
   if (portalArticlesCache) return portalArticlesCache.slice(0, limit)
+  if (Date.now() < portalArticlesRetryAfter) {
+    const stored = readStoredPortalArticles()
+    if (stored.length) return stored.slice(0, limit)
+    throw new Error('O conteúdo está temporariamente indisponível. Tente novamente em alguns minutos.')
+  }
   if (!portalArticlesRequest) portalArticlesRequest = (async () => {
     let lastError: unknown = null
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      const { data, error } = await supabase.from('news_articles').select('*').eq('status', 'published').order('featured', { ascending: false }).order('published_at', { ascending: false }).limit(500)
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const { data, error } = await supabase.from('news_articles').select(PORTAL_ARTICLE_LIST_FIELDS).eq('status', 'published').order('published_at', { ascending: false }).limit(PORTAL_ARTICLE_LIST_LIMIT)
       if (!error && data?.length) {
         portalArticlesCache = data.map(mapRow)
+        portalArticlesRetryAfter = 0
         storePortalArticles(portalArticlesCache)
         return portalArticlesCache
       }
       lastError = error || new Error('O Supabase retornou uma lista vazia de notícias publicadas.')
-      if (attempt < 2) await wait(250 * (attempt + 1))
+      const message = error?.message || ''
+      if (message.includes('exceed_cached_egress_quota') || message.includes('restricted')) break
+      if (attempt === 0) await wait(300)
     }
+    portalArticlesRetryAfter = Date.now() + PORTAL_FAILURE_COOLDOWN_MS
     const stored = readStoredPortalArticles()
     if (stored.length) {
       portalArticlesCache = stored
@@ -195,9 +209,10 @@ export async function uploadNewsImage(file:File):Promise<string> {
   if(!supabase) throw new Error('Supabase não configurado.')
   if(!file.type.startsWith('image/')) throw new Error('Escolha um arquivo de imagem.')
   if(file.size>5*1024*1024) throw new Error('A imagem deve ter no máximo 5 MB.')
-  const extension=(file.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')
+  const optimized=await optimizePublicImage(file)
+  const extension=(optimized.name.split('.').pop()||'jpg').toLowerCase().replace(/[^a-z0-9]/g,'')
   const path=`${new Date().toISOString().slice(0,10)}/${crypto.randomUUID()}.${extension}`
-  const {error}=await supabase.storage.from('news-media').upload(path,file,{contentType:file.type,upsert:false})
+  const {error}=await supabase.storage.from('news-media').upload(path,optimized,{contentType:optimized.type,cacheControl:'31536000',upsert:false})
   if(error) throw error
   return supabase.storage.from('news-media').getPublicUrl(path).data.publicUrl
 }
