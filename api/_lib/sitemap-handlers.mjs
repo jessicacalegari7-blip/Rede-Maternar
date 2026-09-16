@@ -29,9 +29,11 @@ export async function categories(_request,response){
   return sendXml(response,urlset([...values].map(([slug,lastmod])=>urlNode({loc:`${SITE_URL}/categoria/${slug}`,lastmod,changefreq:'daily',priority:'0.8'}))))
 }
 
-export function staticPages(_request,response){
+export async function staticPages(_request,response){
   const lastmod=new Date().toISOString()
-  return sendXml(response,urlset(pages.map(path=>urlNode({loc:`${SITE_URL}/${path}`,lastmod,changefreq:'monthly',priority:path===''?'1.0':'0.3'}))),3600)
+  const {count,error}=await adminClient().from('news_articles').select('id',{count:'exact',head:true}).eq('status','published')
+  const visiblePages=!error&&count?pages:pages.filter(path=>path!=='')
+  return sendXml(response,urlset(visiblePages.map(path=>urlNode({loc:`${SITE_URL}/${path}`,lastmod,changefreq:'monthly',priority:path===''?'1.0':'0.3'}))),3600)
 }
 
 export async function ecosystem(_request,response){

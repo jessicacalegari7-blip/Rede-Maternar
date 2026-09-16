@@ -55,9 +55,10 @@ export function PortalHome() {
   const mostRead=takeUnique([...visibleArticles].sort((a,b)=>b.views-a.views||new Date(b.publishedAt||b.createdAt).getTime()-new Date(a.publishedAt||a.createdAt).getTime()),10)
   const mostReadArticles=mostRead.slice(0,5)
   const moreMostReadArticles=mostRead.slice(5,10)
+  const hasIndexableEditorialContent=articles.some(article=>!article.isDemo)
 
   return <div className="portal-home">
-    <Seo title={selectedCategory?`${selectedCategory}: conteúdos para famílias`:'MaterPlace — saúde materno-infantil e profissionais'} description={selectedCategory?`Conteúdos informativos da MaterPlace sobre ${selectedCategory}, com autoria, fontes e orientação para buscar atendimento profissional.`:'Encontre profissionais materno-infantis por especialidade e cidade e acesse conteúdo informativo para cada fase da maternidade.'} path={selectedCategory?`/categoria/${categorySlug}`:'/'} appendBrand={false} schema={baseSchemas}/>
+    <Seo title={selectedCategory?`${selectedCategory}: conteúdos para famílias`:'MaterPlace — saúde materno-infantil e profissionais'} description={selectedCategory?`Conteúdos informativos da MaterPlace sobre ${selectedCategory}, com autoria, fontes e orientação para buscar atendimento profissional.`:'Encontre profissionais materno-infantis por especialidade e cidade e acesse conteúdo informativo para cada fase da maternidade.'} path={selectedCategory?`/categoria/${categorySlug}`:'/'} appendBrand={false} schema={hasIndexableEditorialContent?baseSchemas:undefined} index={hasIndexableEditorialContent}/>
     <header className="portal-topbar">
       <Link to="/" aria-label="Início"><Logo /></Link>
       <Link className="professional-access" to="/login"><span><Users /></span><strong>Profissional de Saúde<small>Login na plataforma</small></strong></Link>
