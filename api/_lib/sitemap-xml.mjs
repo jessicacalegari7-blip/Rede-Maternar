@@ -17,9 +17,9 @@ export const urlNode = ({ loc, lastmod, changefreq = 'weekly', priority = '0.5' 
 
 export const urlset = nodes => `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${nodes.join('')}</urlset>`
 
-export function sendXml(response, xml, cacheSeconds = 900) {
+export function sendXml(response, xml, cacheSeconds = 86400) {
   response.setHeader('Content-Type', 'application/xml; charset=utf-8')
-  response.setHeader('Cache-Control', `public, max-age=0, s-maxage=${cacheSeconds}, stale-while-revalidate=3600`)
+  response.setHeader('Cache-Control', `public, max-age=300, s-maxage=${cacheSeconds}, stale-while-revalidate=604800, stale-if-error=604800`)
   return response.status(200).send(xml)
 }
 

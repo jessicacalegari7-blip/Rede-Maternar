@@ -129,17 +129,18 @@ function mapRow(row: Record<string, unknown>): PortalArticle {
 }
 
 export async function listPortalArticles(limit = PORTAL_ARTICLE_LIST_LIMIT): Promise<PortalArticle[]> {
-  if (!isSupabaseConfigured || !supabase) return readStoredPortalArticles().slice(0, limit)
   if (portalArticlesCache) return portalArticlesCache.slice(0, limit)
   if (Date.now() < portalArticlesRetryAfter) {
     const stored = readStoredPortalArticles()
     if (stored.length) return stored.slice(0, limit)
-    return demoArticles.slice(0, limit)
+    throw new Error('O conteúdo está temporariamente indisponível. Tente novamente em alguns minutos.')
   }
   if (!portalArticlesRequest) portalArticlesRequest = (async () => {
     let lastError: unknown = null
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      const { data, error } = await supabase.from('news_articles').select(PORTAL_ARTICLE_LIST_FIELDS).eq('status', 'published').order('published_at', { ascending: false }).limit(PORTAL_ARTICLE_LIST_LIMIT)
+      let data:Record<string,unknown>[]|null=null;let error:Error|null=null
+      try { const response=await fetch(`/api/public-content?resource=articles&limit=${Math.min(limit,PORTAL_ARTICLE_LIST_LIMIT)}`);const payload=await response.json();if(!response.ok)throw new Error(payload.error||'Conteúdo indisponível.');data=payload.data }
+      catch(reason){error=reason instanceof Error?reason:new Error('Conteúdo indisponível.')}
       if (!error && data?.length) {
         portalArticlesCache = data.map(mapRow)
         portalArticlesRetryAfter = 0
@@ -158,21 +159,13 @@ export async function listPortalArticles(limit = PORTAL_ARTICLE_LIST_LIMIT): Pro
       return stored
     }
     console.warn('Portal em modo de contingência:', lastError)
-    return demoArticles
+    throw lastError instanceof Error ? lastError : new Error('O conteúdo está temporariamente indisponível.')
   })().finally(() => { portalArticlesRequest = null })
   return (await portalArticlesRequest).slice(0, limit)
 }
 
 export async function getPortalArticle(slug: string): Promise<PortalArticle> {
-  if (isSupabaseConfigured && supabase) {
-    const { data } = await supabase.from('news_articles').select('*').eq('slug', slug).eq('status', 'published').maybeSingle()
-    if (data) {
-      void supabase.rpc('register_news_view', { article_slug: slug })
-      return mapRow(data)
-    }
-  }
-  const fallback = demoArticles.find(article => article.slug === slug)
-  if (fallback) return fallback
+  try { const response=await fetch(`/api/public-content?resource=article&slug=${encodeURIComponent(slug)}`);const payload=await response.json();if(response.ok&&payload.data)return mapRow(payload.data) } catch { /* usa contingência local */ }
   throw new Error('Notícia não encontrada.')
 }
 
@@ -222,6 +215,7 @@ export async function uploadNewsImage(file:File):Promise<string> {
 
 export async function listPortalVideos(admin=false):Promise<PortalVideo[]> {
   if(!supabase) return []
+  if(!admin){try{const response=await fetch('/api/public-content?resource=videos');const payload=await response.json();if(response.ok)return(payload.data||[]).map((row:Record<string,unknown>)=>({id:String(row.id),title:String(row.title),description:String(row.description||''),youtubeId:String(row.youtube_id),published:Boolean(row.published),featured:Boolean(row.featured),createdAt:String(row.created_at)}))}catch{return[]}}
   let query=supabase.from('portal_videos').select('*').order('featured',{ascending:false}).order('created_at',{ascending:false})
   if(!admin) query=query.eq('published',true)
   const {data,error}=await query

@@ -425,9 +425,10 @@ export async function createClinicTeamMember(input:{name:string;email:string;spe
 }
 
 export async function listActiveSpecialties() {
-  const {data,error}=await client().from('specialties').select('name').eq('active',true).order('name')
-  if(error) throw new Error(error.message)
-  return (data??[]) as {name:string}[]
+  const response=await fetch('/api/public-content?resource=specialties')
+  const payload=await response.json().catch(()=>({}))
+  if(!response.ok)throw new Error(payload.error||'Não foi possível carregar as especialidades.')
+  return (payload.data??[]) as {name:string}[]
 }
 
 export interface RealConversation {
@@ -586,15 +587,14 @@ export async function getDirectoryProfessional(id:string) {
 export async function listMarketplaceProfessionals(specialty='',city='') {
   const db=client()
   const directoryPromise=(async()=>{
-    if(!specialty||!city)return db.from('published_clinic_directory').select('*').order('plan_type',{ascending:false}).order('name')
+    const publicFields='id,name,primary_specialty,specialty_slug,city,city_slug,state_code,neighborhood,plan_type,is_claimed'
+    if(!specialty||!city)return db.from('published_clinic_directory').select(publicFields).order('plan_type',{ascending:false}).order('name').limit(24)
     const specialtySlug=specialty.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
     const citySlug=city.split(',')[0].normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
-    const collected:any[]=[];let page=1;let total=1
-    while(collected.length<total&&page<=20){const result=await db.rpc('directory_search_by_city',{requested_specialty_slug:specialtySlug,requested_city_slug:citySlug,requested_page:page,requested_page_size:50});if(result.error)return result;const batch=result.data??[];collected.push(...batch);total=Number(batch[0]?.total_count??collected.length);if(!batch.length)break;page+=1}
-    return {data:collected,error:null}
+    return db.rpc('directory_search_by_city',{requested_specialty_slug:specialtySlug,requested_city_slug:citySlug,requested_page:1,requested_page_size:50})
   })()
   const [profilesResult,directoryResult]=await Promise.all([
-    db.from('marketplace_professionals').select('*').order('verified',{ascending:false}).order('full_name'),
+    db.from('marketplace_professionals').select('id,full_name,clinic_name,verified,rating,review_count,specialties,city,state_code,neighborhood,whatsapp,visibility_cities,profile_image_url,plan').order('verified',{ascending:false}).order('full_name').limit(50),
     directoryPromise,
   ])
   if(profilesResult.error) throw new Error(profilesResult.error.message)
