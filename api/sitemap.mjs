@@ -7,11 +7,11 @@ const pageUrls=(name,count)=>{const pages=Math.max(1,Math.ceil(count/MAX_URLS));
 const countOrZero=async query=>{const {count,error}=await query;return error?0:(count||0)}
 const news=async response=>{
   const since=new Date(Date.now()-48*60*60*1000).toISOString()
-  const {data,error}=await adminClient().from('news_articles').select('slug,title,published_at').eq('status','published').gte('published_at',since).order('published_at',{ascending:false})
+  const {data,error}=await adminClient().from('news_articles').select('slug,title,published_at').eq('status','published').eq('is_demo',false).gte('published_at',since).order('published_at',{ascending:false})
   if(error)throw error
   const urls=(data||[]).map(item=>`<url><loc>${SITE_URL}/noticias/${escapeXml(item.slug)}</loc><news:news><news:publication><news:name>MaterPlace</news:name><news:language>pt-BR</news:language></news:publication><news:publication_date>${escapeXml(item.published_at)}</news:publication_date><news:title>${escapeXml(item.title)}</news:title></news:news></url>`).join('')
   response.setHeader('Content-Type','application/xml; charset=utf-8')
-  response.setHeader('Cache-Control','s-maxage=900, stale-while-revalidate=3600')
+  response.setHeader('Cache-Control','public, max-age=300, s-maxage=21600, stale-while-revalidate=604800, stale-if-error=604800')
   return response.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">${urls}</urlset>`)
 }
 export default async function handler(request,response) {
@@ -25,7 +25,7 @@ export default async function handler(request,response) {
     if(type==='ecosystem')return await ecosystem(request,response)
     const db=adminClient()
     const [postCount,profileCount]=await Promise.all([
-      countOrZero(db.from('news_articles').select('id',{count:'exact',head:true}).eq('status','published')),
+      countOrZero(db.from('news_articles').select('id',{count:'exact',head:true}).eq('status','published').eq('is_demo',false)),
       countOrZero(db.from('published_clinic_directory').select('id',{count:'exact',head:true})),
     ])
     const urls=[...pageUrls('posts',postCount||0),...pageUrls('diretorio',profileCount||0),`${SITE_URL}/sitemap-categorias.xml`,`${SITE_URL}/sitemap-paginas.xml`,`${SITE_URL}/sitemap-ecossistema.xml`]

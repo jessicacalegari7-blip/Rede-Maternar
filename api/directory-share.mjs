@@ -19,9 +19,9 @@ export default async function handler(request,response){
     const profileId=uuidFrom(request.query.profile)
     const db=adminClient()
     response.setHeader('Content-Type','text/html; charset=utf-8')
-    response.setHeader('Cache-Control','public, s-maxage=900, stale-while-revalidate=86400')
+    response.setHeader('Cache-Control','public, max-age=300, s-maxage=21600, stale-while-revalidate=604800, stale-if-error=604800')
     if(profileId){
-      const {data,error}=await db.from('published_clinic_directory').select('*').eq('id',profileId).maybeSingle()
+      const {data,error}=await db.from('published_clinic_directory').select('id,name,primary_specialty,specialty_slug,city,city_slug,state_code,neighborhood').eq('id',profileId).maybeSingle()
       if(error)throw error
       if(!data)return response.status(404).send(page({title:'Perfil não encontrado | MaterPlace',description:'O perfil solicitado não está disponível.',canonical:`${ORIGIN}${request.url}`,schema:{'@context':'https://schema.org','@type':'WebPage'},content:'<h1>Perfil não encontrado</h1>',index:false}))
       const canonical=`${ORIGIN}/profissionais/${data.specialty_slug}/${String(data.state_code).toLowerCase()}/${data.city_slug}/${request.query.profile}`
