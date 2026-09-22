@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { optimizePublicImage } from './publicMedia'
+import { publicImageUrl } from './publicImage'
 
 function client() {
   if (!supabase) throw new Error('A conexão com o banco não está configurada.')
@@ -36,6 +37,10 @@ export interface RealLead {
   interest?: string | null
   next_action?: string | null
   last_interaction_at?: string | null
+}
+
+function withCachedPublicMedia<T extends Record<string,any>>(row:T):T {
+  return {...row,profile_image_url:publicImageUrl(row.profile_image_url,480),cover_image_url:publicImageUrl(row.cover_image_url,1600),gallery_urls:Array.isArray(row.gallery_urls)?row.gallery_urls.map((url:string)=>publicImageUrl(url,960)):row.gallery_urls}
 }
 
 export interface CrmPipelineStage {
@@ -599,7 +604,7 @@ export async function listMarketplaceProfessionals(specialty='',city='') {
   ])
   if(profilesResult.error) throw new Error(profilesResult.error.message)
   if(directoryResult.error) throw new Error(directoryResult.error.message)
-  const profiles=(profilesResult.data??[]).map(item=>({...item,directory_profile:false}))
+  const profiles=(profilesResult.data??[]).map(item=>withCachedPublicMedia({...item,directory_profile:false}))
   const profileIds=new Set(profiles.map(item=>item.id))
   const directory=(directoryResult.data??[]).filter(item=>!profileIds.has(item.id)).map(item=>({
     id:item.id,full_name:item.name,clinic_name:null,verified:false,rating:0,review_count:0,
@@ -614,7 +619,7 @@ export async function listNearbyMarketplaceProfessionals(specialty:string,city:s
   const response=await fetch(`/api/directory-nearby?${query}`)
   const payload=await response.json().catch(()=>({}))
   if(!response.ok)throw new Error(payload.error||'Não foi possível buscar profissionais próximos.')
-  return (payload.professionals??[]) as any[]
+  return (payload.professionals??[]).map((item:Record<string,any>)=>withCachedPublicMedia(item)) as any[]
 }
 
 export async function recordProfessionalProfileView(professionalId:string) {
@@ -795,7 +800,7 @@ export async function saveProfessionalSpecialties(professionalId:string,names:st
 export async function getMarketplaceProfessional(id:string) {
   const {data,error}=await client().from('marketplace_professionals').select('*').eq('id',id).maybeSingle()
   if(error) throw new Error(error.message)
-  return data
+  return data?withCachedPublicMedia(data):data
 }
 
 export async function listPublicServices(professionalId:string) {
