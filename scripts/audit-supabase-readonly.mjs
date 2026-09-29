@@ -1,10 +1,11 @@
 import fs from 'node:fs'
 
 const raw=fs.existsSync('.env.local')?fs.readFileSync('.env.local','utf8'):''
-const local=Object.fromEntries(raw.split(/\r?\n/).map(line=>line.match(/^([A-Z0-9_]+)=(.*)$/)).filter(Boolean).map(match=>[match[1],match[2].replace(/^['"]|['"]$/g,'')]))
+const local=Object.fromEntries(raw.split(/\r?\n/).map(line=>line.match(/^([A-Z0-9_]+)=(.*)$/)).filter(Boolean).map(match=>[match[1],match[2].trim().replace(/^['"]|['"]$/g,'')]))
 const base=process.env.SUPABASE_URL||process.env.VITE_SUPABASE_URL||local.SUPABASE_URL||local.VITE_SUPABASE_URL
 const key=process.env.VITE_SUPABASE_ANON_KEY||local.VITE_SUPABASE_ANON_KEY
 if(!base||!key){console.log('Supabase: configuração local ausente.');process.exit(1)}
+console.log(`Supabase host: ${new URL(base).hostname}`)
 
 const resources=['news_articles','published_clinic_directory','specialties','professional_profiles']
 for(const resource of resources){
@@ -13,5 +14,5 @@ for(const resource of resources){
     const text=await response.text();let code='none'
     try{code=JSON.parse(text).code||'none'}catch{/* não imprime a resposta para evitar dados */}
     console.log(`${resource}: HTTP ${response.status}; count ${response.headers.get('content-range')||'indisponível'}; code ${code}`)
-  }catch{console.log(`${resource}: falha de rede`)}
+  }catch(error){console.log(`${resource}: falha de rede (${error?.cause?.code||error?.name||'desconhecida'})`)}
 }
