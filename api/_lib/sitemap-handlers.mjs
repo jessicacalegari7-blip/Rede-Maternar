@@ -37,6 +37,6 @@ export async function staticPages(_request,response){
 export async function ecosystem(_request,response){
   const db=adminClient(),nodes=[]
   const definitions=[['marketplace_items','marketplace/produto'],['courses','universidade/curso'],['jobs','vagas']]
-  for(const [table,path] of definitions){const {data,error}=await db.from(table).select('slug,published_at,created_at,demo').eq('status','published').eq('demo',false).order('published_at',{ascending:false}).limit(MAX_URLS);if(error){if(error.code==='42P01')continue;throw error}for(const item of data||[])nodes.push(urlNode({loc:`${SITE_URL}/${path}/${item.slug}`,lastmod:item.published_at||item.created_at,changefreq:'weekly',priority:'0.7'}))}
+  for(const [table,path] of definitions){const {data,error}=await db.from(table).select('slug,published_at,created_at,demo').eq('status','published').eq('demo',false).order('published_at',{ascending:false}).limit(MAX_URLS);if(error){if(['42P01','42501'].includes(error.code))continue;throw error}for(const item of data||[])nodes.push(urlNode({loc:`${SITE_URL}/${path}/${item.slug}`,lastmod:item.published_at||item.created_at,changefreq:'weekly',priority:'0.7'}))}
   return sendXml(response,urlset(nodes))
 }
