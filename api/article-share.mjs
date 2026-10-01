@@ -10,7 +10,7 @@ const paragraphs=value=>String(value||'').replace(/<script[\s\S]*?<\/script>/gi,
   return`<p>${esc(text)}</p>`
 }).join('')
 const cachedImage=(value,base)=>{if(!value)return LOGO;try{const source=new URL(value),supabase=new URL(base);return source.hostname===supabase.hostname&&source.pathname.startsWith('/storage/v1/object/public/')?`${ORIGIN}/api/public-image?src=${encodeURIComponent(source.toString())}`:value}catch{return LOGO}}
-const modifiedDate=(published,updated)=>{const publishedTime=new Date(published).getTime(),updatedTime=new Date(updated||'').getTime();return Number.isFinite(updatedTime)&&updatedTime>publishedTime?updated:published}
+const modifiedDate=(published,updated)=>{const publishedTime=new Date(published).getTime(),updatedTime=new Date(updated||'').getTime();return Number.isFinite(updatedTime)&&updatedTime-publishedTime>=60000?updated:published}
 const authorNode=name=>/^(equipe|reda[cç][aã]o|materplace)/i.test(String(name||'').trim())?{'@type':'Organization',name:name||'MaterPlace'}:{'@type':'Person',name}
 
 export default async function handler(req,res){

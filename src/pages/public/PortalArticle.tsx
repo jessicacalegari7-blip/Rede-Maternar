@@ -30,7 +30,7 @@ export function PortalArticlePage() {
 
   const editorialModified=(published:string,updated:string|null)=>{
     const publishedTime=new Date(published).getTime(),updatedTime=new Date(updated||'').getTime()
-    return Number.isFinite(updatedTime)&&updatedTime>publishedTime?updated:published
+    return Number.isFinite(updatedTime)&&updatedTime-publishedTime>=60000?updated:published
   }
   const articleAuthor=(name:string)=>/^(equipe|reda[cç][aã]o|materplace)/i.test(name.trim())?{'@type':'Organization',name}:{'@type':'Person',name}
 
