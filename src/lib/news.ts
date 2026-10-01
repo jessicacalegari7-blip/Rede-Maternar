@@ -16,6 +16,7 @@ export interface PortalArticle {
   status: NewsStatus
   featured: boolean
   publishedAt: string | null
+  updatedAt: string | null
   createdAt: string
   isDemo: boolean
   views: number
@@ -23,7 +24,7 @@ export interface PortalArticle {
 
 export interface PortalVideo { id:string; title:string; description:string; youtubeId:string; published:boolean; featured:boolean; createdAt:string }
 
-export type NewsInput = Pick<PortalArticle, 'title' | 'seoTitle' | 'slug' | 'excerpt' | 'content' | 'category' | 'coverImageUrl' | 'authorName' | 'status' | 'featured'> & { id?: string }
+export type NewsInput = Pick<PortalArticle, 'title' | 'seoTitle' | 'slug' | 'excerpt' | 'content' | 'category' | 'coverImageUrl' | 'authorName' | 'status' | 'featured'> & { id?: string; publishedAt?: string | null }
 
 let portalArticlesCache: PortalArticle[] | null = null
 let portalArticlesRequest: Promise<PortalArticle[]> | null = null
@@ -114,7 +115,7 @@ export const demoArticles: PortalArticle[] = [
   id: `demo-${index + 1}`, slug, title, seoTitle: title, excerpt, category, content,
   coverImageUrl: null, authorName: 'Equipe MaterPlace', status: 'published' as const,
   featured: index === 0, publishedAt: new Date(2026, 7, 10 - index).toISOString(),
-  createdAt: new Date(2026, 7, 10 - index).toISOString(), isDemo: true, views: 30 - index * 2,
+  updatedAt: null, createdAt: new Date(2026, 7, 10 - index).toISOString(), isDemo: true, views: 30 - index * 2,
 }))
 
 function mapRow(row: Record<string, unknown>): PortalArticle {
@@ -124,6 +125,7 @@ function mapRow(row: Record<string, unknown>): PortalArticle {
     coverImageUrl: row.cover_image_url ? String(row.cover_image_url) : null,
     authorName: String(row.author_name || 'Equipe MaterPlace'), status: row.status as NewsStatus,
     featured: Boolean(row.featured), publishedAt: row.published_at ? String(row.published_at) : null,
+    updatedAt: row.updated_at ? String(row.updated_at) : null,
     createdAt: String(row.created_at), isDemo: Boolean(row.is_demo), views: Number(row.views || 0),
   }
 }
@@ -181,8 +183,8 @@ export async function saveArticle(input: NewsInput): Promise<void> {
   const payload = {
     slug: input.slug, title: input.title, seo_title: input.seoTitle || null, excerpt: input.excerpt, content: input.content,
     category: input.category, cover_image_url: input.coverImageUrl || null, author_name: input.authorName,
-    status: input.status, featured: input.featured,
-    published_at: input.status === 'published' ? new Date().toISOString() : null,
+    status: input.status, featured: input.featured, updated_at: new Date().toISOString(),
+    published_at: input.status === 'published' ? input.publishedAt || new Date().toISOString() : null,
   }
   const result = input.id ? await supabase.from('news_articles').update(payload).eq('id', input.id) : await supabase.from('news_articles').insert(payload)
   if (result.error) throw result.error

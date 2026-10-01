@@ -10,6 +10,8 @@ const paragraphs=value=>String(value||'').replace(/<script[\s\S]*?<\/script>/gi,
   return`<p>${esc(text)}</p>`
 }).join('')
 const cachedImage=(value,base)=>{if(!value)return LOGO;try{const source=new URL(value),supabase=new URL(base);return source.hostname===supabase.hostname&&source.pathname.startsWith('/storage/v1/object/public/')?`${ORIGIN}/api/public-image?src=${encodeURIComponent(source.toString())}`:value}catch{return LOGO}}
+const modifiedDate=(published,updated)=>{const publishedTime=new Date(published).getTime(),updatedTime=new Date(updated||'').getTime();return Number.isFinite(updatedTime)&&updatedTime>publishedTime?updated:published}
+const authorNode=name=>/^(equipe|reda[cç][aã]o|materplace)/i.test(String(name||'').trim())?{'@type':'Organization',name:name||'MaterPlace'}:{'@type':'Person',name}
 
 export default async function handler(req,res){
   const slug=String(req.query?.slug||'').replace(/[^a-z0-9-]/gi,'')
@@ -25,9 +27,9 @@ export default async function handler(req,res){
   const image=cachedImage(article.cover_image_url,base)
   const title=article.seo_title||article.title
   const published=article.published_at||article.created_at
-  const modified=article.updated_at||published
+  const modified=modifiedDate(published,article.updated_at)
   const schemas=[
-    {'@context':'https://schema.org','@type':'NewsArticle',headline:article.title,description:article.excerpt,image:[image],datePublished:published,dateModified:modified,author:{'@type':'Person',name:article.author_name||'Equipe MaterPlace'},publisher:{'@type':'Organization',name:'MaterPlace',url:ORIGIN,logo:{'@type':'ImageObject',url:LOGO}},mainEntityOfPage:{'@type':'WebPage','@id':url}},
+    {'@context':'https://schema.org','@type':'NewsArticle',headline:article.title,description:article.excerpt,...(article.cover_image_url?{image:[image]}:{}),datePublished:published,dateModified:modified,author:authorNode(article.author_name||'Equipe MaterPlace'),publisher:{'@type':'Organization',name:'MaterPlace',url:ORIGIN,logo:{'@type':'ImageObject',url:LOGO}},mainEntityOfPage:{'@type':'WebPage','@id':url}},
     {'@context':'https://schema.org','@type':'BreadcrumbList',itemListElement:[{'@type':'ListItem',position:1,name:'Início',item:`${ORIGIN}/`},{'@type':'ListItem',position:2,name:article.category||'Notícias',item:`${ORIGIN}/categoria/${encodeURIComponent(String(article.category||'noticias').toLowerCase())}`},{'@type':'ListItem',position:3,name:article.title,item:url}]},
   ]
   res.setHeader('Content-Type','text/html; charset=utf-8')

@@ -34,7 +34,7 @@ export function AdminNewsPortal() {
     const text=(doc.body.textContent||'').replace(/\n{3,}/g,'\n\n'),start=event.currentTarget.selectionStart,end=event.currentTarget.selectionEnd; field('content',editor.content.slice(0,start)+text+editor.content.slice(end));setContentCursor(start+text.length)
   }
 
-  function edit(article: PortalArticle) { setEditor({ id: article.id, title: article.title, seoTitle: article.seoTitle, slug: article.slug, excerpt: article.excerpt, content: article.content, category: article.category, coverImageUrl: article.coverImageUrl, authorName: article.authorName, status: article.status, featured: article.featured }); setMessage('') }
+  function edit(article: PortalArticle) { setEditor({ id: article.id, title: article.title, seoTitle: article.seoTitle, slug: article.slug, excerpt: article.excerpt, content: article.content, category: article.category, coverImageUrl: article.coverImageUrl, authorName: article.authorName, status: article.status, featured: article.featured, publishedAt:article.publishedAt }); setMessage('') }
   function field<K extends keyof NewsInput>(key: K, value: NewsInput[K]) { setEditor(current => current ? { ...current, [key]: value } : current) }
 
   async function submit(event: FormEvent) {

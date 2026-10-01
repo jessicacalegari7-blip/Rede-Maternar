@@ -9,7 +9,7 @@ const news=async response=>{
   const since=new Date(Date.now()-48*60*60*1000).toISOString()
   const {data,error}=await adminClient().from('news_articles').select('slug,title,published_at').eq('status','published').eq('is_demo',false).gte('published_at',since).order('published_at',{ascending:false})
   if(error)throw error
-  const urls=(data||[]).map(item=>`<url><loc>${SITE_URL}/noticias/${escapeXml(item.slug)}</loc><news:news><news:publication><news:name>MaterPlace</news:name><news:language>pt-BR</news:language></news:publication><news:publication_date>${escapeXml(item.published_at)}</news:publication_date><news:title>${escapeXml(item.title)}</news:title></news:news></url>`).join('')
+  const urls=(data||[]).map(item=>`<url><loc>${SITE_URL}/noticias/${escapeXml(item.slug)}</loc><news:news><news:publication><news:name>MaterPlace</news:name><news:language>pt</news:language></news:publication><news:publication_date>${escapeXml(item.published_at)}</news:publication_date><news:title>${escapeXml(item.title)}</news:title></news:news></url>`).join('')
   response.setHeader('Content-Type','application/xml; charset=utf-8')
   response.setHeader('Cache-Control','public, max-age=300, s-maxage=21600, stale-while-revalidate=604800, stale-if-error=604800')
   return response.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">${urls}</urlset>`)
@@ -28,7 +28,7 @@ export default async function handler(request,response) {
       countOrZero(db.from('news_articles').select('id',{count:'exact',head:true}).eq('status','published').eq('is_demo',false)),
       countOrZero(db.from('published_clinic_directory').select('id',{count:'exact',head:true})),
     ])
-    const urls=[...pageUrls('posts',postCount||0),...pageUrls('diretorio',profileCount||0),`${SITE_URL}/sitemap-categorias.xml`,`${SITE_URL}/sitemap-paginas.xml`,`${SITE_URL}/sitemap-ecossistema.xml`]
+    const urls=[...pageUrls('posts',postCount||0),...pageUrls('diretorio',profileCount||0),`${SITE_URL}/sitemap-categorias.xml`,`${SITE_URL}/sitemap-paginas.xml`,`${SITE_URL}/sitemap-ecossistema.xml`,`${SITE_URL}/sitemap-news.xml`]
     const xml=`<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls.map(url=>sitemapNode(url,new Date())).join('')}</sitemapindex>`
     return sendXml(response,xml)
   } catch(error) { return response.status(500).json({error:error?.message||'Erro ao gerar sitemap.'}) }

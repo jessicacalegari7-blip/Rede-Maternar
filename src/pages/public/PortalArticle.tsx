@@ -28,6 +28,12 @@ export function PortalArticlePage() {
     window.setTimeout(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }), 50)
   }
 
+  const editorialModified=(published:string,updated:string|null)=>{
+    const publishedTime=new Date(published).getTime(),updatedTime=new Date(updated||'').getTime()
+    return Number.isFinite(updatedTime)&&updatedTime>publishedTime?updated:published
+  }
+  const articleAuthor=(name:string)=>/^(equipe|reda[cç][aã]o|materplace)/i.test(name.trim())?{'@type':'Organization',name}:{'@type':'Person',name}
+
   function renderContent() {
     if(!article)return null
     const blocks=article.content.split(/\n\s*\n/).filter(Boolean)
@@ -41,7 +47,7 @@ export function PortalArticlePage() {
 
   return <div className="portal-home">
     {article&&<Seo appendBrand={false} title={article.seoTitle||article.title} description={article.excerpt} path={`/noticias/${article.slug}`} image={article.coverImageUrl} type="article" index={!article.isDemo} schema={article.isDemo?undefined:[
-      {'@context':'https://schema.org','@type':'NewsArticle',headline:article.title,description:article.excerpt,image:[article.coverImageUrl||'https://www.materplace.com.br/brand/materplace-logo.png'],datePublished:article.publishedAt||article.createdAt,dateModified:article.publishedAt||article.createdAt,author:{'@type':'Person',name:article.authorName},publisher:{'@type':'Organization',name:'MaterPlace',url:'https://www.materplace.com.br',logo:{'@type':'ImageObject',url:'https://www.materplace.com.br/brand/materplace-logo.png'}},mainEntityOfPage:`https://www.materplace.com.br/noticias/${article.slug}`},
+      {'@context':'https://schema.org','@type':'NewsArticle',headline:article.title,description:article.excerpt,...(article.coverImageUrl?{image:[article.coverImageUrl]}:{}),datePublished:article.publishedAt||article.createdAt,dateModified:editorialModified(article.publishedAt||article.createdAt,article.updatedAt),author:articleAuthor(article.authorName),publisher:{'@type':'Organization',name:'MaterPlace',url:'https://www.materplace.com.br',logo:{'@type':'ImageObject',url:'https://www.materplace.com.br/brand/materplace-logo.png'}},mainEntityOfPage:{'@type':'WebPage','@id':`https://www.materplace.com.br/noticias/${article.slug}`}},
       {'@context':'https://schema.org','@type':'BreadcrumbList',itemListElement:[{'@type':'ListItem',position:1,name:'Início',item:'https://www.materplace.com.br/'},{'@type':'ListItem',position:2,name:article.category,item:`https://www.materplace.com.br/categoria/${article.category.toLowerCase()}`},{'@type':'ListItem',position:3,name:article.title,item:`https://www.materplace.com.br/noticias/${article.slug}`}]},
     ]}/>}
     <header className="portal-topbar article-topbar">
