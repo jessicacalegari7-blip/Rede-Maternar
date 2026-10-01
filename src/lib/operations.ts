@@ -743,11 +743,16 @@ export interface ProfessionalServiceLocation {
 export async function getProfessionalServiceLocations(professionalId:string) {
   const {data,error}=await client().from('professional_service_locations').select('id,name,address_line,address_number,address_complement,neighborhood,city,state_code,postal_code').eq('professional_id',professionalId).eq('active',true).order('sort_order').order('name')
   if(error) throw new Error(error.message)
-  return (data??[]) as ProfessionalServiceLocation[]
+  return (data??[]).map(location=>({
+    id:location.id,name:String(location.name||''),address_line:String(location.address_line||''),
+    address_number:String(location.address_number||''),address_complement:String(location.address_complement||''),
+    neighborhood:String(location.neighborhood||''),city:String(location.city||''),
+    state_code:String(location.state_code||''),postal_code:String(location.postal_code||''),
+  })) as ProfessionalServiceLocation[]
 }
 
 export async function saveProfessionalServiceLocations(professionalId:string,locations:ProfessionalServiceLocation[]) {
-  const invalidLocation=locations.find(location=>location.postal_code.replace(/\D/g,'').length!==8||!location.address_number.trim())
+  const invalidLocation=locations.find(location=>String(location.postal_code||'').replace(/\D/g,'').length!==8||!String(location.address_number||'').trim())
   if(invalidLocation) throw new Error('Preencha um CEP válido e o número de todos os locais de atendimento. Use “S/N” quando o endereço não possuir número.')
   const rows=locations.map((location,index)=>({
     professional_id:professionalId,name:location.name.trim(),address_line:location.address_line.trim(),

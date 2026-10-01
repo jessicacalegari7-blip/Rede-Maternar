@@ -47,7 +47,7 @@ export function ProfessionalProfilePage() {
       setNotice('Arquivo enviado. Clique em Salvar perfil real para confirmar.')
     }catch(e){setNotice(e instanceof Error?e.message:'Erro ao enviar imagem.')}
   }
-  const formatPostalCode=(value:string)=>value.replace(/\D/g,'').slice(0,8).replace(/^(\d{5})(\d)/,'$1-$2')
+  const formatPostalCode=(value:string|null|undefined)=>String(value||'').replace(/\D/g,'').slice(0,8).replace(/^(\d{5})(\d)/,'$1-$2')
   const updateLocation=(clientKey:string,changes:Partial<ProfessionalServiceLocation>)=>setServiceLocations(current=>current.map(item=>item.clientKey===clientKey?{...item,...changes}:item))
   const lookupLocationPostalCode=async(clientKey:string,value:string)=>{
     const postal=value.replace(/\D/g,'')

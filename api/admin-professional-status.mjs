@@ -11,27 +11,36 @@ export default async function handler(req,res){
     if(!userId||!['active','pending','suspended','rejected'].includes(status))return json(res,400,{error:'Dados de aprovação inválidos.'})
     const {data:member}=await db.from('organization_members').select('organization_id').eq('user_id',userId).eq('active',true).order('created_at').limit(1).maybeSingle()
     const organizationId=member?.organization_id
-    if(status==='active'){
+    const {data:target,error:targetError}=await db.auth.admin.getUserById(userId)
+    if(targetError||!target?.user)throw targetError||new Error('Usuário profissional não encontrado.')
+    const warnings=[]
+    if(status==='active'&&!target.user.email_confirmed_at){
       const {error:authError}=await db.auth.admin.updateUserById(userId,{email_confirm:true})
-      if(authError)throw authError
+      if(authError)warnings.push(`Confirmação do e-mail: ${authError.message}`)
     }
-    const {error:profileError}=await db.from('profiles').update({status,updated_at:new Date().toISOString()}).eq('id',userId)
+    const now=new Date().toISOString()
+    const {data:approvedProfile,error:profileError}=await db.from('profiles').update({status,updated_at:now}).eq('id',userId).select('id').maybeSingle()
     if(profileError)throw profileError
+    if(!approvedProfile)throw new Error('Cadastro profissional não encontrado para aprovação.')
     if(organizationId){
-      const {error:organizationError}=await db.from('organizations').update({status,updated_at:new Date().toISOString()}).eq('id',organizationId);if(organizationError)throw organizationError
-      const {error:professionalError}=await db.from('professional_profiles').update({marketplace_visible:status==='active',updated_at:new Date().toISOString()}).eq('organization_id',organizationId);if(professionalError)throw professionalError
+      const {error:organizationError}=await db.from('organizations').update({status,updated_at:now}).eq('id',organizationId);if(organizationError)throw organizationError
+      const {error:professionalError}=await db.from('professional_profiles').update({marketplace_visible:status==='active',updated_at:now}).eq('organization_id',organizationId);if(professionalError)throw professionalError
     }
-    const {data:target}=await db.auth.admin.getUserById(userId)
-    const email=target?.user?.email
+    const email=target.user.email
     let emailSent=false
     if(status==='active'&&email){
-      await db.from('admin_email_notifications').insert({event_type:'professional_approved',recipient:email,subject:'Seu cadastro foi aprovado na MaterPlace',payload:{user_id:userId,full_name:target.user.user_metadata?.full_name||'',email}})
+      const {error:queueError}=await db.from('admin_email_notifications').insert({event_type:'professional_approved',recipient:email,subject:'Seu cadastro foi aprovado na MaterPlace',payload:{user_id:userId,full_name:target.user.user_metadata?.full_name||'',email}})
+      if(queueError)warnings.push(`Fila de e-mail: ${queueError.message}`)
     }
     if(status==='active'&&email&&process.env.RESEND_API_KEY&&process.env.ADMIN_NOTIFICATION_FROM_EMAIL){
-      const mail=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${process.env.RESEND_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({from:process.env.ADMIN_NOTIFICATION_FROM_EMAIL,to:[email],subject:'Seu cadastro foi aprovado na MaterPlace',html:`<h1>Cadastro aprovado</h1><p>Olá! Seu cadastro profissional foi aprovado na MaterPlace.</p><p>Você já pode entrar com o mesmo e-mail e a senha criada no cadastro.</p><p><a href="https://www.materplace.com.br/login">Entrar na MaterPlace</a></p>`})})
-      emailSent=mail.ok
+      try{
+        const mail=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${process.env.RESEND_API_KEY}`,'Content-Type':'application/json'},body:JSON.stringify({from:process.env.ADMIN_NOTIFICATION_FROM_EMAIL,to:[email],subject:'Seu cadastro foi aprovado na MaterPlace',html:`<h1>Cadastro aprovado</h1><p>Olá! Seu cadastro profissional foi aprovado na MaterPlace.</p><p>Você já pode entrar com o mesmo e-mail e a senha criada no cadastro.</p><p><a href="https://www.materplace.com.br/login">Entrar na MaterPlace</a></p>`})})
+        emailSent=mail.ok
+        if(!mail.ok)warnings.push(`Envio de e-mail: HTTP ${mail.status}`)
+      }catch(mailError){warnings.push(`Envio de e-mail: ${mailError instanceof Error?mailError.message:'indisponível'}`)}
     }
-    await db.from('audit_logs').insert({actor_id:user.id,organization_id:organizationId||null,action:'professional_status_changed',entity_type:'profile',entity_id:userId,metadata:{new_status:status,email_sent:emailSent}})
-    return json(res,200,{ok:true,emailSent,emailQueued:status==='active'&&Boolean(email)})
+    const {error:auditError}=await db.from('audit_logs').insert({actor_id:user.id,organization_id:organizationId||null,action:'professional_status_changed',entity_type:'profile',entity_id:userId,metadata:{new_status:status,email_sent:emailSent,warnings}})
+    if(auditError)warnings.push(`Auditoria: ${auditError.message}`)
+    return json(res,200,{ok:true,emailSent,emailQueued:status==='active'&&Boolean(email),warnings})
   }catch(error){return json(res,error.status||500,{error:error instanceof Error?error.message:'Falha ao aprovar cadastro.'})}
 }
