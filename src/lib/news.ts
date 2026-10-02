@@ -28,17 +28,24 @@ export type NewsInput = Pick<PortalArticle, 'title' | 'seoTitle' | 'slug' | 'exc
 
 let portalArticlesCache: PortalArticle[] | null = null
 let portalArticlesRequest: Promise<PortalArticle[]> | null = null
+let portalArticlesCacheUpdatedAt = 0
 const PORTAL_ARTICLES_STORAGE_KEY = 'materplace.portal-articles.v2'
 const PORTAL_ARTICLE_LIST_FIELDS = 'id,slug,title,seo_title,excerpt,category,cover_image_url,author_name,status,featured,published_at,created_at,is_demo,views'
 const PORTAL_ARTICLE_LIST_LIMIT = 100
 const PORTAL_FAILURE_COOLDOWN_MS = 5 * 60 * 1000
+const PORTAL_CACHE_FRESHNESS_MS = 60 * 1000
 let portalArticlesRetryAfter = 0
 
 function readStoredPortalArticles(): PortalArticle[] {
   if (typeof window === 'undefined') return []
   try {
     const stored = JSON.parse(window.localStorage.getItem(PORTAL_ARTICLES_STORAGE_KEY) || '[]')
-    return Array.isArray(stored) ? stored : []
+    if (Array.isArray(stored)) return stored
+    if (Array.isArray(stored?.articles)) {
+      portalArticlesCacheUpdatedAt = Number(stored.savedAt || 0)
+      return stored.articles
+    }
+    return []
   } catch {
     return []
   }
@@ -49,7 +56,8 @@ export function cachedPortalArticles(): PortalArticle[] { return portalArticlesC
 function storePortalArticles(articles: PortalArticle[]) {
   if (typeof window === 'undefined' || !articles.length) return
   try {
-    window.localStorage.setItem(PORTAL_ARTICLES_STORAGE_KEY, JSON.stringify(articles))
+    portalArticlesCacheUpdatedAt = Date.now()
+    window.localStorage.setItem(PORTAL_ARTICLES_STORAGE_KEY, JSON.stringify({savedAt:portalArticlesCacheUpdatedAt,articles}))
   } catch {
     // O cache é apenas uma proteção contra falhas momentâneas de rede.
   }
@@ -131,7 +139,7 @@ function mapRow(row: Record<string, unknown>): PortalArticle {
 }
 
 export async function listPortalArticles(limit = PORTAL_ARTICLE_LIST_LIMIT): Promise<PortalArticle[]> {
-  if (portalArticlesCache) return portalArticlesCache.slice(0, limit)
+  if (portalArticlesCache && Date.now() - portalArticlesCacheUpdatedAt < PORTAL_CACHE_FRESHNESS_MS) return portalArticlesCache.slice(0, limit)
   if (Date.now() < portalArticlesRetryAfter) {
     const stored = readStoredPortalArticles()
     if (stored.length) return stored.slice(0, limit)
@@ -141,7 +149,7 @@ export async function listPortalArticles(limit = PORTAL_ARTICLE_LIST_LIMIT): Pro
     let lastError: unknown = null
     for (let attempt = 0; attempt < 2; attempt += 1) {
       let data:Record<string,unknown>[]|null=null;let error:Error|null=null
-      try { const response=await fetch(`/api/public-content?resource=articles&limit=${Math.min(limit,PORTAL_ARTICLE_LIST_LIMIT)}`);const payload=await response.json();if(!response.ok)throw new Error(payload.error||'Conteúdo indisponível.');data=payload.data }
+      try { const refreshBucket=Math.floor(Date.now()/PORTAL_CACHE_FRESHNESS_MS);const response=await fetch(`/api/public-content?resource=articles&limit=${Math.min(limit,PORTAL_ARTICLE_LIST_LIMIT)}&v=${refreshBucket}`);const payload=await response.json();if(!response.ok)throw new Error(payload.error||'Conteúdo indisponível.');data=payload.data }
       catch(reason){error=reason instanceof Error?reason:new Error('Conteúdo indisponível.')}
       if (!error && data?.length) {
         portalArticlesCache = data.map(mapRow)
@@ -180,15 +188,28 @@ export async function adminListArticles(): Promise<PortalArticle[]> {
 
 export async function saveArticle(input: NewsInput): Promise<void> {
   if (!supabase) throw new Error('Supabase não configurado.')
+  const normalizedSlug=input.slug.trim().replace(/^-+|-+$/g,'')
+  if(!normalizedSlug)throw new Error('Informe uma URL amigável válida para a matéria.')
+  let savedSlug=normalizedSlug
+  if(!input.id){
+    const {data:existing,error:slugError}=await supabase.from('news_articles').select('id').eq('slug',normalizedSlug).maybeSingle()
+    if(slugError)throw slugError
+    if(existing)savedSlug=`${normalizedSlug}-${Date.now().toString(36)}`
+  }
   const payload = {
-    slug: input.slug, title: input.title, seo_title: input.seoTitle || null, excerpt: input.excerpt, content: input.content,
+    slug: savedSlug, title: input.title.trim(), seo_title: input.seoTitle.trim() || null, excerpt: input.excerpt.trim(), content: input.content.trim(),
     category: input.category, cover_image_url: input.coverImageUrl || null, author_name: input.authorName,
     status: input.status, featured: input.featured, updated_at: new Date().toISOString(),
     published_at: input.status === 'published' ? input.publishedAt || new Date().toISOString() : null,
   }
-  const result = input.id ? await supabase.from('news_articles').update(payload).eq('id', input.id) : await supabase.from('news_articles').insert(payload)
+  const result = input.id
+    ? await supabase.from('news_articles').update(payload).eq('id', input.id).select('id,slug,status').single()
+    : await supabase.from('news_articles').insert(payload).select('id,slug,status').single()
   if (result.error) throw result.error
+  if(!result.data?.id)throw new Error('O banco não confirmou o salvamento da matéria.')
   portalArticlesCache = null
+  portalArticlesCacheUpdatedAt = 0
+  if(typeof window!=='undefined')window.localStorage.removeItem(PORTAL_ARTICLES_STORAGE_KEY)
 }
 
 export async function removeArticle(id: string): Promise<void> {

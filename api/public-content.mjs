@@ -24,15 +24,15 @@ export default async function handler(request,response) {
       const limit=Math.min(Math.max(Number(request.query?.limit)||100,1),100)
       const {data,error}=await db.from('news_articles').select(ARTICLE_LIST_FIELDS).eq('status','published').eq('is_demo',false).order('published_at',{ascending:false}).limit(limit)
       if(error)throw error
-      return send(response,200,{data:(data||[]).map(mapImages)})
+      return send(response,200,{data:(data||[]).map(mapImages)},'public, max-age=30, s-maxage=60, stale-while-revalidate=300, stale-if-error=86400')
     }
     if(resource==='article'){
       const slug=String(request.query?.slug||'').replace(/[^a-z0-9-]/gi,'')
       if(!slug)return send(response,400,{error:'Slug inválido.'},'no-store')
       const {data,error}=await db.from('news_articles').select(ARTICLE_DETAIL_FIELDS).eq('slug',slug).eq('status','published').eq('is_demo',false).maybeSingle()
       if(error)throw error
-      if(!data)return send(response,404,{error:'Matéria não encontrada.'},'public, max-age=60, s-maxage=300')
-      return send(response,200,{data:mapImages(data)})
+      if(!data)return send(response,404,{error:'Matéria não encontrada.'},'public, max-age=30, s-maxage=60')
+      return send(response,200,{data:mapImages(data)},'public, max-age=30, s-maxage=60, stale-while-revalidate=300, stale-if-error=86400')
     }
     if(resource==='videos'){
       const {data,error}=await db.from('portal_videos').select('id,title,description,youtube_id,published,featured,created_at').eq('published',true).order('featured',{ascending:false}).order('created_at',{ascending:false}).limit(12)
