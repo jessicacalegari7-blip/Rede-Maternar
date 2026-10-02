@@ -761,10 +761,18 @@ export async function saveProfessionalServiceLocations(professionalId:string,loc
     postal_code:location.postal_code.trim()||null,sort_order:index,active:true,
   })).filter(location=>location.name&&location.address_line&&location.city&&location.state_code.length===2)
   if(rows.length!==locations.length) throw new Error('Preencha nome, endereço, cidade e UF de todos os locais de atendimento.')
-  const {data,error}=await client().rpc('save_professional_service_locations_v2',{
+  const db=client()
+  let {data,error}=await db.rpc('save_professional_service_locations_v2',{
     target_professional_id:professionalId,
     location_rows:rows.map((row,index)=>({...row,id:locations[index]?.id||null})),
   })
+  if(error&&(error.code==='PGRST202'||/schema cache|could not find the function/i.test(error.message))){
+    const fallback=await db.rpc('save_professional_service_locations',{
+      p:professionalId,
+      location_rows:rows.map((row,index)=>({...row,id:locations[index]?.id||null})),
+    })
+    data=fallback.data;error=fallback.error
+  }
   if(error) throw new Error(error.message)
   const persisted=await getProfessionalServiceLocations(professionalId)
   const signature=(location:ProfessionalServiceLocation)=>[
@@ -776,7 +784,7 @@ export async function saveProfessionalServiceLocations(professionalId:string,loc
     throw new Error('O banco não confirmou todos os locais de atendimento. Tente salvar novamente.')
   }
   const expectedCities=[...new Set(persisted.map(location=>`${location.city.trim().toLocaleLowerCase('pt-BR')}|${location.state_code.trim().toUpperCase()}`))]
-  const {data:cities,error:citiesError}=await client().from('professional_service_cities').select('city,state_code').eq('professional_id',professionalId).eq('active',true)
+  const {data:cities,error:citiesError}=await db.from('professional_service_cities').select('city,state_code').eq('professional_id',professionalId).eq('active',true)
   if(citiesError) throw new Error(citiesError.message)
   const confirmedCities=new Set((cities??[]).map(city=>`${String(city.city).trim().toLocaleLowerCase('pt-BR')}|${String(city.state_code).trim().toUpperCase()}`))
   if(expectedCities.some(city=>!confirmedCities.has(city))) throw new Error('A localidade foi gravada, mas ainda não foi confirmada na busca do diretório.')

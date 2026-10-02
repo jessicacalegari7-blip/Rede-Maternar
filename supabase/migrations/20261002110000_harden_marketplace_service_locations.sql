@@ -80,3 +80,6 @@ end $$;
 
 revoke all on function public.save_professional_service_locations_v2(uuid,jsonb) from public;
 grant execute on function public.save_professional_service_locations_v2(uuid,jsonb) to authenticated;
+
+-- Garante que o PostgREST reconheça imediatamente a nova RPC após restaurações.
+notify pgrst, 'reload schema';
