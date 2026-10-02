@@ -16,6 +16,7 @@ export function ProfessionalProfilePage() {
   const lastPostalLookup=useRef<Record<string,string>>({})
   const [viewCount,setViewCount]=useState(0)
   const [notice,setNotice]=useState('')
+  const [locationNotice,setLocationNotice]=useState<{message:string;error:boolean}|null>(null)
   const [saving,setSaving]=useState(false)
   const [error,setError]=useState('')
   const specialtyLimit=specialtyLimitForPlan(user?.plan)
@@ -69,9 +70,23 @@ export function ProfessionalProfilePage() {
     }
   }
   const save=async()=>{
-    setNotice('Salvando e confirmando no banco de dados...');setSaving(true)
-    try{await saveProfessionalSpecialties(profile.id,selectedSpecialties,specialtyLimit);const persistedLocations=await saveProfessionalServiceLocations(profile.id,serviceLocations);const first=persistedLocations[0],nextProfile=first?{...profile,address_line:first.address_line,address_number:first.address_number,address_complement:first.address_complement,neighborhood:first.neighborhood,city:first.city,state_code:first.state_code,postal_code:first.postal_code}:profile;const saved=await updateMyProfessionalProfile(profile.id,{...nextProfile,profile_completed:Boolean(nextProfile.full_name&&nextProfile.whatsapp&&selectedSpecialties.length&&persistedLocations.length)});setServiceLocations(persistedLocations.map(location=>({...location,clientKey:location.id||crypto.randomUUID()})));setProfile(saved);setNotice('Alterações salvas com sucesso.')}
-    catch(e){setNotice(e instanceof Error?e.message:'Não foi possível salvar as alterações. Tente novamente.')}
+    setNotice('Salvando e confirmando no banco de dados...');setLocationNotice(null);setSaving(true)
+    let persistedLocations:ProfessionalServiceLocation[]|null=null
+    try{
+      persistedLocations=await saveProfessionalServiceLocations(profile.id,serviceLocations)
+      setServiceLocations(persistedLocations.map(location=>({...location,clientKey:location.id||crypto.randomUUID()})))
+      setLocationNotice({message:'Localidade de atendimento salva com sucesso.',error:false})
+      await saveProfessionalSpecialties(profile.id,selectedSpecialties,specialtyLimit)
+      const first=persistedLocations[0],nextProfile=first?{...profile,address_line:first.address_line,address_number:first.address_number,address_complement:first.address_complement,neighborhood:first.neighborhood,city:first.city,state_code:first.state_code,postal_code:first.postal_code}:profile
+      const saved=await updateMyProfessionalProfile(profile.id,{...nextProfile,profile_completed:Boolean(nextProfile.full_name&&nextProfile.whatsapp&&selectedSpecialties.length&&persistedLocations.length)})
+      setProfile(saved);setNotice('Perfil e localidades salvos com sucesso.')
+    }
+    catch(e){
+      const message=e instanceof Error?e.message:'Não foi possível salvar as alterações. Tente novamente.'
+      if(!persistedLocations)setLocationNotice({message:`Não foi possível salvar a localidade de atendimento. ${message}`,error:true})
+      setNotice(persistedLocations?`A localidade foi salva, mas outro dado do perfil apresentou erro: ${message}`:message)
+      console.error('Falha ao salvar perfil do Marketplace',e)
+    }
     finally{setSaving(false)}
   }
 
@@ -101,6 +116,7 @@ export function ProfessionalProfilePage() {
       <div className="field grid-span-2"><label>Fotos do consultório (máximo 5)</label><input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={e=>void upload('gallery',e.target.files)}/><small>{(profile.gallery_urls||[]).length} de 5 foto(s)</small><div className="profile-media-editor">{(profile.gallery_urls||[]).map((url,index)=><div key={url}><img src={url} alt={`Foto do consultório ${index+1}`} width="320" height="200"/><button type="button" className="btn btn-danger" onClick={()=>set('gallery_urls',profile.gallery_urls.filter(item=>item!==url))}><Trash2 size={15}/> Remover foto {index+1}</button></div>)}</div></div>
       <label className="switch-card"><span><strong>Aceita atendimento online</strong></span><input type="checkbox" checked={profile.accepts_online} onChange={e=>set('accepts_online',e.target.checked)}/></label>
       <div className="switch-card"><span><strong>Publicação no Marketplace</strong><small>{profile.marketplace_visible?'Perfil aprovado e publicado.':'Aguardando aprovação da administração.'}</small></span></div>
+      {locationNotice&&<div className={`grid-span-2 alert ${locationNotice.error?'alert-error':'alert-success'}`} role="status">{locationNotice.message}</div>}
       <button type="button" className="btn btn-primary grid-span-2" disabled={saving} onClick={()=>void save()}><Save size={17}/>{saving?'Salvando…':'Salvar alterações'}</button>
     </section>
   </div>

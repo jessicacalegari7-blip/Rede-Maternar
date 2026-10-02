@@ -761,12 +761,26 @@ export async function saveProfessionalServiceLocations(professionalId:string,loc
     postal_code:location.postal_code.trim()||null,sort_order:index,active:true,
   })).filter(location=>location.name&&location.address_line&&location.city&&location.state_code.length===2)
   if(rows.length!==locations.length) throw new Error('Preencha nome, endereço, cidade e UF de todos os locais de atendimento.')
-  const {data,error}=await client().rpc('save_professional_service_locations',{
+  const {data,error}=await client().rpc('save_professional_service_locations_v2',{
     target_professional_id:professionalId,
     location_rows:rows.map((row,index)=>({...row,id:locations[index]?.id||null})),
   })
   if(error) throw new Error(error.message)
-  return (data??[]) as ProfessionalServiceLocation[]
+  const persisted=await getProfessionalServiceLocations(professionalId)
+  const signature=(location:ProfessionalServiceLocation)=>[
+    location.name.trim(),location.address_line.trim(),location.address_number.trim(),
+    location.address_complement.trim(),location.neighborhood.trim(),location.city.trim(),
+    location.state_code.trim().toUpperCase(),location.postal_code.replace(/\D/g,''),
+  ].join('|').toLocaleLowerCase('pt-BR')
+  if(persisted.length!==locations.length||persisted.some((location,index)=>signature(location)!==signature(locations[index]))) {
+    throw new Error('O banco não confirmou todos os locais de atendimento. Tente salvar novamente.')
+  }
+  const expectedCities=[...new Set(persisted.map(location=>`${location.city.trim().toLocaleLowerCase('pt-BR')}|${location.state_code.trim().toUpperCase()}`))]
+  const {data:cities,error:citiesError}=await client().from('professional_service_cities').select('city,state_code').eq('professional_id',professionalId).eq('active',true)
+  if(citiesError) throw new Error(citiesError.message)
+  const confirmedCities=new Set((cities??[]).map(city=>`${String(city.city).trim().toLocaleLowerCase('pt-BR')}|${String(city.state_code).trim().toUpperCase()}`))
+  if(expectedCities.some(city=>!confirmedCities.has(city))) throw new Error('A localidade foi gravada, mas ainda não foi confirmada na busca do diretório.')
+  return persisted
 }
 
 export const uploadMarketplaceImage=uploadMarketplaceMedia
