@@ -752,13 +752,18 @@ export async function getProfessionalServiceLocations(professionalId:string) {
 }
 
 export async function saveProfessionalServiceLocations(professionalId:string,locations:ProfessionalServiceLocation[]) {
-  const invalidLocation=locations.find(location=>String(location.postal_code||'').replace(/\D/g,'').length!==8||!String(location.address_number||'').trim())
-  if(invalidLocation) throw new Error('Preencha um CEP válido e o número de todos os locais de atendimento. Use “S/N” quando o endereço não possuir número.')
+  locations.forEach((location,index)=>{
+    const label=location.name.trim()||`Local ${index+1}`
+    const postalCode=String(location.postal_code??'').replace(/\D/g,'')
+    const addressNumber=String(location.address_number??'').trim()
+    if(!addressNumber.length)throw new Error(`${label}: informe o número do endereço. Use “S/N” quando não houver número.`)
+    if((!location.id&&postalCode.length!==8)||(postalCode.length>0&&postalCode.length!==8))throw new Error(`${label}: informe um CEP válido com 8 números.`)
+  })
   const rows=locations.map((location,index)=>({
     professional_id:professionalId,name:location.name.trim(),address_line:location.address_line.trim(),
     address_number:location.address_number.trim()||null,address_complement:location.address_complement.trim()||null,
     neighborhood:location.neighborhood.trim()||null,city:location.city.trim(),state_code:location.state_code.trim().toUpperCase(),
-    postal_code:location.postal_code.trim()||null,sort_order:index,active:true,
+    postal_code:String(location.postal_code??'').replace(/\D/g,'')||null,sort_order:index,active:true,
   })).filter(location=>location.name&&location.address_line&&location.city&&location.state_code.length===2)
   if(rows.length!==locations.length) throw new Error('Preencha nome, endereço, cidade e UF de todos os locais de atendimento.')
   const db=client()
@@ -773,7 +778,10 @@ export async function saveProfessionalServiceLocations(professionalId:string,loc
     })
     data=fallback.data;error=fallback.error
   }
-  if(error) throw new Error(error.message)
+  if(error) {
+    console.error('Falha de persistência dos locais de atendimento',{code:error.code,details:error.details,hint:error.hint})
+    throw new Error('Não foi possível persistir os locais de atendimento no banco de dados. Tente novamente.')
+  }
   const persisted=await getProfessionalServiceLocations(professionalId)
   const signature=(location:ProfessionalServiceLocation)=>[
     location.name.trim(),location.address_line.trim(),location.address_number.trim(),
