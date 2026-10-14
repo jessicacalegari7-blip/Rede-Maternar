@@ -1,7 +1,7 @@
 import crypto from 'node:crypto'
-import { allowMethods,json,readJson } from '../_lib/http.mjs'
-import { requireOrganization } from '../_lib/supabase-admin.mjs'
-import { evolution } from '../_lib/evolution.mjs'
+import { allowMethods,json,readJson } from './http.mjs'
+import { requireOrganization } from './supabase-admin.mjs'
+import { evolution } from './evolution.mjs'
 
 export default async function handler(req,res){
   if(!allowMethods(req,res,['GET','POST']))return

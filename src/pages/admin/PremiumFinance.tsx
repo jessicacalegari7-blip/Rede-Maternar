@@ -15,9 +15,9 @@ async function api(path:string,init?:RequestInit){
 
 export function AdminPremiumFinance(){
   const [data,setData]=useState<Dashboard|null>(null),[error,setError]=useState(''),[loading,setLoading]=useState(false),[search,setSearch]=useState('')
-  const load=useCallback(async()=>{setLoading(true);setError('');try{setData(await api(`/api/admin-asaas${search?`?search=${encodeURIComponent(search)}`:''}`))}catch(reason){setError(reason instanceof Error?reason.message:'Falha ao carregar.')}finally{setLoading(false)}},[search])
+  const load=useCallback(async()=>{setLoading(true);setError('');try{setData(await api(`/api/asaas-checkout?admin=1${search?`&search=${encodeURIComponent(search)}`:''}`))}catch(reason){setError(reason instanceof Error?reason.message:'Falha ao carregar.')}finally{setLoading(false)}},[search])
   useEffect(()=>{void load()},[load])
-  async function retry(eventId:string){setLoading(true);try{await api('/api/admin-asaas',{method:'POST',body:JSON.stringify({eventId})});await load()}catch(reason){setError(reason instanceof Error?reason.message:'Falha ao reprocessar.');setLoading(false)}}
+  async function retry(eventId:string){setLoading(true);try{await api('/api/asaas-checkout?admin=1',{method:'POST',body:JSON.stringify({eventId})});await load()}catch(reason){setError(reason instanceof Error?reason.message:'Falha ao reprocessar.');setLoading(false)}}
   const s=data?.summary||{}
   return <>
     <div className="topbar"><div><h1>Vendas e Perfil Premium</h1><div className="muted">Pedidos, confirmações financeiras e falhas da integração Asaas.</div></div><button className="btn btn-secondary" onClick={()=>void load()} disabled={loading}><RefreshCw/> Atualizar</button></div>

@@ -1,6 +1,8 @@
 import { allowMethods, json, readJson } from '../_lib/http.mjs'
 import { requireOrganization } from '../_lib/supabase-admin.mjs'
 import { evolution, normalizePhone } from '../_lib/evolution.mjs'
+import instances from '../_lib/evolution-instances-handler.mjs'
+import webhook from '../_lib/evolution-webhook-handler.mjs'
 
 async function qrcode(req,res){
   if(!allowMethods(req,res,['GET']))return
@@ -55,7 +57,7 @@ async function send(req,res){
   }catch(error){json(res,error.status||500,{error:error.message})}
 }
 
-const handlers={qrcode,status,send}
+const handlers={qrcode,status,send,instances,webhook}
 
 export default async function handler(req,res){
   const action=String(req.query?.action||'')

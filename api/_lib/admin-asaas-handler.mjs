@@ -1,6 +1,6 @@
-import {requirePlatformAdmin} from './_lib/supabase-admin.mjs'
-import {allowMethods,json,readJson} from './_lib/http.mjs'
-import {eventFields} from './_lib/asaas.mjs'
+import {requirePlatformAdmin} from './supabase-admin.mjs'
+import {allowMethods,json,readJson} from './http.mjs'
+import {eventFields} from './asaas.mjs'
 
 export default async function handler(req,res){
   if(!allowMethods(req,res,['GET','POST']))return

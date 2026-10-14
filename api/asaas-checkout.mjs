@@ -1,11 +1,13 @@
 import {adminClient} from './_lib/supabase-admin.mjs'
 import {allowMethods,json,readJson} from './_lib/http.mjs'
 import {PREMIUM_PRODUCT,asaasRequest,checkoutPageUrl,normalizeTaxId,validPhone,validTaxId} from './_lib/asaas.mjs'
+import adminHandler from './_lib/admin-asaas-handler.mjs'
 
 const emailPattern=/^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const baseSite=()=>String(process.env.PUBLIC_SITE_URL||process.env.PUBLIC_APP_URL||'https://www.materplace.com.br').replace(/\/$/,'')
 
 export default async function handler(req,res){
+  if(String(req.query?.admin||'')==='1')return adminHandler(req,res)
   if(!allowMethods(req,res,['GET','POST']))return
   if(req.method==='GET'){
     const token=String(req.query?.token||'')

@@ -1,7 +1,7 @@
 import crypto from 'node:crypto'
-import { allowMethods,json,readJson } from '../_lib/http.mjs'
-import { adminClient } from '../_lib/supabase-admin.mjs'
-import { normalizePhone } from '../_lib/evolution.mjs'
+import { allowMethods,json,readJson } from './http.mjs'
+import { adminClient } from './supabase-admin.mjs'
+import { normalizePhone } from './evolution.mjs'
 
 function sameHash(secret,expected){const actual=crypto.createHash('sha256').update(secret).digest('hex');const a=Buffer.from(actual);const b=Buffer.from(expected||'');return a.length===b.length&&crypto.timingSafeEqual(a,b)}
 function eventName(payload){return String(payload.event||payload.type||'unknown').toUpperCase().replace(/[.-]/g,'_')}
