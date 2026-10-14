@@ -21,6 +21,7 @@ import { AboutPage, ContactPage, CookiePolicy, DisclaimerPage, EditorialStaffPag
 import { PortalArticlePage } from './pages/public/PortalArticle'
 import { CookieConsent } from './components/CookieConsent'
 import { EcosystemDetail, EcosystemListing } from './pages/public/Ecosystem'
+import { CheckoutStatus } from './pages/public/CheckoutStatus'
 
 const ProfessionalPatients=lazy(()=>import('./pages/professional/Patients').then(m=>({default:m.ProfessionalPatients})))
 const ProfessionalProfilePage=lazy(()=>import('./pages/professional/Profile').then(m=>({default:m.ProfessionalProfilePage})))
@@ -40,6 +41,7 @@ const ClinicTeam=lazy(()=>import('./pages/professional/ClinicTeam').then(m=>({de
 const AdminNewsPortal=lazy(()=>import('./pages/admin/NewsPortal').then(m=>({default:m.AdminNewsPortal})))
 const EcosystemAdmin=lazy(()=>import('./pages/admin/EcosystemAdmin').then(m=>({default:m.EcosystemAdmin})))
 const EcosystemManager=lazy(()=>import('./pages/professional/EcosystemManager').then(m=>({default:m.EcosystemManager})))
+const AdminPremiumFinance=lazy(()=>import('./pages/admin/PremiumFinance').then(m=>({default:m.AdminPremiumFinance})))
 
 function ProfessionalEntry() {
   const { user } = useAuth()
@@ -72,6 +74,7 @@ export default function App() {
     <Route path="/definir-senha" element={<SetPassword />} />
     <Route path="/recuperar-senha" element={<RecoverPassword />} />
     <Route path="/cadastro-profissional" element={<ProfessionalSignup />} />
+    <Route path="/checkout/status" element={<CheckoutStatus />} />
     <Route path="/privacidade" element={<PrivacyPolicy />} />
     <Route path="/termos" element={<TermsOfUse />} />
     <Route path="/lgpd" element={<LgpdPage />} />
@@ -132,7 +135,7 @@ export default function App() {
         <Route path="profissionais" element={<AdminProfessionals />} />
         <Route path="agendamentos" element={<Placeholder title="Agendamentos da plataforma" description="A consolidação administrativa será ligada às agendas reais." />} />
         <Route path="usuarios" element={<AdminUsers />} />
-        <Route path="financeiro" element={<Placeholder title="Financeiro administrativo" description="Aguardando integração real de pagamentos e assinaturas." />} />
+        <Route path="financeiro" element={<AdminPremiumFinance />} />
         <Route path="noticias" element={<AdminNewsPortal />} />
         <Route path="ecossistema" element={<EcosystemAdmin />} />
         <Route path="operacao" element={<AdminOperations />} />
