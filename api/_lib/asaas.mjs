@@ -33,6 +33,10 @@ export function safeEqual(left,right){
   return timingSafeEqual(a,b)
 }
 
+export function processableEventType(eventType){
+  return eventType==='PAYMENT_CHARGEBACK_DISPUTE'?'PAYMENT_CHARGEBACK_REQUESTED':eventType
+}
+
 export function eventFields(payload){
   const checkout=payload?.checkout||{}
   const payment=payload?.payment||checkout?.payment||{}

@@ -1,8 +1,8 @@
 import {adminClient} from './_lib/supabase-admin.mjs'
 import {allowMethods,json,readJson} from './_lib/http.mjs'
-import {eventFields,safeEqual} from './_lib/asaas.mjs'
+import {eventFields,processableEventType,safeEqual} from './_lib/asaas.mjs'
 
-const supported=new Set(['CHECKOUT_CREATED','CHECKOUT_PAID','CHECKOUT_CANCELED','CHECKOUT_EXPIRED','PAYMENT_REFUNDED','PAYMENT_PARTIALLY_REFUNDED','PAYMENT_CHARGEBACK_REQUESTED','PAYMENT_DELETED'])
+const supported=new Set(['CHECKOUT_CREATED','CHECKOUT_PAID','CHECKOUT_CANCELED','CHECKOUT_EXPIRED','PAYMENT_REFUNDED','PAYMENT_PARTIALLY_REFUNDED','PAYMENT_CHARGEBACK_REQUESTED','PAYMENT_CHARGEBACK_DISPUTE','PAYMENT_DELETED'])
 
 export default async function handler(req,res){
   if(!allowMethods(req,res,['POST']))return
@@ -28,7 +28,7 @@ export default async function handler(req,res){
     if(!orderId&&fields.checkoutId){const {data}=await db.from('premium_orders').select('id').eq('asaas_checkout_id',fields.checkoutId).maybeSingle();orderId=data?.id}
     if(!orderId&&fields.paymentId){const {data}=await db.from('premium_orders').select('id').eq('asaas_payment_id',fields.paymentId).maybeSingle();orderId=data?.id}
     if(!orderId)throw new Error('Evento sem pedido correspondente.')
-    const {data:result,error:rpcError}=await db.rpc('apply_asaas_order_event',{target_order_id:orderId,target_event_id:fields.eventId,target_event_type:fields.eventType,target_checkout_id:fields.checkoutId,target_payment_id:fields.paymentId,target_amount_cents:fields.amountCents})
+    const {data:result,error:rpcError}=await db.rpc('apply_asaas_order_event',{target_order_id:orderId,target_event_id:fields.eventId,target_event_type:processableEventType(fields.eventType),target_checkout_id:fields.checkoutId,target_payment_id:fields.paymentId,target_amount_cents:fields.amountCents})
     if(rpcError)throw rpcError
     await db.from('asaas_webhook_events').update({processing_status:'processed',processed_at:new Date().toISOString(),last_error:null}).eq('id',fields.eventId)
     if(fields.eventType==='CHECKOUT_PAID')await sendWelcomeEmail(db,result).catch(()=>{})
