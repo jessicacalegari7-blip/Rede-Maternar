@@ -6,7 +6,14 @@ const emailPattern=/^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const baseSite=()=>String(process.env.PUBLIC_SITE_URL||process.env.PUBLIC_APP_URL||'https://www.materplace.com.br').replace(/\/$/,'')
 
 export default async function handler(req,res){
-  if(!allowMethods(req,res,['POST']))return
+  if(!allowMethods(req,res,['GET','POST']))return
+  if(req.method==='GET'){
+    const token=String(req.query?.token||'')
+    if(!/^[0-9a-f-]{36}$/i.test(token))return json(res,400,{error:'Identificador inválido.'})
+    const {data,error}=await adminClient().from('premium_orders').select('status,product_name,amount_cents,paid_at,expires_at').eq('public_token',token).maybeSingle()
+    if(error||!data)return json(res,404,{error:'Pedido não encontrado.'})
+    return json(res,200,data)
+  }
   let createdUserId=null,orderId=null
   try{
     if(String(process.env.ASAAS_ENVIRONMENT||'sandbox').toLowerCase()==='production')throw Object.assign(new Error('Checkout real ainda não foi autorizado.'),{status:503})
