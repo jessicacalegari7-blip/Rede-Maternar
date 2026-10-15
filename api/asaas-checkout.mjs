@@ -68,13 +68,14 @@ export default async function handler(req,res){
 
 async function ensureCheckoutAccount(db,{userId,name,phone}){
   const fail=(error,checkoutStep)=>{if(error){error.checkoutStep=checkoutStep;throw error}}
+  let organizationCreated=false
   let {data:profile,error:profileError}=await db.from('profiles').select('id').eq('id',userId).maybeSingle()
   fail(profileError,'account_profile_lookup')
   if(!profile){const created=await db.from('profiles').insert({id:userId,full_name:name,phone}).select('id').single();fail(created.error,'account_profile_creation');profile=created.data}
   let {data:organization,error:organizationError}=await db.from('organizations').select('id').eq('created_by',userId).order('created_at',{ascending:true}).limit(1).maybeSingle()
   fail(organizationError,'account_organization_lookup')
-  if(!organization){const created=await db.from('organizations').insert({type:'independent',display_name:name,plan:'marketplace',status:'pending',created_by:userId}).select('id').single();fail(created.error,'account_organization_creation');organization=created.data}
-  const member=await db.from('organization_members').upsert({organization_id:organization.id,user_id:userId,role:'owner',active:true},{onConflict:'organization_id,user_id'});fail(member.error,'account_membership_creation')
+  if(!organization){const created=await db.from('organizations').insert({type:'independent',display_name:name,plan:'marketplace',status:'pending',created_by:userId}).select('id').single();fail(created.error,'account_organization_creation');organization=created.data;organizationCreated=true}
+  if(organizationCreated){const member=await db.from('organization_members').insert({organization_id:organization.id,user_id:userId,role:'owner',active:true});fail(member.error,'account_membership_creation')}
   let {data:professional,error:professionalError}=await db.from('professional_profiles').select('id').eq('organization_id',organization.id).eq('user_id',userId).maybeSingle()
   fail(professionalError,'account_professional_lookup')
   if(!professional){const created=await db.from('professional_profiles').insert({organization_id:organization.id,user_id:userId,full_name:name,whatsapp:phone,city:'Não informada',state_code:'SP',marketplace_visible:false}).select('id').single();fail(created.error,'account_professional_creation');professional=created.data}
