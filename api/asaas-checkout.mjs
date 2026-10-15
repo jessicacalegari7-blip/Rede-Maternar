@@ -40,7 +40,17 @@ export default async function handler(req,res){
     orderId=order.order_id
     const statusUrl=`${baseSite()}/checkout/status?token=${order.public_token}`
     stage='asaas_checkout_creation'
-    const checkout=await asaasRequest('/checkouts',{method:'POST',body:JSON.stringify({billingTypes:['PIX','CREDIT_CARD'],chargeTypes:['DETACHED'],minutesToExpire:60,externalReference:order.order_id,callback:{successUrl:statusUrl,cancelUrl:statusUrl,expiredUrl:statusUrl},items:[{name:PREMIUM_PRODUCT.name,description:'Acesso por 12 meses, sem renovação automática',quantity:1,value:PREMIUM_PRODUCT.amountCents/100}],customerData:{name,email,cpfCnpj:taxId,phone:String(phone).replace(/\D/g,'')}})})
+    const checkoutPayload={billingTypes:['PIX','CREDIT_CARD'],chargeTypes:['DETACHED'],minutesToExpire:60,externalReference:order.order_id,callback:{successUrl:statusUrl,cancelUrl:statusUrl,expiredUrl:statusUrl},items:[{name:PREMIUM_PRODUCT.name,description:'Acesso por 12 meses, sem renovação automática',quantity:1,value:PREMIUM_PRODUCT.amountCents/100}],customerData:{name,email,cpfCnpj:taxId,phone:String(phone).replace(/\D/g,'')}}
+    let checkout
+    try{checkout=await asaasRequest('/checkouts',{method:'POST',body:JSON.stringify(checkoutPayload)})}
+    catch(error){
+      if(String(process.env.ASAAS_ENVIRONMENT||'sandbox').toLowerCase()!=='sandbox'||!/chave pix/i.test(String(error?.message||'')))throw error
+      stage='asaas_pix_key_setup'
+      const keys=await asaasRequest('/pix/addressKeys?limit=10')
+      if(!Array.isArray(keys?.data)||!keys.data.some(key=>['ACTIVE','AWAITING_ACTIVATION'].includes(key?.status)))await asaasRequest('/pix/addressKeys',{method:'POST',body:JSON.stringify({type:'EVP'})})
+      stage='asaas_checkout_creation'
+      checkout=await asaasRequest('/checkouts',{method:'POST',body:JSON.stringify(checkoutPayload)})
+    }
     if(!checkout?.id)throw new Error('O Asaas não retornou o identificador do checkout.')
     stage='order_confirmation'
     const {error:updateError}=await db.from('premium_orders').update({status:'pending',asaas_checkout_id:checkout.id,expires_at:new Date(Date.now()+60*60*1000).toISOString(),updated_at:new Date().toISOString()}).eq('id',order.order_id)
@@ -53,9 +63,9 @@ export default async function handler(req,res){
     const technicalMessage=String(error?.message||error?.details||error?.hint||'Falha não identificada').slice(0,500)
     const failureStep=String(error?.checkoutStep||stage).replace(/[^a-z0-9_]/gi,'').slice(0,80)
     console.error('asaas_checkout_failed',{stage,step:failureStep,code:error?.code||null,status:error?.status||500,message:technicalMessage})
-    const safeMessages={existing_user_lookup:'Não foi possível validar o e-mail informado.',auth_user_creation:'Não foi possível criar seu acesso. Verifique o e-mail e tente novamente.',order_creation:'Não foi possível registrar o pedido.',asaas_checkout_creation:'O Asaas não conseguiu criar o checkout no Sandbox.',order_confirmation:'O checkout foi criado, mas não foi possível confirmar o pedido.'}
+    const safeMessages={existing_user_lookup:'Não foi possível validar o e-mail informado.',auth_user_creation:'Não foi possível criar seu acesso. Verifique o e-mail e tente novamente.',order_creation:'Não foi possível registrar o pedido.',asaas_pix_key_setup:'A conta Sandbox do Asaas ainda não está habilitada para receber Pix.',asaas_checkout_creation:'O Asaas não conseguiu criar o checkout no Sandbox.',order_confirmation:'O checkout foi criado, mas não foi possível confirmar o pedido.'}
     const databaseReason=/^(?:PGRST\d+|\d{5})$/.test(String(error?.code||''))?String(error.code):undefined
-    const providerDetail=stage==='asaas_checkout_creation'?technicalMessage.replace(/[\r\n]+/g,' ').slice(0,180):undefined
+    const providerDetail=stage.startsWith('asaas_')?technicalMessage.replace(/[\r\n]+/g,' ').slice(0,180):undefined
     return json(res,error?.status||500,{error:safeMessages[stage]||'Não foi possível iniciar o checkout.',code:`checkout_${failureStep}`,...(databaseReason?{reason:databaseReason}:{}),...(providerDetail?{detail:providerDetail}:{})})
   }
 }
