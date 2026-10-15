@@ -1,5 +1,4 @@
 import {adminClient} from './_lib/supabase-admin.mjs'
-import {createClient} from '@supabase/supabase-js'
 import {allowMethods,json,readJson} from './_lib/http.mjs'
 import {PREMIUM_PRODUCT,asaasRequest,checkoutPageUrl,normalizeTaxId,validPhone,validTaxId} from './_lib/asaas.mjs'
 import adminHandler from './_lib/admin-asaas-handler.mjs'
@@ -35,25 +34,18 @@ export default async function handler(req,res){
       if(authError||!auth.user)throw authError||new Error('Não foi possível criar o acesso seguro.')
       createdUserId=auth.user.id;createdHere=true
     }
-    stage='account_session'
-    const accountDb=createClient(String(process.env.SUPABASE_URL||process.env.VITE_SUPABASE_URL),String(process.env.SUPABASE_ANON_KEY||process.env.VITE_SUPABASE_ANON_KEY),{auth:{persistSession:false,autoRefreshToken:false}})
-    const {error:sessionError}=await accountDb.auth.signInWithPassword({email,password})
-    if(sessionError){sessionError.checkoutStep='account_session';throw sessionError}
-    stage='account_bootstrap'
-    const {organizationId,professionalId}=await ensureCheckoutAccount(accountDb,{userId:createdUserId,name,phone})
-    stage='membership_lookup'
     stage='order_creation'
-    const {data:order,error:orderError}=await db.from('premium_orders').insert({user_id:createdUserId,organization_id:organizationId,professional_id:professionalId,customer_name:name,customer_email:email,customer_phone:String(phone).replace(/\D/g,''),tax_id_last4:taxId.slice(-4),amount_cents:PREMIUM_PRODUCT.amountCents,status:'creating'}).select('id,public_token').single()
+    const {data:order,error:orderError}=await db.rpc('create_premium_checkout_order',{target_user_id:createdUserId,target_name:name,target_email:email,target_phone:phone,target_tax_id_last4:taxId.slice(-4),target_amount_cents:PREMIUM_PRODUCT.amountCents}).single()
     if(orderError)throw orderError
-    orderId=order.id
+    orderId=order.order_id
     const statusUrl=`${baseSite()}/checkout/status?token=${order.public_token}`
     stage='asaas_checkout_creation'
-    const checkout=await asaasRequest('/checkouts',{method:'POST',body:JSON.stringify({billingTypes:['PIX','CREDIT_CARD'],chargeTypes:['DETACHED'],minutesToExpire:60,externalReference:order.id,callback:{successUrl:statusUrl,cancelUrl:statusUrl,expiredUrl:statusUrl},items:[{name:PREMIUM_PRODUCT.name,description:'Acesso por 12 meses, sem renovação automática',quantity:1,value:PREMIUM_PRODUCT.amountCents/100}],customerData:{name,email,cpfCnpj:taxId,phone:String(phone).replace(/\D/g,'')}})})
+    const checkout=await asaasRequest('/checkouts',{method:'POST',body:JSON.stringify({billingTypes:['PIX','CREDIT_CARD'],chargeTypes:['DETACHED'],minutesToExpire:60,externalReference:order.order_id,callback:{successUrl:statusUrl,cancelUrl:statusUrl,expiredUrl:statusUrl},items:[{name:PREMIUM_PRODUCT.name,description:'Acesso por 12 meses, sem renovação automática',quantity:1,value:PREMIUM_PRODUCT.amountCents/100}],customerData:{name,email,cpfCnpj:taxId,phone:String(phone).replace(/\D/g,'')}})})
     if(!checkout?.id)throw new Error('O Asaas não retornou o identificador do checkout.')
     stage='order_confirmation'
-    const {error:updateError}=await db.from('premium_orders').update({status:'pending',asaas_checkout_id:checkout.id,expires_at:new Date(Date.now()+60*60*1000).toISOString(),updated_at:new Date().toISOString()}).eq('id',order.id)
+    const {error:updateError}=await db.from('premium_orders').update({status:'pending',asaas_checkout_id:checkout.id,expires_at:new Date(Date.now()+60*60*1000).toISOString(),updated_at:new Date().toISOString()}).eq('id',order.order_id)
     if(updateError)throw updateError
-    return json(res,201,{orderId:order.id,statusToken:order.public_token,checkoutUrl:checkoutPageUrl(checkout.id),amountCents:PREMIUM_PRODUCT.amountCents,environment:'sandbox'})
+    return json(res,201,{orderId:order.order_id,statusToken:order.public_token,checkoutUrl:checkoutPageUrl(checkout.id),amountCents:PREMIUM_PRODUCT.amountCents,environment:'sandbox'})
   }catch(error){
     const db=adminClient()
     if(orderId)await db.from('premium_orders').update({status:'failed',updated_at:new Date().toISOString()}).eq('id',orderId)
@@ -61,23 +53,9 @@ export default async function handler(req,res){
     const technicalMessage=String(error?.message||error?.details||error?.hint||'Falha não identificada').slice(0,500)
     const failureStep=String(error?.checkoutStep||stage).replace(/[^a-z0-9_]/gi,'').slice(0,80)
     console.error('asaas_checkout_failed',{stage,step:failureStep,code:error?.code||null,status:error?.status||500,message:technicalMessage})
-    const safeMessages={existing_user_lookup:'Não foi possível validar o e-mail informado.',auth_user_creation:'Não foi possível criar seu acesso. Verifique o e-mail e tente novamente.',account_session:'Não foi possível validar o acesso recém-criado.',account_bootstrap:'Não foi possível preparar sua conta profissional.',membership_lookup:'Não foi possível preparar sua conta profissional.',professional_lookup:'Não foi possível preparar seu perfil profissional.',order_creation:'Não foi possível registrar o pedido.',asaas_checkout_creation:'O Asaas não conseguiu criar o checkout no Sandbox.',order_confirmation:'O checkout foi criado, mas não foi possível confirmar o pedido.'}
-    return json(res,error?.status||500,{error:safeMessages[stage]||'Não foi possível iniciar o checkout.',code:`checkout_${failureStep}`})
+    const safeMessages={existing_user_lookup:'Não foi possível validar o e-mail informado.',auth_user_creation:'Não foi possível criar seu acesso. Verifique o e-mail e tente novamente.',order_creation:'Não foi possível registrar o pedido.',asaas_checkout_creation:'O Asaas não conseguiu criar o checkout no Sandbox.',order_confirmation:'O checkout foi criado, mas não foi possível confirmar o pedido.'}
+    const databaseReason=/^(?:PGRST\d+|\d{5})$/.test(String(error?.code||''))?String(error.code):undefined
+    return json(res,error?.status||500,{error:safeMessages[stage]||'Não foi possível iniciar o checkout.',code:`checkout_${failureStep}`,...(databaseReason?{reason:databaseReason}:{})})
   }
 }
 
-async function ensureCheckoutAccount(db,{userId,name,phone}){
-  const fail=(error,checkoutStep)=>{if(error){error.checkoutStep=checkoutStep;throw error}}
-  let organizationCreated=false
-  let {data:profile,error:profileError}=await db.from('profiles').select('id').eq('id',userId).maybeSingle()
-  fail(profileError,'account_profile_lookup')
-  if(!profile){const created=await db.from('profiles').insert({id:userId,full_name:name,phone}).select('id').single();fail(created.error,'account_profile_creation');profile=created.data}
-  let {data:organization,error:organizationError}=await db.from('organizations').select('id').eq('created_by',userId).order('created_at',{ascending:true}).limit(1).maybeSingle()
-  fail(organizationError,'account_organization_lookup')
-  if(!organization){const created=await db.from('organizations').insert({type:'independent',display_name:name,plan:'marketplace',status:'pending',created_by:userId}).select('id').single();fail(created.error,'account_organization_creation');organization=created.data;organizationCreated=true}
-  if(organizationCreated){const member=await db.from('organization_members').insert({organization_id:organization.id,user_id:userId,role:'owner',active:true});fail(member.error,'account_membership_creation')}
-  let {data:professional,error:professionalError}=await db.from('professional_profiles').select('id').eq('organization_id',organization.id).eq('user_id',userId).maybeSingle()
-  fail(professionalError,'account_professional_lookup')
-  if(!professional){const created=await db.from('professional_profiles').insert({organization_id:organization.id,user_id:userId,full_name:name,whatsapp:phone,city:'Não informada',state_code:'SP',marketplace_visible:false}).select('id').single();fail(created.error,'account_professional_creation');professional=created.data}
-  return {organizationId:organization.id,professionalId:professional.id}
-}
