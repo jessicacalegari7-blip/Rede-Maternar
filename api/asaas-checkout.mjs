@@ -16,27 +16,33 @@ export default async function handler(req,res){
     if(error||!data)return json(res,404,{error:'Pedido não encontrado.'})
     return json(res,200,data)
   }
-  let createdUserId=null,orderId=null
+  let createdUserId=null,orderId=null,stage='validation'
   try{
     if(String(process.env.ASAAS_ENVIRONMENT||'sandbox').toLowerCase()==='production')throw Object.assign(new Error('Checkout real ainda não foi autorizado.'),{status:503})
     const body=await readJson(req),name=String(body.name||'').trim(),email=String(body.email||'').trim().toLowerCase(),phone=String(body.phone||'').trim(),taxId=normalizeTaxId(body.taxId),password=String(body.password||'')
     if(name.length<3||!emailPattern.test(email)||!validPhone(phone)||!validTaxId(taxId)||password.length<8)return json(res,400,{error:'Informe nome, e-mail, telefone, CPF/CNPJ e senha com ao menos 8 caracteres.'})
-    const db=adminClient()
+    const db=adminClient();stage='existing_user_lookup'
     const {data:existing}=await db.rpc('find_checkout_user_by_email',{target_email:email})
     if(existing?.length)return json(res,409,{error:'Já existe uma conta com este e-mail. Entre na plataforma para contratar ou continuar o pagamento.'})
+    stage='auth_user_creation'
     const {data:auth,error:authError}=await db.auth.admin.createUser({email,password,email_confirm:true,user_metadata:{account_type:'professional',full_name:name,phone,plan:'marketplace',organization_name:name,city:'Não informada',state_code:'SP',signup_source:'asaas_premium'}})
     if(authError||!auth.user)throw authError||new Error('Não foi possível criar o acesso seguro.')
     createdUserId=auth.user.id
+    stage='membership_lookup'
     const {data:member,error:memberError}=await db.from('organization_members').select('organization_id').eq('user_id',createdUserId).eq('active',true).single()
     if(memberError)throw memberError
+    stage='professional_lookup'
     const {data:professional,error:professionalError}=await db.from('professional_profiles').select('id').eq('organization_id',member.organization_id).eq('user_id',createdUserId).single()
     if(professionalError)throw professionalError
+    stage='order_creation'
     const {data:order,error:orderError}=await db.from('premium_orders').insert({user_id:createdUserId,organization_id:member.organization_id,professional_id:professional.id,customer_name:name,customer_email:email,customer_phone:String(phone).replace(/\D/g,''),tax_id_last4:taxId.slice(-4),amount_cents:PREMIUM_PRODUCT.amountCents,status:'creating'}).select('id,public_token').single()
     if(orderError)throw orderError
     orderId=order.id
     const statusUrl=`${baseSite()}/checkout/status?token=${order.public_token}`
+    stage='asaas_checkout_creation'
     const checkout=await asaasRequest('/checkouts',{method:'POST',body:JSON.stringify({billingTypes:['PIX','CREDIT_CARD'],chargeTypes:['DETACHED'],minutesToExpire:60,externalReference:order.id,callback:{successUrl:statusUrl,cancelUrl:statusUrl,expiredUrl:statusUrl},items:[{name:PREMIUM_PRODUCT.name,description:'Acesso por 12 meses, sem renovação automática',quantity:1,value:PREMIUM_PRODUCT.amountCents/100}],customerData:{name,email,cpfCnpj:taxId,phone:String(phone).replace(/\D/g,'')}})})
     if(!checkout?.id)throw new Error('O Asaas não retornou o identificador do checkout.')
+    stage='order_confirmation'
     const {error:updateError}=await db.from('premium_orders').update({status:'pending',asaas_checkout_id:checkout.id,expires_at:new Date(Date.now()+60*60*1000).toISOString(),updated_at:new Date().toISOString()}).eq('id',order.id)
     if(updateError)throw updateError
     return json(res,201,{orderId:order.id,statusToken:order.public_token,checkoutUrl:checkoutPageUrl(checkout.id),amountCents:PREMIUM_PRODUCT.amountCents,environment:'sandbox'})
@@ -44,6 +50,9 @@ export default async function handler(req,res){
     const db=adminClient()
     if(orderId)await db.from('premium_orders').update({status:'failed',updated_at:new Date().toISOString()}).eq('id',orderId)
     if(createdUserId&&!orderId)await db.auth.admin.deleteUser(createdUserId).catch(()=>{})
-    return json(res,error.status||500,{error:error instanceof Error?error.message:'Não foi possível iniciar o checkout.'})
+    const technicalMessage=String(error?.message||error?.details||error?.hint||'Falha não identificada').slice(0,500)
+    console.error('asaas_checkout_failed',{stage,code:error?.code||null,status:error?.status||500,message:technicalMessage})
+    const safeMessages={existing_user_lookup:'Não foi possível validar o e-mail informado.',auth_user_creation:'Não foi possível criar seu acesso. Verifique o e-mail e tente novamente.',membership_lookup:'Não foi possível preparar sua conta profissional.',professional_lookup:'Não foi possível preparar seu perfil profissional.',order_creation:'Não foi possível registrar o pedido.',asaas_checkout_creation:'O Asaas não conseguiu criar o checkout no Sandbox.',order_confirmation:'O checkout foi criado, mas não foi possível confirmar o pedido.'}
+    return json(res,error?.status||500,{error:safeMessages[stage]||'Não foi possível iniciar o checkout.',code:`checkout_${stage}`})
   }
 }
