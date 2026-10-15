@@ -1,4 +1,5 @@
 import {adminClient} from './_lib/supabase-admin.mjs'
+import {createClient} from '@supabase/supabase-js'
 import {allowMethods,json,readJson} from './_lib/http.mjs'
 import {PREMIUM_PRODUCT,asaasRequest,checkoutPageUrl,normalizeTaxId,validPhone,validTaxId} from './_lib/asaas.mjs'
 import adminHandler from './_lib/admin-asaas-handler.mjs'
@@ -34,8 +35,12 @@ export default async function handler(req,res){
       if(authError||!auth.user)throw authError||new Error('Não foi possível criar o acesso seguro.')
       createdUserId=auth.user.id;createdHere=true
     }
+    stage='account_session'
+    const accountDb=createClient(String(process.env.SUPABASE_URL||process.env.VITE_SUPABASE_URL),String(process.env.SUPABASE_ANON_KEY||process.env.VITE_SUPABASE_ANON_KEY),{auth:{persistSession:false,autoRefreshToken:false}})
+    const {error:sessionError}=await accountDb.auth.signInWithPassword({email,password})
+    if(sessionError){sessionError.checkoutStep='account_session';throw sessionError}
     stage='account_bootstrap'
-    const {organizationId,professionalId}=await ensureCheckoutAccount(db,{userId:createdUserId,name,phone})
+    const {organizationId,professionalId}=await ensureCheckoutAccount(accountDb,{userId:createdUserId,name,phone})
     stage='membership_lookup'
     stage='order_creation'
     const {data:order,error:orderError}=await db.from('premium_orders').insert({user_id:createdUserId,organization_id:organizationId,professional_id:professionalId,customer_name:name,customer_email:email,customer_phone:String(phone).replace(/\D/g,''),tax_id_last4:taxId.slice(-4),amount_cents:PREMIUM_PRODUCT.amountCents,status:'creating'}).select('id,public_token').single()
@@ -56,7 +61,7 @@ export default async function handler(req,res){
     const technicalMessage=String(error?.message||error?.details||error?.hint||'Falha não identificada').slice(0,500)
     const failureStep=String(error?.checkoutStep||stage).replace(/[^a-z0-9_]/gi,'').slice(0,80)
     console.error('asaas_checkout_failed',{stage,step:failureStep,code:error?.code||null,status:error?.status||500,message:technicalMessage})
-    const safeMessages={existing_user_lookup:'Não foi possível validar o e-mail informado.',auth_user_creation:'Não foi possível criar seu acesso. Verifique o e-mail e tente novamente.',account_bootstrap:'Não foi possível preparar sua conta profissional.',membership_lookup:'Não foi possível preparar sua conta profissional.',professional_lookup:'Não foi possível preparar seu perfil profissional.',order_creation:'Não foi possível registrar o pedido.',asaas_checkout_creation:'O Asaas não conseguiu criar o checkout no Sandbox.',order_confirmation:'O checkout foi criado, mas não foi possível confirmar o pedido.'}
+    const safeMessages={existing_user_lookup:'Não foi possível validar o e-mail informado.',auth_user_creation:'Não foi possível criar seu acesso. Verifique o e-mail e tente novamente.',account_session:'Não foi possível validar o acesso recém-criado.',account_bootstrap:'Não foi possível preparar sua conta profissional.',membership_lookup:'Não foi possível preparar sua conta profissional.',professional_lookup:'Não foi possível preparar seu perfil profissional.',order_creation:'Não foi possível registrar o pedido.',asaas_checkout_creation:'O Asaas não conseguiu criar o checkout no Sandbox.',order_confirmation:'O checkout foi criado, mas não foi possível confirmar o pedido.'}
     return json(res,error?.status||500,{error:safeMessages[stage]||'Não foi possível iniciar o checkout.',code:`checkout_${failureStep}`})
   }
 }
