@@ -54,22 +54,24 @@ export default async function handler(req,res){
     if(orderId)await db.from('premium_orders').update({status:'failed',updated_at:new Date().toISOString()}).eq('id',orderId)
     if(createdHere&&createdUserId&&!orderId)await db.auth.admin.deleteUser(createdUserId).catch(()=>{})
     const technicalMessage=String(error?.message||error?.details||error?.hint||'Falha não identificada').slice(0,500)
-    console.error('asaas_checkout_failed',{stage,code:error?.code||null,status:error?.status||500,message:technicalMessage})
+    const failureStep=String(error?.checkoutStep||stage).replace(/[^a-z0-9_]/gi,'').slice(0,80)
+    console.error('asaas_checkout_failed',{stage,step:failureStep,code:error?.code||null,status:error?.status||500,message:technicalMessage})
     const safeMessages={existing_user_lookup:'Não foi possível validar o e-mail informado.',auth_user_creation:'Não foi possível criar seu acesso. Verifique o e-mail e tente novamente.',account_bootstrap:'Não foi possível preparar sua conta profissional.',membership_lookup:'Não foi possível preparar sua conta profissional.',professional_lookup:'Não foi possível preparar seu perfil profissional.',order_creation:'Não foi possível registrar o pedido.',asaas_checkout_creation:'O Asaas não conseguiu criar o checkout no Sandbox.',order_confirmation:'O checkout foi criado, mas não foi possível confirmar o pedido.'}
-    return json(res,error?.status||500,{error:safeMessages[stage]||'Não foi possível iniciar o checkout.',code:`checkout_${stage}`})
+    return json(res,error?.status||500,{error:safeMessages[stage]||'Não foi possível iniciar o checkout.',code:`checkout_${failureStep}`})
   }
 }
 
 async function ensureCheckoutAccount(db,{userId,name,phone}){
+  const fail=(error,checkoutStep)=>{if(error){error.checkoutStep=checkoutStep;throw error}}
   let {data:profile,error:profileError}=await db.from('profiles').select('id').eq('id',userId).maybeSingle()
-  if(profileError)throw profileError
-  if(!profile){const created=await db.from('profiles').insert({id:userId,full_name:name,phone}).select('id').single();if(created.error)throw created.error;profile=created.data}
+  fail(profileError,'account_profile_lookup')
+  if(!profile){const created=await db.from('profiles').insert({id:userId,full_name:name,phone}).select('id').single();fail(created.error,'account_profile_creation');profile=created.data}
   let {data:organization,error:organizationError}=await db.from('organizations').select('id').eq('created_by',userId).order('created_at',{ascending:true}).limit(1).maybeSingle()
-  if(organizationError)throw organizationError
-  if(!organization){const created=await db.from('organizations').insert({type:'independent',display_name:name,plan:'marketplace',status:'pending',created_by:userId}).select('id').single();if(created.error)throw created.error;organization=created.data}
-  const member=await db.from('organization_members').upsert({organization_id:organization.id,user_id:userId,role:'owner',active:true},{onConflict:'organization_id,user_id'});if(member.error)throw member.error
+  fail(organizationError,'account_organization_lookup')
+  if(!organization){const created=await db.from('organizations').insert({type:'independent',display_name:name,plan:'marketplace',status:'pending',created_by:userId}).select('id').single();fail(created.error,'account_organization_creation');organization=created.data}
+  const member=await db.from('organization_members').upsert({organization_id:organization.id,user_id:userId,role:'owner',active:true},{onConflict:'organization_id,user_id'});fail(member.error,'account_membership_creation')
   let {data:professional,error:professionalError}=await db.from('professional_profiles').select('id').eq('organization_id',organization.id).eq('user_id',userId).maybeSingle()
-  if(professionalError)throw professionalError
-  if(!professional){const created=await db.from('professional_profiles').insert({organization_id:organization.id,user_id:userId,full_name:name,whatsapp:phone,city:'Não informada',state_code:'SP',marketplace_visible:false}).select('id').single();if(created.error)throw created.error;professional=created.data}
+  fail(professionalError,'account_professional_lookup')
+  if(!professional){const created=await db.from('professional_profiles').insert({organization_id:organization.id,user_id:userId,full_name:name,whatsapp:phone,city:'Não informada',state_code:'SP',marketplace_visible:false}).select('id').single();fail(created.error,'account_professional_creation');professional=created.data}
   return {organizationId:organization.id,professionalId:professional.id}
 }
