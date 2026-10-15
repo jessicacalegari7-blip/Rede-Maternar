@@ -43,7 +43,7 @@ begin
 
   insert into public.organization_members(organization_id,user_id,role,active)
   values(selected_organization_id,target_user_id,'owner',true)
-  on conflict(organization_id,user_id) do update set active=true;
+  on conflict on constraint organization_members_pkey do update set active=true;
 
   select pp.id into selected_professional_id
   from public.professional_profiles pp
