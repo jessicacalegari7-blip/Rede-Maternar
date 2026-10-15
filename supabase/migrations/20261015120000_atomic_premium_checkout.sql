@@ -73,3 +73,35 @@ $$;
 
 revoke all on function public.create_premium_checkout_order(uuid,text,text,text,text,integer) from public,anon,authenticated;
 grant execute on function public.create_premium_checkout_order(uuid,text,text,text,text,integer) to service_role;
+
+create or replace function public.update_premium_checkout_order(
+  target_order_id uuid,
+  target_status text,
+  target_checkout_id text default null,
+  target_expires_at timestamptz default null
+) returns void
+language plpgsql security definer set search_path=''
+as $$
+begin
+  if target_status not in ('pending','failed') then raise exception 'Status de checkout invalido'; end if;
+  if target_status='pending' and nullif(trim(target_checkout_id),'') is null then raise exception 'Checkout Asaas obrigatorio'; end if;
+  update public.premium_orders set
+    status=target_status,
+    asaas_checkout_id=coalesce(target_checkout_id,asaas_checkout_id),
+    expires_at=coalesce(target_expires_at,expires_at),
+    updated_at=now()
+  where id=target_order_id;
+end;
+$$;
+revoke all on function public.update_premium_checkout_order(uuid,text,text,timestamptz) from public,anon,authenticated;
+grant execute on function public.update_premium_checkout_order(uuid,text,text,timestamptz) to service_role;
+
+create or replace function public.get_premium_checkout_status(target_public_token uuid)
+returns table(status text,product_name text,amount_cents integer,paid_at timestamptz,expires_at timestamptz)
+language sql security definer set search_path=''
+as $$
+  select po.status,po.product_name,po.amount_cents,po.paid_at,po.expires_at
+  from public.premium_orders po where po.public_token=target_public_token limit 1
+$$;
+revoke all on function public.get_premium_checkout_status(uuid) from public,anon,authenticated;
+grant execute on function public.get_premium_checkout_status(uuid) to service_role;

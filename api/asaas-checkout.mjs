@@ -12,7 +12,7 @@ export default async function handler(req,res){
   if(req.method==='GET'){
     const token=String(req.query?.token||'')
     if(!/^[0-9a-f-]{36}$/i.test(token))return json(res,400,{error:'Identificador inválido.'})
-    const {data,error}=await adminClient().from('premium_orders').select('status,product_name,amount_cents,paid_at,expires_at').eq('public_token',token).maybeSingle()
+    const {data,error}=await adminClient().rpc('get_premium_checkout_status',{target_public_token:token}).maybeSingle()
     if(error||!data)return json(res,404,{error:'Pedido não encontrado.'})
     return json(res,200,data)
   }
@@ -53,12 +53,12 @@ export default async function handler(req,res){
     }
     if(!checkout?.id)throw new Error('O Asaas não retornou o identificador do checkout.')
     stage='order_confirmation'
-    const {error:updateError}=await db.from('premium_orders').update({status:'pending',asaas_checkout_id:checkout.id,expires_at:new Date(Date.now()+60*60*1000).toISOString(),updated_at:new Date().toISOString()}).eq('id',order.order_id)
+    const {error:updateError}=await db.rpc('update_premium_checkout_order',{target_order_id:order.order_id,target_status:'pending',target_checkout_id:checkout.id,target_expires_at:new Date(Date.now()+60*60*1000).toISOString()})
     if(updateError)throw updateError
     return json(res,201,{orderId:order.order_id,statusToken:order.public_token,checkoutUrl:checkoutPageUrl(checkout.id),amountCents:PREMIUM_PRODUCT.amountCents,environment:'sandbox'})
   }catch(error){
     const db=adminClient()
-    if(orderId)await db.from('premium_orders').update({status:'failed',updated_at:new Date().toISOString()}).eq('id',orderId)
+    if(orderId)await db.rpc('update_premium_checkout_order',{target_order_id:orderId,target_status:'failed',target_checkout_id:null,target_expires_at:null})
     if(createdHere&&createdUserId&&!orderId)await db.auth.admin.deleteUser(createdUserId).catch(()=>{})
     const technicalMessage=String(error?.message||error?.details||error?.hint||'Falha não identificada').slice(0,500)
     const failureStep=String(error?.checkoutStep||stage).replace(/[^a-z0-9_]/gi,'').slice(0,80)
