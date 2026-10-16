@@ -2,12 +2,14 @@ import {adminClient} from './_lib/supabase-admin.mjs'
 import {allowMethods,json,readJson} from './_lib/http.mjs'
 import {PREMIUM_PRODUCT,asaasRequest,checkoutPageUrl,normalizeTaxId,validPhone,validTaxId} from './_lib/asaas.mjs'
 import adminHandler from './_lib/admin-asaas-handler.mjs'
+import {resendPremiumConfirmationEmail} from './_lib/premium-email.mjs'
 
 const emailPattern=/^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const baseSite=()=>String(process.env.PUBLIC_SITE_URL||process.env.PUBLIC_APP_URL||'https://www.materplace.com.br').replace(/\/$/,'')
 
 export default async function handler(req,res){
   if(String(req.query?.admin||'')==='1')return adminHandler(req,res)
+  if(String(req.query?.action||'')==='resend-confirmation')return resendConfirmation(req,res)
   if(!allowMethods(req,res,['GET','POST']))return
   if(req.method==='GET'){
     const token=String(req.query?.token||'')
@@ -69,4 +71,19 @@ export default async function handler(req,res){
     return json(res,error?.status||500,{error:safeMessages[stage]||'Não foi possível iniciar o checkout.',code:`checkout_${failureStep}`,...(databaseReason?{reason:databaseReason}:{}),...(providerDetail?{detail:providerDetail}:{})})
   }
 }
+async function resendConfirmation(req,res){
+  if(!allowMethods(req,res,['POST']))return
+  try{
+    const {token}=await readJson(req)
+    if(!/^[0-9a-f-]{36}$/i.test(String(token||'')))return json(res,400,{error:'Identificador inválido.'})
+    const db=adminClient(),{data:order,error}=await db.from('premium_orders').select('id,user_id,status').eq('public_token',token).maybeSingle()
+    if(error||!order||order.status!=='paid')return json(res,404,{error:'Pagamento confirmado não encontrado.'})
+    const status=await resendPremiumConfirmationEmail(db,{userId:order.user_id,orderId:order.id})
+    if(status==='rate_limited')return json(res,429,{error:'Aguarde alguns minutos antes de solicitar um novo envio.'})
+    if(status==='already_confirmed')return json(res,200,{ok:true,status,message:'Seu e-mail já está confirmado.'})
+    if(status!=='sent')return json(res,503,{error:'Não foi possível enviar agora. Tente novamente em alguns minutos.'})
+    return json(res,200,{ok:true,status,message:'E-mail de confirmação reenviado. Confira também a pasta de spam.'})
+  }catch{return json(res,500,{error:'Não foi possível reenviar a confirmação agora.'})}
+}
+
 

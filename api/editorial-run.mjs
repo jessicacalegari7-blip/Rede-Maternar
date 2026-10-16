@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 import sharp from 'sharp'
 import { adminClient } from './_lib/supabase-admin.mjs'
+import { deliverPremiumActivationEmail } from './_lib/premium-email.mjs'
 
 const OFFICIAL_DOMAINS = ['gov.br', 'who.int', 'paho.org', 'fiocruz.br', 'sbp.com.br', 'sbim.org.br', 'febrasgo.org.br', 'unicef.org']
 const KEYWORDS = ['gestação', 'gravidez', 'gestante', 'maternidade', 'amamentação', 'bebê', 'recém-nascido', 'pediatria', 'parto', 'pós-parto', 'saúde da mulher', 'vacina infantil', 'bronquiolite', 'VSR', 'desenvolvimento infantil', 'primeira infância']
@@ -152,8 +153,9 @@ async function generateImage(prompt, alt, runId) {
 
 async function executeRun() {
   const db = adminClient()
+  const emailQueue = await drainPremiumEmailQueue(db).catch(error => ({ processed: 0, sent: 0, error: String(error.message || error).slice(0, 300) }))
   const { count } = await db.from('editorial_article_audits').select('id', { count: 'exact', head: true }).gte('created_at', new Date(new Date().setHours(0, 0, 0, 0)).toISOString())
-  if ((count || 0) >= Number(process.env.MAX_ARTICLES_PER_DAY || 3)) return { status: 'daily_limit_reached' }
+  if ((count || 0) >= Number(process.env.MAX_ARTICLES_PER_DAY || 3)) return { status: 'daily_limit_reached', emailQueue }
   const { data: run, error: runError } = await db.from('editorial_runs').insert({ status: 'running', metrics: { trigger: 'vercel-cron' } }).select('id').single()
   if (runError) throw runError
   try {
@@ -177,6 +179,18 @@ async function executeRun() {
     await db.from('editorial_runs').update({ status: 'failed', finished_at: new Date().toISOString(), error_message: String(error.message || error).slice(0, 1500) }).eq('id', run.id)
     throw error
   }
+}
+
+async function drainPremiumEmailQueue(db) {
+  const stale = new Date(Date.now() - 10 * 60 * 1000).toISOString()
+  const { data, error } = await db.from('admin_email_notifications').select('payload,status,updated_at').eq('event_type', 'premium_activated').lt('attempts', 5).or(`status.in.(pending,failed),and(status.eq.processing,updated_at.lt.${stale})`).order('created_at').limit(20)
+  if (error) throw error
+  const results = []
+  for (const row of data || []) {
+    const userId = row.payload?.user_id, orderId = row.payload?.order_id
+    if (userId && orderId) results.push(await deliverPremiumActivationEmail(db, { userId, orderId }))
+  }
+  return { processed: results.length, sent: results.filter(item => item === 'sent').length }
 }
 
 export default async function handler(request, response) {
