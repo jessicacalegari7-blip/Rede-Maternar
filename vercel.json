@@ -2,11 +2,13 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
     "api/editorial-run.mjs": { "maxDuration": 300 },
-    "api/professional-research-run.mjs": { "maxDuration": 300 }
+    "api/professional-research-run.mjs": { "maxDuration": 300 },
+    "api/premium-email-retry.mjs": { "maxDuration": 60 }
   },
   "crons": [
     { "path": "/api/editorial-run", "schedule": "0 21 * * *" },
-    { "path": "/api/professional-research-run", "schedule": "30 22 * * *" }
+    { "path": "/api/professional-research-run", "schedule": "30 22 * * *" },
+    { "path": "/api/premium-email-retry", "schedule": "15 20 * * *" }
   ],
   "headers": [
     { "source": "/assets/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] },

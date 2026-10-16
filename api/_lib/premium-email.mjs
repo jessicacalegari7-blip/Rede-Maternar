@@ -1,0 +1,77 @@
+const siteUrl=()=>String(process.env.PUBLIC_SITE_URL||process.env.PUBLIC_APP_URL||'https://www.materplace.com.br').replace(/\/$/,'')
+const sender={name:'MaterPlace — Diretório Profissional',email:'diretorio@materplace.com.br'}
+
+const escapeHtml=value=>String(value||'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]))
+const wait=milliseconds=>new Promise(resolve=>setTimeout(resolve,milliseconds))
+
+async function confirmationLink(db,user){
+  if(user.email_confirmed_at)return `${siteUrl()}/login`
+  const {data,error}=await db.auth.admin.generateLink({type:'magiclink',email:user.email,options:{redirectTo:`${siteUrl()}/profissional/perfil`}})
+  if(error||!data?.properties?.action_link)throw error||new Error('Não foi possível gerar o link seguro de confirmação.')
+  return data.properties.action_link
+}
+
+async function brevoSend(payload){
+  const key=process.env.BREVO_API_KEY?.trim()
+  if(!key)throw new Error('BREVO_API_KEY não configurada.')
+  let lastError
+  for(let attempt=1;attempt<=3;attempt++){
+    try{
+      const response=await fetch('https://api.brevo.com/v3/smtp/email',{method:'POST',headers:{'api-key':key,'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(payload)})
+      if(response.ok){const body=await response.json().catch(()=>({}));return String(body.messageId||'accepted')}
+      const retryable=response.status===429||response.status>=500
+      lastError=new Error(`Brevo respondeu HTTP ${response.status}`)
+      if(!retryable)break
+    }catch(error){lastError=error instanceof Error?error:new Error('Falha de rede no envio pelo Brevo.')}
+    if(attempt<3)await wait(250*2**(attempt-1))
+  }
+  throw lastError||new Error('O Brevo não confirmou o envio.')
+}
+
+function activationHtml(name,link,needsConfirmation){
+  const safeName=escapeHtml(name||'profissional')
+  const safeLink=escapeHtml(link)
+  return `<!doctype html><html lang="pt-BR"><body style="margin:0;background:#f7f3ed;font-family:Arial,sans-serif;color:#0d2b23"><div style="max-width:620px;margin:0 auto;padding:32px 20px"><div style="background:#fff;border:1px solid #e8dfd2;border-radius:18px;padding:32px"><p style="color:#9b7518;font-weight:700">MATERPLACE</p><h1 style="font-size:25px">Pagamento aprovado</h1><p>Olá, ${safeName}.</p><p>Confirmamos o pagamento de <strong>R$ 59,99</strong> e a contratação do <strong>Perfil Premium MaterPlace por 12 meses</strong>.</p><p>Seu acesso à plataforma está liberado. ${needsConfirmation?'Confirme seu endereço de e-mail no botão abaixo e, em seguida, complete seu cadastro profissional.':'Você já pode completar seu cadastro profissional.'}</p><p style="margin:28px 0"><a href="${safeLink}" style="display:inline-block;background:#0d2b23;color:#fff;text-decoration:none;padding:14px 22px;border-radius:10px;font-weight:700">Completar meu cadastro</a></p><p>O perfil será publicado automaticamente somente após a conclusão e validação dos dados obrigatórios. Dados incompletos ou inconsistentes permanecem privados para revisão.</p><p style="font-size:13px;color:#56745f">Por segurança, a MaterPlace nunca envia senhas por e-mail.</p></div></div></body></html>`
+}
+
+export async function deliverPremiumActivationEmail(db,{userId,orderId}){
+  if(!userId||!orderId)return 'not_applicable'
+  const {data:claim,error:claimError}=await db.rpc('claim_premium_activation_email',{target_user_id:userId,target_order_id:orderId})
+  if(claimError)throw claimError
+  if(!claim?.should_send)return claim?.status==='sent'?'already_sent':'already_processing'
+  try{
+    const {data:userData,error:userError}=await db.auth.admin.getUserById(userId)
+    const user=userData?.user
+    if(userError||!user?.email)throw userError||new Error('Destinatário não encontrado.')
+    const link=await confirmationLink(db,user)
+    const providerId=await brevoSend({sender,to:[{email:user.email,name:user.user_metadata?.full_name||undefined}],subject:'Pagamento aprovado — Seu Perfil Premium MaterPlace está liberado!',htmlContent:activationHtml(user.user_metadata?.full_name,link,!user.email_confirmed_at)})
+    const {error:finishError}=await db.rpc('finish_premium_activation_email',{target_notification_id:claim.notification_id,target_status:'sent',target_last_error:null,target_provider_id:providerId})
+    if(finishError)throw finishError
+    return 'sent'
+  }catch(error){
+    const message=String(error instanceof Error?error.message:error).slice(0,500)
+    await db.rpc('finish_premium_activation_email',{target_notification_id:claim.notification_id,target_status:'failed',target_last_error:message,target_provider_id:null})
+    return 'failed'
+  }
+}
+
+export async function resendPremiumConfirmationEmail(db,{userId,orderId}){
+  let claim
+  try{
+    const {data:userData,error:userError}=await db.auth.admin.getUserById(userId)
+    const user=userData?.user
+    if(userError||!user?.email)throw userError||new Error('Destinatário não encontrado.')
+    if(user.email_confirmed_at)return 'already_confirmed'
+    const {data,error}=await db.rpc('claim_premium_confirmation_resend',{target_user_id:userId,target_order_id:orderId})
+    claim=data
+    if(error)throw error
+    if(!claim?.should_send)return claim?.status==='rate_limited'?'rate_limited':'already_processing'
+    const link=await confirmationLink(db,user)
+    const providerId=await brevoSend({sender,to:[{email:user.email,name:user.user_metadata?.full_name||undefined}],subject:'Confirme seu e-mail — MaterPlace',htmlContent:activationHtml(user.user_metadata?.full_name,link,true)})
+    await db.rpc('finish_premium_activation_email',{target_notification_id:claim.notification_id,target_status:'sent',target_last_error:null,target_provider_id:providerId})
+    return 'sent'
+  }catch(sendError){
+    if(claim?.notification_id)await db.rpc('finish_premium_activation_email',{target_notification_id:claim.notification_id,target_status:'failed',target_last_error:String(sendError instanceof Error?sendError.message:sendError).slice(0,500),target_provider_id:null})
+    return 'failed'
+  }
+}

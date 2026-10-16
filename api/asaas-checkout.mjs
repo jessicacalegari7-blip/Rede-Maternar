@@ -30,7 +30,7 @@ export default async function handler(req,res){
       createdUserId=existing[0].user_id
     }else{
       stage='auth_user_creation'
-      const {data:auth,error:authError}=await db.auth.admin.createUser({email,password,email_confirm:true,user_metadata:{account_type:'professional',full_name:name,phone,plan:'marketplace',organization_name:name,city:'Não informada',state_code:'SP',signup_source:'asaas_premium'}})
+      const {data:auth,error:authError}=await db.auth.admin.createUser({email,password,email_confirm:false,user_metadata:{account_type:'professional',full_name:name,phone,plan:'marketplace',organization_name:name,city:'Não informada',state_code:'SP',signup_source:'asaas_premium'}})
       if(authError||!auth.user)throw authError||new Error('Não foi possível criar o acesso seguro.')
       createdUserId=auth.user.id;createdHere=true
     }
