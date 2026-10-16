@@ -1,6 +1,6 @@
 import {requirePlatformAdmin} from './supabase-admin.mjs'
 import {allowMethods,json,readJson} from './http.mjs'
-import {eventFields,processableEventType} from './asaas.mjs'
+import {eventFields} from './asaas.mjs'
 
 export default async function handler(req,res){
   if(!allowMethods(req,res,['GET','POST']))return
@@ -11,13 +11,13 @@ export default async function handler(req,res){
       const {data:event,error:eventError}=await db.from('asaas_webhook_events').select('*').eq('id',String(eventId||'')).single()
       if(eventError||!event)return json(res,404,{error:'Evento não encontrado.'})
       const fields=eventFields(event.payload)
-      let orderId=fields.externalReference
-      if(!orderId&&fields.checkoutId){const {data}=await db.from('premium_orders').select('id').eq('asaas_checkout_id',fields.checkoutId).maybeSingle();orderId=data?.id}
-      if(!orderId)throw new Error('Evento sem pedido correspondente.')
-      await db.from('asaas_webhook_events').update({processing_status:'processing',attempts:event.attempts+1,last_error:null}).eq('id',event.id)
-      const {data:result,error:rpcError}=await db.rpc('apply_asaas_order_event',{target_order_id:orderId,target_event_id:event.id,target_event_type:processableEventType(fields.eventType),target_checkout_id:fields.checkoutId,target_payment_id:fields.paymentId,target_amount_cents:fields.amountCents})
-      if(rpcError){await db.from('asaas_webhook_events').update({processing_status:'error',last_error:rpcError.message}).eq('id',event.id);throw rpcError}
-      await db.from('asaas_webhook_events').update({processing_status:'processed',processed_at:new Date().toISOString()}).eq('id',event.id)
+      const {data:result,error:rpcError}=await db.rpc('process_asaas_webhook_event',{
+        target_event_id:event.id,target_event_type:fields.eventType,target_checkout_id:fields.checkoutId,
+        target_payment_id:fields.paymentId,target_external_reference:fields.externalReference,
+        target_amount_cents:fields.amountCents,target_payload:event.payload,
+      })
+      if(rpcError)throw rpcError
+      if(!result?.ok)throw new Error('Evento não pôde ser reprocessado com segurança.')
       return json(res,200,{ok:true,result})
     }
     const search=String(req.query?.search||'').trim(),status=String(req.query?.status||'').trim()
