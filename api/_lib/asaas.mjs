@@ -41,7 +41,11 @@ export function eventFields(payload){
   const checkout=payload?.checkout||{}
   const payment=payload?.payment||checkout?.payment||{}
   const externalReference=checkout.externalReference||payment.externalReference||payload?.externalReference||null
-  const rawValue=checkout.value??payment.value??checkout.totalValue??payload?.value
+  const itemsTotal=Array.isArray(checkout.items)?checkout.items.reduce((total,item)=>{
+    const value=Number(item?.value),quantity=Number(item?.quantity??1)
+    return Number.isFinite(value)&&Number.isFinite(quantity)?total+(value*quantity):total
+  },0):null
+  const rawValue=checkout.value??payment.value??checkout.totalValue??payload?.value??itemsTotal
   return {
     eventId:String(payload?.id||''),eventType:String(payload?.event||''),checkoutId:checkout.id||payload?.checkoutId||null,
     paymentId:payment.id||checkout.paymentId||null,externalReference:externalReference?String(externalReference):null,
