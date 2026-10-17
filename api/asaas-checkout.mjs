@@ -76,7 +76,7 @@ async function resendConfirmation(req,res){
   try{
     const {token}=await readJson(req)
     if(!/^[0-9a-f-]{36}$/i.test(String(token||'')))return json(res,400,{error:'Identificador inválido.'})
-    const db=adminClient(),{data:order,error}=await db.from('premium_orders').select('id,user_id,status').eq('public_token',token).maybeSingle()
+    const db=adminClient(),{data:order,error}=await db.rpc('get_premium_order_for_confirmation',{target_public_token:token}).maybeSingle()
     if(error||!order||order.status!=='paid')return json(res,404,{error:'Pagamento confirmado não encontrado.'})
     const status=await resendPremiumConfirmationEmail(db,{userId:order.user_id,orderId:order.id})
     if(status==='rate_limited')return json(res,429,{error:'Aguarde alguns minutos antes de solicitar um novo envio.'})
