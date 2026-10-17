@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {deliverPremiumActivationEmail} from '../api/_lib/premium-email.mjs'
+import {createPremiumInviteToken,deliverPremiumActivationEmail,hashPremiumInviteToken} from '../api/_lib/premium-email.mjs'
 
 const originalFetch=global.fetch
 const originalKey=process.env.BREVO_API_KEY
@@ -31,4 +31,12 @@ test('falha temporária faz três tentativas e permanece na fila',async()=>{
   process.env.BREVO_API_KEY='test-key';let requests=0;global.fetch=async()=>{requests++;return {ok:false,status:503,json:async()=>({})}}
   const db=database(),status=await deliverPremiumActivationEmail(db,{userId:'user-1',orderId:'order-1'})
   assert.equal(status,'failed');assert.equal(requests,3);assert.equal(db.calls.at(-1)[1].target_status,'failed')
+})
+
+test('convite usa token aleatório forte e armazena apenas hash estável',()=>{
+  const first=createPremiumInviteToken(),second=createPremiumInviteToken()
+  assert.ok(first.length>=43)
+  assert.notEqual(first,second)
+  assert.match(hashPremiumInviteToken(first),/^[0-9a-f]{64}$/)
+  assert.equal(hashPremiumInviteToken(first),hashPremiumInviteToken(first))
 })

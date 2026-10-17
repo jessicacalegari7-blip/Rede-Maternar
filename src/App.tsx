@@ -22,6 +22,7 @@ import { PortalArticlePage } from './pages/public/PortalArticle'
 import { CookieConsent } from './components/CookieConsent'
 import { EcosystemDetail, EcosystemListing } from './pages/public/Ecosystem'
 import { CheckoutStatus } from './pages/public/CheckoutStatus'
+import { PremiumInvite } from './pages/public/PremiumInvite'
 
 const ProfessionalPatients=lazy(()=>import('./pages/professional/Patients').then(m=>({default:m.ProfessionalPatients})))
 const ProfessionalProfilePage=lazy(()=>import('./pages/professional/Profile').then(m=>({default:m.ProfessionalProfilePage})))
@@ -75,6 +76,7 @@ export default function App() {
     <Route path="/recuperar-senha" element={<RecoverPassword />} />
     <Route path="/cadastro-profissional" element={<ProfessionalSignup />} />
     <Route path="/checkout/status" element={<CheckoutStatus />} />
+    <Route path="/convite-premium" element={<PremiumInvite />} />
     <Route path="/privacidade" element={<PrivacyPolicy />} />
     <Route path="/termos" element={<TermsOfUse />} />
     <Route path="/lgpd" element={<LgpdPage />} />

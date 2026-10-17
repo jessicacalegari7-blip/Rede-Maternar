@@ -20,7 +20,8 @@ export function Login() {
       const user = await login(email, password)
       const requestedPath = (location.state as { from?: string } | null)?.from
       const home = user.role === 'patient' ? '/paciente' : user.role === 'professional' ? '/profissional' : '/admin'
-      nav(requestedPath?.startsWith(home) ? requestedPath : home, { replace: true })
+      const safeInviteReturn = requestedPath?.startsWith('/convite-premium?token=')
+      nav(safeInviteReturn || requestedPath?.startsWith(home) ? requestedPath! : home, { replace: true })
     } catch (loginError) {
       setError(loginError instanceof Error ? loginError.message : 'Não foi possível entrar.')
     } finally {
@@ -51,10 +52,10 @@ export function Login() {
         </button>
 
         <div className="auth-signup-callout">
-          <strong>Ainda não possui cadastro?</strong>
-          <p className="muted">Crie o perfil da sua clínica ou o seu cadastro como profissional independente.</p>
+          <strong>Quero fazer parte da MaterPlace</strong>
+          <p className="muted">Contrate o Perfil Premium por R$ 59,99 ao ano. Você criará seu acesso após a confirmação do pagamento.</p>
           <Link className="btn btn-secondary" to="/cadastro-profissional" style={{ width: '100%' }}>
-            Criar cadastro
+            Contratar Perfil Premium
           </Link>
         </div>
 

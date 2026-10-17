@@ -28,6 +28,30 @@ async function brevoSend(payload){
   throw lastError||new Error('O Brevo não confirmou o envio.')
 }
 
+export const createPremiumInviteToken=()=>randomBytes(32).toString('base64url')
+export const hashPremiumInviteToken=token=>createHash('sha256').update(String(token)).digest('hex')
+
+function inviteHtml(name,link){
+  return `<!doctype html><html lang="pt-BR"><body style="margin:0;background:#f7f3ed;font-family:Arial,sans-serif;color:#0d2b23"><div style="max-width:620px;margin:0 auto;padding:32px 20px"><div style="background:#fff;border:1px solid #e8dfd2;border-radius:18px;padding:32px"><p style="color:#9b7518;font-weight:700">MATERPLACE</p><h1 style="font-size:25px">Pagamento aprovado</h1><p>Olá, ${escapeHtml(name||'profissional')}.</p><p>Seu pagamento de <strong>R$ 59,99</strong> foi aprovado e seu <strong>Perfil Premium MaterPlace está contratado por 12 meses</strong>.</p><p>Agora falta apenas criar seu acesso e completar as informações do seu perfil profissional.</p><p style="margin:28px 0"><a href="${escapeHtml(link)}" style="display:inline-block;background:#0d2b23;color:#fff;text-decoration:none;padding:14px 22px;border-radius:10px;font-weight:700">Criar meu acesso</a></p><p>O perfil será publicado no diretório após o preenchimento e a validação dos dados obrigatórios.</p><p style="font-size:13px;color:#56745f">Confira também a pasta de spam. A MaterPlace nunca envia senhas por e-mail.</p></div></div></body></html>`
+}
+
+export async function deliverPremiumAccessInvite(db,{orderId,force=false}){
+  if(!orderId)return 'not_applicable'
+  const token=createPremiumInviteToken(),tokenHash=hashPremiumInviteToken(token)
+  const {data:invite,error}=await db.rpc('issue_premium_access_invite',{target_order_id:orderId,target_token_hash:tokenHash,target_force:force})
+  if(error)throw error
+  if(!invite?.should_send)return invite?.status||'already_sent'
+  try{
+    const link=`${siteUrl()}/convite-premium?token=${encodeURIComponent(token)}`
+    const providerId=await brevoSend({sender,to:[{email:invite.email,name:invite.name||undefined}],subject:'Pagamento aprovado — Crie seu acesso à MaterPlace',htmlContent:inviteHtml(invite.name,link)})
+    await db.rpc('finish_premium_access_invite_email',{target_invite_id:invite.invite_id,target_status:'sent',target_last_error:null,target_provider_id:providerId})
+    return 'sent'
+  }catch(error){
+    await db.rpc('finish_premium_access_invite_email',{target_invite_id:invite.invite_id,target_status:'failed',target_last_error:String(error instanceof Error?error.message:error).slice(0,500),target_provider_id:null})
+    return 'failed'
+  }
+}
+
 function activationHtml(name,link,needsConfirmation){
   const safeName=escapeHtml(name||'profissional')
   const safeLink=escapeHtml(link)
@@ -75,3 +99,5 @@ export async function resendPremiumConfirmationEmail(db,{userId,orderId}){
     return 'failed'
   }
 }
+import {createHash,randomBytes} from 'node:crypto'
+

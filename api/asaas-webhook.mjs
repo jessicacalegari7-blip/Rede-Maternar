@@ -1,7 +1,7 @@
 import {adminClient} from './_lib/supabase-admin.mjs'
 import {allowMethods,json,readJson} from './_lib/http.mjs'
 import {eventFields,safeEqual} from './_lib/asaas.mjs'
-import {deliverPremiumActivationEmail} from './_lib/premium-email.mjs'
+import {deliverPremiumAccessInvite,deliverPremiumActivationEmail} from './_lib/premium-email.mjs'
 
 export default async function handler(req,res){
   if(!allowMethods(req,res,['POST']))return
@@ -25,7 +25,9 @@ export default async function handler(req,res){
       const {data:order}=await query.maybeSingle()
       if(order)emailTarget={...result,order_id:order.id,user_id:order.user_id}
     }
-    if(fields.eventType==='CHECKOUT_PAID')emailStatus=await deliverPremiumActivationEmail(db,emailTarget).catch(()=>'failed_to_record')
+    if(fields.eventType==='CHECKOUT_PAID')emailStatus=emailTarget?.user_id
+      ?await deliverPremiumActivationEmail(db,emailTarget).catch(()=>'failed_to_record')
+      :await deliverPremiumAccessInvite(db,{orderId:emailTarget?.order_id}).catch(()=>'failed_to_record')
     return json(res,200,{ok:true,status:result?.status,duplicate:Boolean(result?.duplicate),ignored:Boolean(result?.ignored),emailStatus})
   }catch{
     return json(res,500,{error:'Falha temporária ao processar evento.'})
