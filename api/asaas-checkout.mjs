@@ -2,7 +2,7 @@ import {adminClient} from './_lib/supabase-admin.mjs'
 import {allowMethods,json,readJson} from './_lib/http.mjs'
 import {PREMIUM_PRODUCT,asaasRequest,checkoutPageUrl,normalizeTaxId,validPhone,validTaxId} from './_lib/asaas.mjs'
 import adminHandler from './_lib/admin-asaas-handler.mjs'
-import {resendPremiumConfirmationEmail} from './_lib/premium-email.mjs'
+import {deliverPremiumActivationEmail,resendPremiumConfirmationEmail} from './_lib/premium-email.mjs'
 
 const emailPattern=/^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const baseSite=()=>String(process.env.PUBLIC_SITE_URL||process.env.PUBLIC_APP_URL||'https://www.materplace.com.br').replace(/\/$/,'')
@@ -80,7 +80,12 @@ async function resendConfirmation(req,res){
     if(error||!order||order.status!=='paid')return json(res,404,{error:'Pagamento confirmado não encontrado.'})
     const status=await resendPremiumConfirmationEmail(db,{userId:order.user_id,orderId:order.id})
     if(status==='rate_limited')return json(res,429,{error:'Aguarde alguns minutos antes de solicitar um novo envio.'})
-    if(status==='already_confirmed')return json(res,200,{ok:true,status,message:'Seu e-mail já está confirmado.'})
+    if(status==='already_confirmed'){
+      const activationStatus=await deliverPremiumActivationEmail(db,{userId:order.user_id,orderId:order.id})
+      if(activationStatus==='sent'||activationStatus==='already_sent')return json(res,200,{ok:true,status:activationStatus,message:activationStatus==='sent'?'E-mail de ativação enviado. Confira também a pasta de spam.':'O e-mail de ativação já foi enviado.'})
+      if(activationStatus==='already_processing')return json(res,202,{ok:true,status:activationStatus,message:'O e-mail de ativação já está sendo processado.'})
+      return json(res,503,{error:'Não foi possível enviar agora. Tente novamente em alguns minutos.'})
+    }
     if(status!=='sent')return json(res,503,{error:'Não foi possível enviar agora. Tente novamente em alguns minutos.'})
     return json(res,200,{ok:true,status,message:'E-mail de confirmação reenviado. Confira também a pasta de spam.'})
   }catch{return json(res,500,{error:'Não foi possível reenviar a confirmação agora.'})}
