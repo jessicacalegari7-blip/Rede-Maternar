@@ -24,7 +24,10 @@ export default async function handler(req,res){
   try{
     if(String(process.env.ASAAS_ENVIRONMENT||'sandbox').toLowerCase()==='production')throw Object.assign(new Error('Checkout real ainda não foi autorizado.'),{status:503})
     const body=await readJson(req),name=String(body.name||'').trim(),email=String(body.email||'').trim().toLowerCase(),phone=String(body.phone||'').trim(),taxId=normalizeTaxId(body.taxId)
-    if(name.length<3||!emailPattern.test(email)||!validPhone(phone)||!validTaxId(taxId))return json(res,400,{error:'Informe nome, e-mail, telefone e CPF/CNPJ válidos.'})
+    if(name.length<3)return json(res,400,{error:'Informe o nome profissional completo.'})
+    if(!emailPattern.test(email))return json(res,400,{error:'Informe um e-mail válido.'})
+    if(!validPhone(phone))return json(res,400,{error:'Informe um telefone ou WhatsApp válido, com DDD.'})
+    if(!validTaxId(taxId))return json(res,400,{error:'O CPF ou CNPJ informado é inválido. Confira os números e tente novamente.'})
     const attribution=Object.fromEntries(Object.entries(body.attribution||{}).filter(([key,value])=>/^(utm_(source|medium|campaign|term|content)|campaign_id)$/.test(key)&&typeof value==='string').map(([key,value])=>[key,value.trim().slice(0,160)]))
     const db=adminClient()
     stage='order_creation'
@@ -39,7 +42,7 @@ export default async function handler(req,res){
       throw Object.assign(new Error('A chave Pix do Sandbox ainda não está ativa. Aguarde a ativação no Asaas e tente novamente.'),{status:503})
     }
     stage='asaas_checkout_creation'
-    const checkoutPayload={billingTypes:['PIX','CREDIT_CARD'],chargeTypes:['DETACHED'],minutesToExpire:60,externalReference:order.order_id,customerData:{name,email,phone:phone.replace(/\D/g,''),cpfCnpj:taxId},callback:{successUrl:statusUrl,cancelUrl:statusUrl,expiredUrl:statusUrl},items:[{name:PREMIUM_PRODUCT.name,description:'Acesso por 12 meses, sem renovação automática',quantity:1,value:PREMIUM_PRODUCT.amountCents/100}]}
+    const checkoutPayload={billingTypes:['PIX','CREDIT_CARD'],chargeTypes:['DETACHED'],minutesToExpire:60,externalReference:order.order_id,callback:{successUrl:statusUrl,cancelUrl:statusUrl,expiredUrl:statusUrl},items:[{name:PREMIUM_PRODUCT.name,description:'Acesso por 12 meses, sem renovação automática',quantity:1,value:PREMIUM_PRODUCT.amountCents/100}]}
     const checkout=await asaasRequest('/checkouts',{method:'POST',body:JSON.stringify(checkoutPayload)})
     if(!checkout?.id)throw new Error('O Asaas não retornou o identificador do checkout.')
     stage='order_confirmation'

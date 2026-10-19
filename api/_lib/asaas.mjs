@@ -25,7 +25,31 @@ export async function asaasRequest(path,options={}){
 }
 
 export function normalizeTaxId(value){return String(value||'').replace(/\D/g,'')}
-export function validTaxId(value){const digits=normalizeTaxId(value);return digits.length===11||digits.length===14}
+function validCpf(digits){
+  if(!/^\d{11}$/.test(digits)||/^(\d)\1{10}$/.test(digits))return false
+  for(let position=9;position<11;position++){
+    let sum=0
+    for(let index=0;index<position;index++)sum+=Number(digits[index])*(position+1-index)
+    let verifier=(sum*10)%11
+    if(verifier===10)verifier=0
+    if(verifier!==Number(digits[position]))return false
+  }
+  return true
+}
+function validCnpj(digits){
+  if(!/^\d{14}$/.test(digits)||/^(\d)\1{13}$/.test(digits))return false
+  const calculate=length=>{
+    let sum=0,weight=length-7
+    for(let index=0;index<length;index++){
+      sum+=Number(digits[index])*weight--
+      if(weight===1)weight=9
+    }
+    const remainder=sum%11
+    return remainder<2?0:11-remainder
+  }
+  return calculate(12)===Number(digits[12])&&calculate(13)===Number(digits[13])
+}
+export function validTaxId(value){const digits=normalizeTaxId(value);return validCpf(digits)||validCnpj(digits)}
 export function validPhone(value){return String(value||'').replace(/\D/g,'').length>=10}
 export function hasActivePixKey(payload){return Array.isArray(payload?.data)&&payload.data.some(key=>key?.status==='ACTIVE')}
 export function hasPendingPixKey(payload){return Array.isArray(payload?.data)&&payload.data.some(key=>key?.status==='AWAITING_ACTIVATION')}
