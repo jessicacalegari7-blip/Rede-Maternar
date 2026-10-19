@@ -1,6 +1,7 @@
 import {requirePlatformAdmin} from './supabase-admin.mjs'
 import {allowMethods,json,readJson} from './http.mjs'
 import {eventFields} from './asaas.mjs'
+import {deliverPremiumAccessInvite} from './premium-email.mjs'
 
 export default async function handler(req,res){
   if(!allowMethods(req,res,['GET','POST']))return
@@ -18,7 +19,14 @@ export default async function handler(req,res){
       })
       if(rpcError)throw rpcError
       if(!result?.ok)throw new Error('Evento não pôde ser reprocessado com segurança.')
-      return json(res,200,{ok:true,result})
+      let emailStatus=null
+      if(fields.eventType==='CHECKOUT_PAID'){
+        const {data:order,error:orderError}=await db.from('premium_orders').select('id,user_id').eq('asaas_checkout_id',fields.checkoutId).maybeSingle()
+        if(orderError)throw orderError
+        emailStatus=await deliverPremiumAccessInvite(db,{orderId:order?.id})
+        if(emailStatus==='failed')throw new Error('Evento processado, mas o envio do convite permanece pendente.')
+      }
+      return json(res,200,{ok:true,result,emailStatus})
     }
     const search=String(req.query?.search||'').trim(),status=String(req.query?.status||'').trim()
     let query=db.from('premium_orders').select('id,user_id,organization_id,professional_id,customer_name,customer_email,product_name,amount_cents,status,asaas_checkout_id,asaas_payment_id,paid_at,expires_at,created_at')

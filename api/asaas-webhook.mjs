@@ -1,7 +1,7 @@
 import {adminClient} from './_lib/supabase-admin.mjs'
 import {allowMethods,json,readJson} from './_lib/http.mjs'
 import {eventFields,safeEqual} from './_lib/asaas.mjs'
-import {deliverPremiumAccessInvite,deliverPremiumActivationEmail} from './_lib/premium-email.mjs'
+import {deliverPremiumAccessInvite} from './_lib/premium-email.mjs'
 
 export default async function handler(req,res){
   if(!allowMethods(req,res,['POST']))return
@@ -25,11 +25,14 @@ export default async function handler(req,res){
       const {data:order}=await query.maybeSingle()
       if(order)emailTarget={...result,order_id:order.id,user_id:order.user_id}
     }
-    if(fields.eventType==='CHECKOUT_PAID')emailStatus=emailTarget?.user_id
-      ?await deliverPremiumActivationEmail(db,emailTarget).catch(()=>'failed_to_record')
-      :await deliverPremiumAccessInvite(db,{orderId:emailTarget?.order_id}).catch(()=>'failed_to_record')
+    if(fields.eventType==='CHECKOUT_PAID')emailStatus=await deliverPremiumAccessInvite(db,{orderId:emailTarget?.order_id}).catch(()=>'failed_to_record')
+    if(emailStatus==='failed'||emailStatus==='failed_to_record'){
+      console.error('asaas_webhook_delivery_failed',{eventType:fields.eventType,eventIdSuffix:fields.eventId.slice(-12),emailStatus})
+      return json(res,503,{error:'Evento persistido; comunicação pendente para nova tentativa.',code:'email_delivery_pending'})
+    }
     return json(res,200,{ok:true,status:result?.status,duplicate:Boolean(result?.duplicate),ignored:Boolean(result?.ignored),emailStatus})
-  }catch{
+  }catch(error){
+    console.error('asaas_webhook_processing_failed',{code:error?.code||null,message:String(error?.message||'Falha não identificada').slice(0,300)})
     return json(res,500,{error:'Falha temporária ao processar evento.'})
   }
 }

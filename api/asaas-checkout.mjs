@@ -68,10 +68,6 @@ async function resendInvite(req,res){
     if(!/^[0-9a-f-]{36}$/i.test(String(token||'')))return json(res,400,{error:'Identificador inválido.'})
     const db=adminClient(),{data:order,error}=await db.rpc('get_premium_order_for_confirmation',{target_public_token:token}).maybeSingle()
     if(error||!order||order.status!=='paid')return json(res,404,{error:'Pagamento confirmado não encontrado.'})
-    if(order.user_id){
-      const activationStatus=await deliverPremiumActivationEmail(db,{userId:order.user_id,orderId:order.id})
-      return json(res,200,{ok:true,status:activationStatus,message:activationStatus==='sent'?'E-mail de ativação enviado.':'O e-mail de ativação já foi enviado.'})
-    }
     const status=await deliverPremiumAccessInvite(db,{orderId:order.id,force:true})
     if(status==='rate_limited')return json(res,429,{error:'Aguarde alguns minutos antes de solicitar um novo envio.'})
     if(status!=='sent')return json(res,503,{error:'Não foi possível enviar agora. Tente novamente em alguns minutos.'})
