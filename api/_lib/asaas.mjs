@@ -27,6 +27,8 @@ export async function asaasRequest(path,options={}){
 export function normalizeTaxId(value){return String(value||'').replace(/\D/g,'')}
 export function validTaxId(value){const digits=normalizeTaxId(value);return digits.length===11||digits.length===14}
 export function validPhone(value){return String(value||'').replace(/\D/g,'').length>=10}
+export function hasActivePixKey(payload){return Array.isArray(payload?.data)&&payload.data.some(key=>key?.status==='ACTIVE')}
+export function hasPendingPixKey(payload){return Array.isArray(payload?.data)&&payload.data.some(key=>key?.status==='AWAITING_ACTIVATION')}
 export function safeEqual(left,right){
   const a=Buffer.from(String(left||'')),b=Buffer.from(String(right||''))
   if(a.length!==b.length)return false

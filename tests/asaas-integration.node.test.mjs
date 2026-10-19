@@ -1,10 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {PREMIUM_PRODUCT,asaasBaseUrl,asaasRequest,eventFields,normalizeTaxId,processableEventType,safeEqual,validPhone,validTaxId} from '../api/_lib/asaas.mjs'
+import {PREMIUM_PRODUCT,asaasBaseUrl,asaasRequest,eventFields,hasActivePixKey,hasPendingPixKey,normalizeTaxId,processableEventType,safeEqual,validPhone,validTaxId} from '../api/_lib/asaas.mjs'
 
 test('preço permanece exclusivamente no backend',()=>assert.deepEqual(PREMIUM_PRODUCT,{code:'premium_annual',name:'Perfil Premium MaterPlace',amountCents:5999,validityMonths:12}))
 test('Sandbox é o ambiente padrão',()=>{delete process.env.ASAAS_ENVIRONMENT;assert.match(asaasBaseUrl(),/api-sandbox/);process.env.ASAAS_ENVIRONMENT='production';assert.equal(asaasBaseUrl(),'https://api.asaas.com/v3');delete process.env.ASAAS_ENVIRONMENT})
 test('normaliza e valida dados mínimos',()=>{assert.equal(normalizeTaxId('123.456.789-01'),'12345678901');assert.equal(validTaxId('12.345.678/0001-90'),true);assert.equal(validPhone('(11) 99999-9999'),true)})
+test('só considera Pix pronto quando existe chave ACTIVE',()=>{assert.equal(hasActivePixKey({data:[{status:'AWAITING_ACTIVATION'}]}),false);assert.equal(hasPendingPixKey({data:[{status:'AWAITING_ACTIVATION'}]}),true);assert.equal(hasActivePixKey({data:[{status:'ACTIVE'}]}),true)})
 test('extrai correlação e valor do webhook',()=>assert.deepEqual(eventFields({id:'evt_1',event:'CHECKOUT_PAID',checkout:{id:'chk_1',externalReference:'order-1',value:59.99},payment:{id:'pay_1'}}),{eventId:'evt_1',eventType:'CHECKOUT_PAID',checkoutId:'chk_1',paymentId:'pay_1',externalReference:'order-1',amountCents:5999}))
 test('calcula o total do checkout pela lista de itens enviada pelo Asaas',()=>assert.equal(eventFields({id:'evt_2',event:'CHECKOUT_PAID',checkout:{items:[{quantity:1,value:59.99}]}}).amountCents,5999))
 test('compara token de webhook com segurança',()=>{assert.equal(safeEqual('token-seguro','token-seguro'),true);assert.equal(safeEqual('token-seguro','token'),false)})

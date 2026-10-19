@@ -1,6 +1,6 @@
 import {adminClient} from './_lib/supabase-admin.mjs'
 import {allowMethods,json,readJson} from './_lib/http.mjs'
-import {PREMIUM_PRODUCT,asaasRequest,checkoutPageUrl,normalizeTaxId,validPhone,validTaxId} from './_lib/asaas.mjs'
+import {PREMIUM_PRODUCT,asaasRequest,checkoutPageUrl,hasActivePixKey,hasPendingPixKey,normalizeTaxId,validPhone,validTaxId} from './_lib/asaas.mjs'
 import adminHandler from './_lib/admin-asaas-handler.mjs'
 import {deliverPremiumAccessInvite,deliverPremiumActivationEmail,hashPremiumInviteToken,resendPremiumConfirmationEmail} from './_lib/premium-email.mjs'
 
@@ -32,18 +32,15 @@ export default async function handler(req,res){
     if(orderError)throw orderError
     orderId=order.order_id
     const statusUrl=`${baseSite()}/checkout/status?token=${order.public_token}`
-    stage='asaas_checkout_creation'
-    const checkoutPayload={billingTypes:['PIX','CREDIT_CARD'],chargeTypes:['DETACHED'],minutesToExpire:60,externalReference:order.order_id,callback:{successUrl:statusUrl,cancelUrl:statusUrl,expiredUrl:statusUrl},items:[{name:PREMIUM_PRODUCT.name,description:'Acesso por 12 meses, sem renovação automática',quantity:1,value:PREMIUM_PRODUCT.amountCents/100}]}
-    let checkout
-    try{checkout=await asaasRequest('/checkouts',{method:'POST',body:JSON.stringify(checkoutPayload)})}
-    catch(error){
-      if(String(process.env.ASAAS_ENVIRONMENT||'sandbox').toLowerCase()!=='sandbox'||!/chave pix/i.test(String(error?.message||'')))throw error
-      stage='asaas_pix_key_setup'
-      const keys=await asaasRequest('/pix/addressKeys?limit=10')
-      if(!Array.isArray(keys?.data)||!keys.data.some(key=>['ACTIVE','AWAITING_ACTIVATION'].includes(key?.status)))await asaasRequest('/pix/addressKeys',{method:'POST',body:JSON.stringify({type:'EVP'})})
-      stage='asaas_checkout_creation'
-      checkout=await asaasRequest('/checkouts',{method:'POST',body:JSON.stringify(checkoutPayload)})
+    stage='asaas_pix_key_check'
+    const pixKeys=await asaasRequest('/pix/addressKeys?limit=100')
+    if(!hasActivePixKey(pixKeys)){
+      if(!hasPendingPixKey(pixKeys))await asaasRequest('/pix/addressKeys',{method:'POST',body:JSON.stringify({type:'EVP'})})
+      throw Object.assign(new Error('A chave Pix do Sandbox ainda não está ativa. Aguarde a ativação no Asaas e tente novamente.'),{status:503})
     }
+    stage='asaas_checkout_creation'
+    const checkoutPayload={billingTypes:['PIX','CREDIT_CARD'],chargeTypes:['DETACHED'],minutesToExpire:60,externalReference:order.order_id,customerData:{name,email,phone:phone.replace(/\D/g,''),cpfCnpj:taxId},callback:{successUrl:statusUrl,cancelUrl:statusUrl,expiredUrl:statusUrl},items:[{name:PREMIUM_PRODUCT.name,description:'Acesso por 12 meses, sem renovação automática',quantity:1,value:PREMIUM_PRODUCT.amountCents/100}]}
+    const checkout=await asaasRequest('/checkouts',{method:'POST',body:JSON.stringify(checkoutPayload)})
     if(!checkout?.id)throw new Error('O Asaas não retornou o identificador do checkout.')
     stage='order_confirmation'
     const {error:updateError}=await db.rpc('update_premium_checkout_order',{target_order_id:order.order_id,target_status:'pending',target_checkout_id:checkout.id,target_expires_at:new Date(Date.now()+60*60*1000).toISOString()})
@@ -55,7 +52,7 @@ export default async function handler(req,res){
     const technicalMessage=String(error?.message||error?.details||error?.hint||'Falha não identificada').slice(0,500)
     const failureStep=String(error?.checkoutStep||stage).replace(/[^a-z0-9_]/gi,'').slice(0,80)
     console.error('asaas_checkout_failed',{stage,step:failureStep,code:error?.code||null,status:error?.status||500,message:technicalMessage})
-    const safeMessages={existing_user_lookup:'Não foi possível validar o e-mail informado.',auth_user_creation:'Não foi possível criar seu acesso. Verifique o e-mail e tente novamente.',order_creation:'Não foi possível registrar o pedido.',asaas_pix_key_setup:'A conta Sandbox do Asaas ainda não está habilitada para receber Pix.',asaas_checkout_creation:'O Asaas não conseguiu criar o checkout no Sandbox.',order_confirmation:'O checkout foi criado, mas não foi possível confirmar o pedido.'}
+    const safeMessages={existing_user_lookup:'Não foi possível validar o e-mail informado.',auth_user_creation:'Não foi possível criar seu acesso. Verifique o e-mail e tente novamente.',order_creation:'Não foi possível registrar o pedido.',asaas_pix_key_check:'A chave Pix do Sandbox ainda não está ativa. Verifique a área Pix do Asaas.',asaas_checkout_creation:'O Asaas não conseguiu criar o checkout no Sandbox.',order_confirmation:'O checkout foi criado, mas não foi possível confirmar o pedido.'}
     const databaseReason=/^(?:PGRST\d+|\d{5})$/.test(String(error?.code||''))?String(error.code):undefined
     const providerDetail=stage.startsWith('asaas_')?technicalMessage.replace(/[\r\n]+/g,' ').slice(0,180):undefined
     return json(res,error?.status||500,{error:safeMessages[stage]||'Não foi possível iniciar o checkout.',code:`checkout_${failureStep}`,...(databaseReason?{reason:databaseReason}:{}),...(providerDetail?{detail:providerDetail}:{})})
