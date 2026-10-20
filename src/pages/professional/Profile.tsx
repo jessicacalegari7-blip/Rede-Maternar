@@ -80,13 +80,13 @@ export function ProfessionalProfilePage() {
       setServiceLocations(persistedLocations.map(location=>({...location,clientKey:location.id||crypto.randomUUID()})))
       await saveProfessionalSpecialties(profile.id,selectedSpecialties,specialtyLimit)
       const first=persistedLocations[0],nextProfile=first?{...profile,address_line:first.address_line,address_number:first.address_number,address_complement:first.address_complement,neighborhood:first.neighborhood,city:first.city,state_code:first.state_code,postal_code:first.postal_code}:profile
-      const completed=Boolean(nextProfile.full_name?.trim()&&nextProfile.whatsapp?.trim()&&nextProfile.professional_registration?.trim()&&selectedSpecialties.length&&persistedLocations.length)
+      const completed=Boolean(nextProfile.full_name?.trim()&&nextProfile.whatsapp?.trim()&&selectedSpecialties.length&&persistedLocations.length)
       await updateMyProfessionalProfile(profile.id,{...nextProfile,profile_completed:completed})
       const [saved,confirmedSpecialties]=await Promise.all([getMyProfessionalProfile(),getProfessionalSpecialtyEditor(profile.id)])
       if(!saved)throw new Error('O banco não confirmou o perfil profissional.')
       setProfile(saved);setSelectedSpecialties(confirmedSpecialties.selected)
       setLocationNotice({message:'Perfil, especialidades e localidade de atendimento salvos com sucesso.',error:false})
-      const missing=[!saved.professional_registration?.trim()?'registro profissional':'',!confirmedSpecialties.selected.length?'ao menos uma especialidade':'',!persistedLocations.length?'local de atendimento':''].filter(Boolean)
+      const missing=[!saved.full_name?.trim()?'nome':'',!saved.whatsapp?.trim()?'telefone':'',!confirmedSpecialties.selected.length?'ao menos uma especialidade':'',!persistedLocations.length?'local de atendimento':''].filter(Boolean)
       setNotice(saved.marketplace_visible?'Perfil salvo e publicado no diretório com sucesso.':missing.length?`Alterações salvas. Para publicar no diretório, preencha ${missing.join(', ')}.`:'Alterações salvas. A publicação está sendo validada automaticamente.')
     }
     catch(e){
@@ -123,7 +123,7 @@ export function ProfessionalProfilePage() {
       <div className="field grid-span-2"><label>Vídeos do consultório (máximo 3)</label><input type="file" multiple accept="video/mp4,video/webm,video/quicktime" onChange={e=>void upload('video',e.target.files)}/><small>{(profile.office_video_urls||[]).length} de 3 vídeo(s)</small><div className="profile-media-editor">{(profile.office_video_urls||[]).map((url,index)=><div key={url}><video controls preload="metadata" src={url}/><button type="button" className="btn btn-danger" onClick={()=>set('office_video_urls',profile.office_video_urls.filter(item=>item!==url))}><Trash2 size={15}/> Remover vídeo {index+1}</button></div>)}</div></div>
       <div className="field grid-span-2"><label>Fotos do consultório (máximo 5)</label><input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={e=>void upload('gallery',e.target.files)}/><small>{(profile.gallery_urls||[]).length} de 5 foto(s)</small><div className="profile-media-editor">{(profile.gallery_urls||[]).map((url,index)=><div key={url}><img src={url} alt={`Foto do consultório ${index+1}`} width="320" height="200"/><button type="button" className="btn btn-danger" onClick={()=>set('gallery_urls',profile.gallery_urls.filter(item=>item!==url))}><Trash2 size={15}/> Remover foto {index+1}</button></div>)}</div></div>
       <label className="switch-card"><span><strong>Aceita atendimento online</strong></span><input type="checkbox" checked={profile.accepts_online} onChange={e=>set('accepts_online',e.target.checked)}/></label>
-      <div className="switch-card"><span><strong>Publicação no Marketplace</strong><small>{profile.marketplace_visible?'Perfil validado e publicado automaticamente.':'Perfil privado até concluir e validar e-mail, registro profissional, especialidades e local de atendimento.'}</small></span></div>
+      <div className="switch-card"><span><strong>Publicação no Marketplace</strong><small>{profile.marketplace_visible?'Perfil validado e publicado automaticamente.':'Perfil privado até informar nome, telefone, especialidade e local de atendimento.'}</small></span></div>
       {locationNotice&&<div className={`grid-span-2 alert ${locationNotice.error?'alert-error':'alert-success'}`} role="status">{locationNotice.message}</div>}
       <button type="button" className="btn btn-primary grid-span-2" disabled={saving} onClick={()=>void save()}><Save size={17}/>{saving?'Salvando…':'Salvar alterações'}</button>
     </section>
