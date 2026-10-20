@@ -824,12 +824,10 @@ export async function saveProfessionalSpecialties(professionalId:string,names:st
     : {data:[],error:null}
   if(lookupError) throw new Error(lookupError.message)
   if((rows??[]).length!==unique.length) throw new Error('Uma das especialidades selecionadas não está disponível.')
-  const {error:deleteError}=await db.from('professional_specialties').delete().eq('professional_id',professionalId)
-  if(deleteError) throw new Error(deleteError.message)
-  if(rows?.length){
-    const {error:insertError}=await db.from('professional_specialties').insert(rows.map((row,index)=>({professional_id:professionalId,specialty_id:row.id,is_primary:index===0})))
-    if(insertError) throw new Error(insertError.message)
-  }
+  const {error}=await db.rpc('save_professional_specialties_v2',{target_professional_id:professionalId,specialty_names:unique})
+  if(error) throw new Error(error.message)
+  const confirmed=await getProfessionalSpecialtyEditor(professionalId)
+  if(confirmed.selected.length!==unique.length||unique.some(name=>!confirmed.selected.includes(name))) throw new Error('O banco não confirmou todas as especialidades selecionadas.')
 }
 
 export async function getMarketplaceProfessional(id:string) {

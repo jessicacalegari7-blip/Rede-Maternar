@@ -43,9 +43,13 @@ export function ProfessionalProfilePage() {
     setNotice('Enviando arquivo...')
     try{
       const urls=await Promise.all(Array.from(files).map(file=>uploadMarketplaceMedia(file,kind)))
-      if(kind==='profile')set('profile_image_url',urls[0]); if(kind==='cover')set('cover_image_url',urls[0]); if(kind==='gallery')set('gallery_urls',[...(profile.gallery_urls||[]),...urls])
-      if(kind==='video')set('office_video_urls',[...(profile.office_video_urls||[]),...urls])
-      setNotice('Arquivo enviado. Clique em Salvar perfil real para confirmar.')
+      const mediaChanges:Partial<RealProfessionalProfile>=kind==='profile'?{profile_image_url:urls[0]}
+        :kind==='cover'?{cover_image_url:urls[0]}
+        :kind==='gallery'?{gallery_urls:[...(profile.gallery_urls||[]),...urls]}
+        :{office_video_urls:[...(profile.office_video_urls||[]),...urls]}
+      await updateMyProfessionalProfile(profile.id,mediaChanges)
+      setProfile(current=>current?{...current,...mediaChanges}:current)
+      setNotice('Arquivo enviado e salvo com sucesso.')
     }catch(e){setNotice(e instanceof Error?e.message:'Erro ao enviar imagem.')}
   }
   const formatPostalCode=(value:string|null|undefined)=>String(value||'').replace(/\D/g,'').slice(0,8).replace(/^(\d{5})(\d)/,'$1-$2')
@@ -71,20 +75,24 @@ export function ProfessionalProfilePage() {
   }
   const save=async()=>{
     setNotice('Salvando e confirmando no banco de dados...');setLocationNotice(null);setSaving(true)
-    let persistedLocations:ProfessionalServiceLocation[]|null=null
     try{
-      persistedLocations=await saveProfessionalServiceLocations(profile.id,serviceLocations)
+      const persistedLocations=await saveProfessionalServiceLocations(profile.id,serviceLocations)
       setServiceLocations(persistedLocations.map(location=>({...location,clientKey:location.id||crypto.randomUUID()})))
-      setLocationNotice({message:'Localidade de atendimento salva com sucesso.',error:false})
       await saveProfessionalSpecialties(profile.id,selectedSpecialties,specialtyLimit)
       const first=persistedLocations[0],nextProfile=first?{...profile,address_line:first.address_line,address_number:first.address_number,address_complement:first.address_complement,neighborhood:first.neighborhood,city:first.city,state_code:first.state_code,postal_code:first.postal_code}:profile
-      const saved=await updateMyProfessionalProfile(profile.id,{...nextProfile,profile_completed:Boolean(nextProfile.full_name&&nextProfile.whatsapp&&selectedSpecialties.length&&persistedLocations.length)})
-      setProfile(saved);setNotice('Perfil e localidades salvos com sucesso.')
+      const completed=Boolean(nextProfile.full_name?.trim()&&nextProfile.whatsapp?.trim()&&nextProfile.professional_registration?.trim()&&selectedSpecialties.length&&persistedLocations.length)
+      await updateMyProfessionalProfile(profile.id,{...nextProfile,profile_completed:completed})
+      const [saved,confirmedSpecialties]=await Promise.all([getMyProfessionalProfile(),getProfessionalSpecialtyEditor(profile.id)])
+      if(!saved)throw new Error('O banco não confirmou o perfil profissional.')
+      setProfile(saved);setSelectedSpecialties(confirmedSpecialties.selected)
+      setLocationNotice({message:'Perfil, especialidades e localidade de atendimento salvos com sucesso.',error:false})
+      const missing=[!saved.professional_registration?.trim()?'registro profissional':'',!confirmedSpecialties.selected.length?'ao menos uma especialidade':'',!persistedLocations.length?'local de atendimento':''].filter(Boolean)
+      setNotice(saved.marketplace_visible?'Perfil salvo e publicado no diretório com sucesso.':missing.length?`Alterações salvas. Para publicar no diretório, preencha ${missing.join(', ')}.`:'Alterações salvas. A publicação está sendo validada automaticamente.')
     }
     catch(e){
       const message=e instanceof Error?e.message:'Não foi possível salvar as alterações. Tente novamente.'
-      if(!persistedLocations)setLocationNotice({message:`Não foi possível salvar a localidade de atendimento. ${message}`,error:true})
-      setNotice(persistedLocations?`A localidade foi salva, mas outro dado do perfil apresentou erro: ${message}`:message)
+      setLocationNotice({message:`Não foi possível confirmar todas as alterações. ${message}`,error:true})
+      setNotice(`O perfil não foi salvo por completo: ${message}`)
       console.error('Falha ao salvar perfil do Marketplace',e)
     }
     finally{setSaving(false)}
