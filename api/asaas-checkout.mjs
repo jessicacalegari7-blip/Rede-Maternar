@@ -11,6 +11,7 @@ export default async function handler(req,res){
   if(String(req.query?.admin||'')==='1')return adminHandler(req,res)
   if(String(req.query?.action||'')==='resend-confirmation')return resendConfirmation(req,res)
   if(String(req.query?.action||'')==='resend-invite')return resendInvite(req,res)
+  if(String(req.query?.action||'')==='recover-invite')return recoverInvite(req,res)
   if(String(req.query?.action||'')==='invite')return premiumInvite(req,res)
   if(!allowMethods(req,res,['GET','POST']))return
   if(req.method==='GET'){
@@ -67,12 +68,28 @@ async function resendInvite(req,res){
     const {token}=await readJson(req)
     if(!/^[0-9a-f-]{36}$/i.test(String(token||'')))return json(res,400,{error:'Identificador inválido.'})
     const db=adminClient(),{data:order,error}=await db.rpc('get_premium_order_for_confirmation',{target_public_token:token}).maybeSingle()
-    if(error||!order||order.status!=='paid')return json(res,404,{error:'Pagamento confirmado não encontrado.'})
+    if(error||!order||order.status!=='paid')return json(res,200,{ok:true,message:'Se a contratação estiver confirmada e o convite ainda for necessário, enviaremos uma nova mensagem.'})
     const status=await deliverPremiumAccessInvite(db,{orderId:order.id,force:true})
     if(status==='rate_limited')return json(res,429,{error:'Aguarde alguns minutos antes de solicitar um novo envio.'})
-    if(status!=='sent')return json(res,503,{error:'Não foi possível enviar agora. Tente novamente em alguns minutos.'})
-    return json(res,200,{ok:true,status,message:'Convite reenviado. Confira também a pasta de spam.'})
+    if(status==='used')return json(res,200,{ok:true,message:'Se a contratação estiver confirmada e o convite ainda for necessário, enviaremos uma nova mensagem. Se você já criou a conta, entre ou recupere sua senha.'})
+    if(status!=='sent')return json(res,503,{error:'Não foi possível processar a solicitação agora. Tente novamente em alguns minutos.'})
+    return json(res,200,{ok:true,status,message:'Solicitação processada. Confira a caixa de entrada e também as abas Promoções, Atualizações e Spam.'})
   }catch{return json(res,500,{error:'Não foi possível reenviar o convite agora.'})}
+}
+
+async function recoverInvite(req,res){
+  if(!allowMethods(req,res,['POST']))return
+  const neutral='Se a contratação estiver confirmada e o convite ainda for necessário, enviaremos uma nova mensagem. Confira também Promoções, Atualizações e Spam.'
+  try{
+    const body=await readJson(req),email=String(body.email||'').trim().toLowerCase(),phone=String(body.phone||'').replace(/\D/g,''),taxId=normalizeTaxId(body.taxId)
+    if(!emailPattern.test(email)||!validPhone(phone)||!validTaxId(taxId))return json(res,200,{ok:true,message:neutral})
+    const db=adminClient(),{data:order}=await db.from('premium_orders').select('id,status').eq('customer_email',email).eq('customer_phone',phone).eq('tax_id_last4',taxId.slice(-4)).eq('product_code',PREMIUM_PRODUCT.code).order('created_at',{ascending:false}).limit(1).maybeSingle()
+    if(order?.status==='paid')await deliverPremiumAccessInvite(db,{orderId:order.id,force:true})
+    return json(res,200,{ok:true,message:neutral})
+  }catch(error){
+    console.error('premium_invite_recovery_failed',{code:error?.code||null})
+    return json(res,200,{ok:true,message:neutral})
+  }
 }
 async function premiumInvite(req,res){
   const db=adminClient()

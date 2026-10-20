@@ -1,3 +1,5 @@
+import {createHash,randomBytes} from 'node:crypto'
+
 const siteUrl=()=>String(process.env.PUBLIC_SITE_URL||process.env.PUBLIC_APP_URL||'https://www.materplace.com.br').replace(/\/$/,'')
 const sender={name:'MaterPlace — Diretório Profissional',email:'diretorio@materplace.com.br'}
 
@@ -32,7 +34,11 @@ export const createPremiumInviteToken=()=>randomBytes(32).toString('base64url')
 export const hashPremiumInviteToken=token=>createHash('sha256').update(String(token)).digest('hex')
 
 function inviteHtml(name,link){
-  return `<!doctype html><html lang="pt-BR"><body style="margin:0;background:#f7f3ed;font-family:Arial,sans-serif;color:#0d2b23"><div style="max-width:620px;margin:0 auto;padding:32px 20px"><div style="background:#fff;border:1px solid #e8dfd2;border-radius:18px;padding:32px"><p style="color:#9b7518;font-weight:700">MATERPLACE</p><h1 style="font-size:25px">Pagamento aprovado</h1><p>Olá, ${escapeHtml(name||'profissional')}.</p><p>Seu pagamento de <strong>R$ 59,99</strong> foi aprovado e seu <strong>Perfil Premium MaterPlace está contratado por 12 meses</strong>.</p><p>Agora falta apenas criar seu acesso e completar as informações do seu perfil profissional.</p><p style="margin:28px 0"><a href="${escapeHtml(link)}" style="display:inline-block;background:#0d2b23;color:#fff;text-decoration:none;padding:14px 22px;border-radius:10px;font-weight:700">Criar meu acesso</a></p><p>O perfil será publicado no diretório após o preenchimento e a validação dos dados obrigatórios.</p><p style="font-size:13px;color:#56745f">Confira também a pasta de spam. A MaterPlace nunca envia senhas por e-mail.</p></div></div></body></html>`
+  return `<!doctype html><html lang="pt-BR"><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#f7f3ed;font-family:Arial,sans-serif;color:#0d2b23"><div style="max-width:620px;margin:0 auto;padding:32px 20px"><div style="background:#fff;border:1px solid #e8dfd2;border-radius:18px;padding:32px"><p style="margin:0 0 22px;color:#9b7518;font-weight:700;letter-spacing:.08em">MATERPLACE</p><h1 style="margin:0 0 22px;font-size:25px;line-height:1.25">Pagamento confirmado!</h1><p>Olá, ${escapeHtml(name||'profissional')}.</p><p>Recebemos a confirmação do pagamento de <strong>R$ 59,99</strong> referente à contratação do Perfil Premium MaterPlace, com validade de <strong>12 meses</strong>.</p><p><strong>Seu acesso está liberado!</strong></p><p>Para começar, clique no botão abaixo e crie sua senha de acesso à plataforma.</p><p style="margin:28px 0"><a href="${escapeHtml(link)}" style="display:inline-block;background:#0d2b23;color:#fff;text-decoration:none;padding:14px 22px;border-radius:10px;font-weight:700">CRIAR MINHA SENHA</a></p><p>Após criar sua senha, você poderá acessar o painel e preencher as informações do seu perfil profissional.</p><p>Seu perfil será publicado no diretório após o preenchimento completo e a validação dos dados obrigatórios.</p><p style="font-size:13px;color:#56745f">Se você não realizou essa contratação, entre em contato com a MaterPlace.</p><p style="margin-top:24px">Atenciosamente,<br><strong>Equipe MaterPlace</strong></p></div></div></body></html>`
+}
+
+function inviteText(name,link){
+  return `Pagamento confirmado!\n\nOlá, ${String(name||'profissional')}.\n\nRecebemos a confirmação do pagamento de R$ 59,99 referente à contratação do Perfil Premium MaterPlace, com validade de 12 meses.\n\nSeu acesso está liberado!\n\nCrie sua senha de acesso à plataforma pelo link seguro abaixo:\n${link}\n\nApós criar sua senha, você poderá acessar o painel e preencher as informações do seu perfil profissional. Seu perfil será publicado no diretório após o preenchimento completo e a validação dos dados obrigatórios.\n\nSe você não realizou essa contratação, entre em contato com a MaterPlace.\n\nAtenciosamente,\nEquipe MaterPlace`
 }
 
 export async function deliverPremiumAccessInvite(db,{orderId,force=false}){
@@ -43,7 +49,7 @@ export async function deliverPremiumAccessInvite(db,{orderId,force=false}){
   if(!invite?.should_send)return invite?.status||'already_sent'
   try{
     const link=`${siteUrl()}/convite-premium?token=${encodeURIComponent(token)}`
-    const providerId=await brevoSend({sender,to:[{email:invite.email,name:invite.name||undefined}],subject:'Pagamento aprovado — Crie seu acesso à MaterPlace',htmlContent:inviteHtml(invite.name,link)})
+    const providerId=await brevoSend({sender,to:[{email:invite.email,name:invite.name||undefined}],subject:'MaterPlace | Pagamento confirmado — Crie sua senha',htmlContent:inviteHtml(invite.name,link),textContent:inviteText(invite.name,link)})
     await db.rpc('finish_premium_access_invite_email',{target_invite_id:invite.invite_id,target_status:'sent',target_last_error:null,target_provider_id:providerId})
     return 'sent'
   }catch(error){
@@ -99,5 +105,4 @@ export async function resendPremiumConfirmationEmail(db,{userId,orderId}){
     return 'failed'
   }
 }
-import {createHash,randomBytes} from 'node:crypto'
 

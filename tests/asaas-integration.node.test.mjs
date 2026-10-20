@@ -26,3 +26,9 @@ test('migration ignora somente eventos não financeiros de checkout substituído
   assert.match(migration,/CHECKOUT_CANCELED','CHECKOUT_EXPIRED/)
   assert.match(migration,/checkout_mismatch/)
 })
+test('recuperação de convite exige dados correlacionados e mantém resposta neutra',async()=>{
+  const checkout=await readFile(new URL('../api/asaas-checkout.mjs',import.meta.url),'utf8')
+  assert.match(checkout,/recover-invite/)
+  assert.match(checkout,/customer_email',email.*customer_phone',phone.*tax_id_last4',taxId\.slice\(-4\)/s)
+  assert.match(checkout,/Se a contratação estiver confirmada e o convite ainda for necessário/)
+})

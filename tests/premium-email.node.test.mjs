@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {createPremiumInviteToken,deliverPremiumActivationEmail,hashPremiumInviteToken} from '../api/_lib/premium-email.mjs'
+import {createPremiumInviteToken,deliverPremiumAccessInvite,deliverPremiumActivationEmail,hashPremiumInviteToken} from '../api/_lib/premium-email.mjs'
 
 const originalFetch=global.fetch
 const originalKey=process.env.BREVO_API_KEY
@@ -39,4 +39,19 @@ test('convite usa token aleatório forte e armazena apenas hash estável',()=>{
   assert.notEqual(first,second)
   assert.match(hashPremiumInviteToken(first),/^[0-9a-f]{64}$/)
   assert.equal(hashPremiumInviteToken(first),hashPremiumInviteToken(first))
+})
+
+test('convite transacional inclui assunto, HTML leve e versão em texto simples',async()=>{
+  process.env.BREVO_API_KEY='test-key'
+  let payload
+  global.fetch=async(_url,options)=>{payload=JSON.parse(options.body);return {ok:true,json:async()=>({messageId:'brevo-invite-1'})}}
+  const calls=[],db={rpc:async(name,args)=>{calls.push([name,args]);if(name==='issue_premium_access_invite')return {data:{should_send:true,status:'processing',invite_id:'invite-1',email:'teste@example.com',name:'Profissional Teste'}};return {data:null}}}
+  const status=await deliverPremiumAccessInvite(db,{orderId:'order-1'})
+  assert.equal(status,'sent')
+  assert.equal(payload.sender.email,'diretorio@materplace.com.br')
+  assert.equal(payload.subject,'MaterPlace | Pagamento confirmado — Crie sua senha')
+  assert.match(payload.htmlContent,/Pagamento confirmado!/)
+  assert.match(payload.htmlContent,/CRIAR MINHA SENHA/)
+  assert.match(payload.textContent,/Crie sua senha de acesso/)
+  assert.equal(calls.at(-1)[1].target_provider_id,'brevo-invite-1')
 })
