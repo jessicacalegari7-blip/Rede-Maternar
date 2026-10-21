@@ -14,7 +14,7 @@ test.after(()=>{global.fetch=originalFetch;if(originalKey===undefined)delete pro
 
 test('envia pelo Brevo e só registra sent após confirmação HTTP',async()=>{
   process.env.BREVO_API_KEY='test-key'
-  global.fetch=async(_url,options)=>{assert.equal(options.headers['api-key'],'test-key');return {ok:true,json:async()=>({messageId:'brevo-1'})}}
+  global.fetch=async(_url,options)=>{assert.equal(options.headers['api-key'],'test-key');const payload=JSON.parse(options.body);assert.match(payload.htmlContent,/WhatsApp do suporte/);assert.match(payload.textContent,/\(11\) 93007-8750/);assert.match(payload.textContent,/wa\.me\/5511930078750/);return {ok:true,json:async()=>({messageId:'brevo-1'})}}
   const db=database(),status=await deliverPremiumActivationEmail(db,{userId:'user-1',orderId:'order-1'})
   assert.equal(status,'sent')
   assert.equal(db.calls.at(-1)[0],'finish_premium_activation_email')
@@ -52,6 +52,10 @@ test('convite transacional inclui assunto, HTML leve e versão em texto simples'
   assert.equal(payload.subject,'MaterPlace | Pagamento confirmado — Crie sua senha')
   assert.match(payload.htmlContent,/Pagamento confirmado!/)
   assert.match(payload.htmlContent,/CRIAR MINHA SENHA/)
+  assert.match(payload.htmlContent,/WhatsApp do suporte/)
+  assert.match(payload.htmlContent,/wa\.me\/5511930078750/)
   assert.match(payload.textContent,/Crie sua senha de acesso/)
+  assert.match(payload.textContent,/\(11\) 93007-8750/)
+  assert.match(payload.textContent,/Ol%C3%A1%21%20Preciso%20de%20ajuda/)
   assert.equal(calls.at(-1)[1].target_provider_id,'brevo-invite-1')
 })
