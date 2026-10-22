@@ -8,12 +8,13 @@ export default async function handler(req,res){
   try{
     const {db}=await requirePlatformAdmin(req)
     if(req.method==='POST'){
-      const {eventId}=await readJson(req)
-      const {data:event,error:eventError}=await db.from('asaas_webhook_events').select('*').eq('id',String(eventId||'')).single()
+      const {eventId,eventEnvironment}=await readJson(req)
+      if(!['sandbox','production'].includes(eventEnvironment))return json(res,400,{error:'Ambiente do evento inválido.'})
+      const {data:event,error:eventError}=await db.from('asaas_webhook_events').select('*').eq('asaas_environment',eventEnvironment).eq('id',String(eventId||'')).single()
       if(eventError||!event)return json(res,404,{error:'Evento não encontrado.'})
       const fields=eventFields(event.payload)
       const {data:result,error:rpcError}=await db.rpc('process_asaas_webhook_event',{
-        target_event_id:event.id,target_event_type:fields.eventType,target_checkout_id:fields.checkoutId,
+        target_asaas_environment:eventEnvironment,target_event_id:event.id,target_event_type:fields.eventType,target_checkout_id:fields.checkoutId,
         target_payment_id:fields.paymentId,target_external_reference:fields.externalReference,
         target_amount_cents:fields.amountCents,target_payload:event.payload,
       })
@@ -21,7 +22,7 @@ export default async function handler(req,res){
       if(!result?.ok)throw new Error('Evento não pôde ser reprocessado com segurança.')
       let emailStatus=null
       if(fields.eventType==='CHECKOUT_PAID'){
-        const {data:order,error:orderError}=await db.from('premium_orders').select('id,user_id').eq('asaas_checkout_id',fields.checkoutId).maybeSingle()
+        const {data:order,error:orderError}=await db.from('premium_orders').select('id,user_id').eq('asaas_environment',eventEnvironment).eq('asaas_checkout_id',fields.checkoutId).maybeSingle()
         if(orderError)throw orderError
         emailStatus=await deliverPremiumAccessInvite(db,{orderId:order?.id})
         if(emailStatus==='failed')throw new Error('Evento processado, mas o envio do convite permanece pendente.')
@@ -29,11 +30,11 @@ export default async function handler(req,res){
       return json(res,200,{ok:true,result,emailStatus})
     }
     const search=String(req.query?.search||'').trim(),status=String(req.query?.status||'').trim()
-    let query=db.from('premium_orders').select('id,user_id,organization_id,professional_id,customer_name,customer_email,product_name,amount_cents,status,asaas_checkout_id,asaas_payment_id,paid_at,expires_at,created_at')
+    let query=db.from('premium_orders').select('id,user_id,organization_id,professional_id,customer_name,customer_email,product_name,amount_cents,status,asaas_environment,asaas_checkout_id,asaas_payment_id,paid_at,expires_at,created_at')
       .order('created_at',{ascending:false}).limit(200)
     if(status)query=query.eq('status',status)
     if(search){const clean=search.replace(/[%_,]/g,'');query=query.or(`id.eq.${/^[0-9a-f-]{36}$/i.test(clean)?clean:'00000000-0000-0000-0000-000000000000'},asaas_checkout_id.ilike.%${clean}%,customer_name.ilike.%${clean}%,customer_email.ilike.%${clean}%`)}
-    const [{data:orders,error:ordersError},{data:events,error:eventsError}]=await Promise.all([query,db.from('asaas_webhook_events').select('id,event_type,checkout_id,processing_status,attempts,last_error,received_at,processed_at').in('processing_status',['received','error']).order('received_at',{ascending:false}).limit(100)])
+    const [{data:orders,error:ordersError},{data:events,error:eventsError}]=await Promise.all([query,db.from('asaas_webhook_events').select('id,asaas_environment,event_type,checkout_id,processing_status,attempts,last_error,received_at,processed_at').in('processing_status',['received','error']).order('received_at',{ascending:false}).limit(100)])
     if(ordersError)throw ordersError;if(eventsError)throw eventsError
     const rows=orders||[],now=Date.now(),summary={sales:rows.length,grossCents:rows.filter(x=>x.status==='paid').reduce((sum,x)=>sum+x.amount_cents,0),pending:rows.filter(x=>x.status==='pending').length,paid:rows.filter(x=>x.status==='paid').length,refunded:rows.filter(x=>['refunded','chargeback'].includes(x.status)).length,expiring:0,failures:(events||[]).filter(x=>x.processing_status==='error').length}
     const {count:activeContracts}=await db.from('premium_contracts').select('id',{head:true,count:'exact'}).eq('status','active')

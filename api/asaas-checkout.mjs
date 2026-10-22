@@ -32,7 +32,7 @@ export default async function handler(req,res){
     const attribution=Object.fromEntries(Object.entries(body.attribution||{}).filter(([key,value])=>/^(utm_(source|medium|campaign|term|content)|campaign_id)$/.test(key)&&typeof value==='string').map(([key,value])=>[key,value.trim().slice(0,160)]))
     const db=adminClient()
     stage='order_creation'
-    const {data:order,error:orderError}=await db.rpc('create_premium_guest_order',{target_name:name,target_email:email,target_phone:phone,target_tax_id_last4:taxId.slice(-4),target_amount_cents:PREMIUM_PRODUCT.amountCents,target_attribution:attribution}).single()
+    const {data:order,error:orderError}=await db.rpc('create_premium_guest_order',{target_asaas_environment:'sandbox',target_name:name,target_email:email,target_phone:phone,target_tax_id_last4:taxId.slice(-4),target_amount_cents:PREMIUM_PRODUCT.amountCents,target_attribution:attribution}).single()
     if(orderError)throw orderError
     orderId=order.order_id
     const statusUrl=`${baseSite()}/checkout/status?token=${order.public_token}`

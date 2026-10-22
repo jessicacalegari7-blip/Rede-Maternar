@@ -2,20 +2,27 @@ import {timingSafeEqual} from 'node:crypto'
 
 export const PREMIUM_PRODUCT={code:'premium_annual',name:'Perfil Premium MaterPlace',amountCents:5999,validityMonths:12}
 
-export function asaasBaseUrl(){
-  return String(process.env.ASAAS_ENVIRONMENT||'sandbox').toLowerCase()==='production'
+export function normalizeAsaasEnvironment(value=process.env.ASAAS_ENVIRONMENT){
+  return String(value||'sandbox').toLowerCase()==='production'?'production':'sandbox'
+}
+
+export function asaasBaseUrl(environment=normalizeAsaasEnvironment()){
+  return environment==='production'
     ?'https://api.asaas.com/v3':'https://api-sandbox.asaas.com/v3'
 }
 
-export function checkoutPageUrl(id){
-  const host=String(process.env.ASAAS_ENVIRONMENT||'sandbox').toLowerCase()==='production'?'https://asaas.com':'https://sandbox.asaas.com'
+export function checkoutPageUrl(id,environment=normalizeAsaasEnvironment()){
+  const host=environment==='production'?'https://asaas.com':'https://sandbox.asaas.com'
   return `${host}/checkoutSession/show?id=${encodeURIComponent(id)}`
 }
 
-export async function asaasRequest(path,options={}){
-  const key=process.env.ASAAS_API_KEY?.trim()
+export async function asaasRequest(path,options={},environment=normalizeAsaasEnvironment()){
+  if(environment==='production'&&process.env.ASAAS_PRODUCTION_CHARGES_ENABLED!=='true'){
+    throw Object.assign(new Error('Operações financeiras reais ainda não foram autorizadas.'),{status:503})
+  }
+  const key=(environment==='production'?process.env.ASAAS_PRODUCTION_API_KEY:process.env.ASAAS_API_KEY)?.trim()
   if(!key)throw Object.assign(new Error('Integração Asaas ainda não configurada.'),{status:503})
-  const response=await fetch(`${asaasBaseUrl()}${path}`,{...options,headers:{accept:'application/json','content-type':'application/json',access_token:key,'User-Agent':'MaterPlace/1.0',...options.headers}})
+  const response=await fetch(`${asaasBaseUrl(environment)}${path}`,{...options,headers:{accept:'application/json','content-type':'application/json',access_token:key,'User-Agent':'MaterPlace/1.0',...options.headers}})
   const data=await response.json().catch(()=>({}))
   if(!response.ok){
     const message=data?.errors?.map(item=>item.description).filter(Boolean).join('; ')||`Asaas respondeu HTTP ${response.status}`
