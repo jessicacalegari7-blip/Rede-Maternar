@@ -44,10 +44,11 @@ test('pagamento aprovado usa somente o novo convite seguro',async()=>{
 })
 test('webhooks usam tokens e ambientes independentes sem confiar no payload',async()=>{
   const sandbox=await readFile(new URL('../api/asaas-webhook.mjs',import.meta.url),'utf8')
-  const production=await readFile(new URL('../api/asaas-production-webhook.mjs',import.meta.url),'utf8')
   const shared=await readFile(new URL('../api/_lib/asaas-webhook-handler.mjs',import.meta.url),'utf8')
+  const vercel=await readFile(new URL('../vercel.json',import.meta.url),'utf8')
   assert.match(sandbox,/environment:'sandbox'.*ASAAS_WEBHOOK_TOKEN/s)
-  assert.match(production,/environment:'production'.*ASAAS_PRODUCTION_WEBHOOK_TOKEN/s)
+  assert.match(sandbox,/environment:'production'.*ASAAS_PRODUCTION_WEBHOOK_TOKEN/s)
+  assert.match(vercel,/\/api\/asaas-production-webhook.*asaasEnvironment=production/s)
   assert.match(shared,/target_asaas_environment:environment/)
   assert.match(shared,/eq\('asaas_environment',environment\)/)
 })
