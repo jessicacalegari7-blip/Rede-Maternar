@@ -54,7 +54,7 @@ test('endpoint de produção rejeita token incorreto antes de acessar o banco',a
 test('pagamento aprovado usa somente o novo convite seguro',async()=>{
   const webhook=await readFile(new URL('../api/_lib/asaas-webhook-handler.mjs',import.meta.url),'utf8')
   const adminRetry=await readFile(new URL('../api/_lib/admin-asaas-handler.mjs',import.meta.url),'utf8')
-  const worker=await readFile(new URL('../api/asaas-worker.mjs',import.meta.url),'utf8')
+  const worker=await readFile(new URL('../api/_lib/asaas-worker-handler.mjs',import.meta.url),'utf8')
   assert.doesNotMatch(webhook,/deliverPremiumAccessInvite/)
   assert.match(worker,/deliverPremiumAccessInvite/)
   assert.doesNotMatch(webhook,/deliverPremiumActivationEmail/)

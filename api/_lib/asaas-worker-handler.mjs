@@ -1,14 +1,14 @@
-import {adminClient} from './_lib/supabase-admin.mjs'
-import {json} from './_lib/http.mjs'
-import {eventFields,reconcilePaidEvent,safeEqual,validateCheckoutPaidPayload} from './_lib/asaas.mjs'
-import {deliverPremiumAccessInvite} from './_lib/premium-email.mjs'
+import {adminClient} from './supabase-admin.mjs'
+import {json} from './http.mjs'
+import {eventFields,reconcilePaidEvent,safeEqual,validateCheckoutPaidPayload} from './asaas.mjs'
+import {deliverPremiumAccessInvite} from './premium-email.mjs'
 
 function authorized(req){
   const expected=process.env.CRON_SECRET?.trim()
   return Boolean(expected)&&safeEqual(String(req.headers.authorization||''),`Bearer ${expected}`)
 }
 
-export default async function handler(req,res){
+export default async function workerHandler(req,res){
   if(req.method!=='GET')return json(res,405,{error:'Método não permitido.'})
   if(!authorized(req))return json(res,401,{error:'Não autorizado.'})
   const db=adminClient(),summary={eventsProcessed:0,eventsPending:0,emailsSent:0,emailsFailed:0}
