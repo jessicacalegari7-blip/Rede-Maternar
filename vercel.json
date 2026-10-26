@@ -6,7 +6,7 @@
     "api/asaas-worker.mjs": { "maxDuration": 60 }
   },
   "crons": [
-    { "path": "/api/asaas-worker", "schedule": "*/5 * * * *" },
+    { "path": "/api/asaas-worker", "schedule": "15 20 * * *" },
     { "path": "/api/editorial-run", "schedule": "0 21 * * *" },
     { "path": "/api/professional-research-run", "schedule": "30 22 * * *" }
   ],
