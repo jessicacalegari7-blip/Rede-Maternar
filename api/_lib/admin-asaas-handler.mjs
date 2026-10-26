@@ -1,7 +1,6 @@
 import {requirePlatformAdmin} from './supabase-admin.mjs'
 import {allowMethods,json,readJson} from './http.mjs'
-import {eventFields} from './asaas.mjs'
-import {deliverPremiumAccessInvite} from './premium-email.mjs'
+import {eventFields,reconcilePaidEvent} from './asaas.mjs'
 
 export default async function handler(req,res){
   if(!allowMethods(req,res,['GET','POST']))return
@@ -13,21 +12,15 @@ export default async function handler(req,res){
       const {data:event,error:eventError}=await db.from('asaas_webhook_events').select('*').eq('asaas_environment',eventEnvironment).eq('id',String(eventId||'')).single()
       if(eventError||!event)return json(res,404,{error:'Evento não encontrado.'})
       const fields=eventFields(event.payload)
+      const authoritative=fields.eventType==='CHECKOUT_PAID'?{...fields,...await reconcilePaidEvent(fields,eventEnvironment)}:fields
       const {data:result,error:rpcError}=await db.rpc('process_asaas_webhook_event',{
-        target_asaas_environment:eventEnvironment,target_event_id:event.id,target_event_type:fields.eventType,target_checkout_id:fields.checkoutId,
-        target_payment_id:fields.paymentId,target_external_reference:fields.externalReference,
-        target_amount_cents:fields.amountCents,target_payload:event.payload,
+        target_asaas_environment:eventEnvironment,target_event_id:event.id,target_event_type:fields.eventType,target_checkout_id:authoritative.checkoutId,
+        target_payment_id:authoritative.paymentId,target_external_reference:authoritative.externalReference,
+        target_amount_cents:authoritative.amountCents,target_payload:event.payload,
       })
       if(rpcError)throw rpcError
       if(!result?.ok)throw new Error('Evento não pôde ser reprocessado com segurança.')
-      let emailStatus=null
-      if(fields.eventType==='CHECKOUT_PAID'){
-        const {data:order,error:orderError}=await db.from('premium_orders').select('id,user_id').eq('asaas_environment',eventEnvironment).eq('asaas_checkout_id',fields.checkoutId).maybeSingle()
-        if(orderError)throw orderError
-        emailStatus=await deliverPremiumAccessInvite(db,{orderId:order?.id})
-        if(emailStatus==='failed')throw new Error('Evento processado, mas o envio do convite permanece pendente.')
-      }
-      return json(res,200,{ok:true,result,emailStatus})
+      return json(res,200,{ok:true,result,emailQueued:fields.eventType==='CHECKOUT_PAID'})
     }
     const search=String(req.query?.search||'').trim(),status=String(req.query?.status||'').trim()
     let query=db.from('premium_orders').select('id,user_id,organization_id,professional_id,customer_name,customer_email,product_name,amount_cents,status,asaas_environment,asaas_checkout_id,asaas_payment_id,paid_at,expires_at,created_at')

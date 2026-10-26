@@ -2,9 +2,11 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
     "api/editorial-run.mjs": { "maxDuration": 300 },
-    "api/professional-research-run.mjs": { "maxDuration": 300 }
+    "api/professional-research-run.mjs": { "maxDuration": 300 },
+    "api/asaas-worker.mjs": { "maxDuration": 60 }
   },
   "crons": [
+    { "path": "/api/asaas-worker", "schedule": "*/5 * * * *" },
     { "path": "/api/editorial-run", "schedule": "0 21 * * *" },
     { "path": "/api/professional-research-run", "schedule": "30 22 * * *" }
   ],

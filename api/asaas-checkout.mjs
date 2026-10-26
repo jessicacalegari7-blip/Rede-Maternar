@@ -1,6 +1,7 @@
 import {adminClient} from './_lib/supabase-admin.mjs'
+import {createHash} from 'node:crypto'
 import {allowMethods,json,readJson} from './_lib/http.mjs'
-import {PREMIUM_PRODUCT,asaasRequest,checkoutPageUrl,hasActivePixKey,hasPendingPixKey,normalizeTaxId,validPhone,validTaxId} from './_lib/asaas.mjs'
+import {PREMIUM_PRODUCT,asaasRequest,checkoutPageUrl,hasActivePixKey,hasPendingPixKey,normalizeTaxId,productionPilotEnvironment,validPhone,validTaxId} from './_lib/asaas.mjs'
 import adminHandler from './_lib/admin-asaas-handler.mjs'
 import {deliverPremiumAccessInvite,deliverPremiumActivationEmail,hashPremiumInviteToken,resendPremiumConfirmationEmail} from './_lib/premium-email.mjs'
 
@@ -21,9 +22,8 @@ export default async function handler(req,res){
     if(error||!data)return json(res,404,{error:'Pedido não encontrado.'})
     return json(res,200,data)
   }
-  let orderId=null,stage='validation'
+  let orderId=null,attemptId=null,environment='sandbox',stage='validation'
   try{
-    if(String(process.env.ASAAS_ENVIRONMENT||'sandbox').toLowerCase()==='production')throw Object.assign(new Error('Checkout real ainda não foi autorizado.'),{status:503})
     const body=await readJson(req),name=String(body.name||'').trim(),email=String(body.email||'').trim().toLowerCase(),phone=String(body.phone||'').trim(),taxId=normalizeTaxId(body.taxId)
     if(name.length<3)return json(res,400,{error:'Informe o nome profissional completo.'})
     if(!emailPattern.test(email))return json(res,400,{error:'Informe um e-mail válido.'})
@@ -31,35 +31,38 @@ export default async function handler(req,res){
     if(!validTaxId(taxId))return json(res,400,{error:'O CPF ou CNPJ informado é inválido. Confira os números e tente novamente.'})
     const attribution=Object.fromEntries(Object.entries(body.attribution||{}).filter(([key,value])=>/^(utm_(source|medium|campaign|term|content)|campaign_id)$/.test(key)&&typeof value==='string').map(([key,value])=>[key,value.trim().slice(0,160)]))
     const db=adminClient()
+    environment=productionPilotEnvironment({email,taxId})
     stage='order_creation'
-    const {data:order,error:orderError}=await db.rpc('create_premium_guest_order',{target_asaas_environment:'sandbox',target_name:name,target_email:email,target_phone:phone,target_tax_id_last4:taxId.slice(-4),target_amount_cents:PREMIUM_PRODUCT.amountCents,target_attribution:attribution}).single()
+    const {data:order,error:orderError}=await db.rpc('reserve_premium_checkout',{target_asaas_environment:environment,target_name:name,target_email:email,target_phone:phone,target_tax_id_last4:taxId.slice(-4),target_amount_cents:PREMIUM_PRODUCT.amountCents,target_attribution:attribution})
     if(orderError)throw orderError
     orderId=order.order_id
+    attemptId=order.attempt_id||null
     const statusUrl=`${baseSite()}/checkout/status?token=${order.public_token}`
+    if(order.status==='existing')return json(res,200,{orderId,statusToken:order.public_token,checkoutUrl:checkoutPageUrl(order.checkout_id,environment),amountCents:PREMIUM_PRODUCT.amountCents,environment})
+    if(order.status!=='reserved')return json(res,409,{error:'Já existe uma tentativa em confirmação. Aguarde alguns minutos antes de tentar novamente.',code:'checkout_reconciliation_pending'})
     stage='asaas_pix_key_check'
-    const pixKeys=await asaasRequest('/pix/addressKeys?limit=100')
+    const pixKeys=await asaasRequest('/pix/addressKeys?limit=100',{method:'GET'},environment,{readOnly:true})
     if(!hasActivePixKey(pixKeys)){
-      if(!hasPendingPixKey(pixKeys))await asaasRequest('/pix/addressKeys',{method:'POST',body:JSON.stringify({type:'EVP'})})
-      throw Object.assign(new Error('A chave Pix do Sandbox ainda não está ativa. Aguarde a ativação no Asaas e tente novamente.'),{status:503})
+      if(environment==='sandbox'&&!hasPendingPixKey(pixKeys))await asaasRequest('/pix/addressKeys',{method:'POST',body:JSON.stringify({type:'EVP'})},environment)
+      throw Object.assign(new Error(`A chave Pix do ${environment==='sandbox'?'Sandbox':'Asaas'} ainda não está ativa. Aguarde a ativação e tente novamente.`),{status:503,inconclusive:false})
     }
     stage='asaas_checkout_creation'
     const checkoutPayload={billingTypes:['PIX','CREDIT_CARD'],chargeTypes:['DETACHED'],minutesToExpire:60,externalReference:order.order_id,callback:{successUrl:statusUrl,cancelUrl:statusUrl,expiredUrl:statusUrl},items:[{name:PREMIUM_PRODUCT.name,description:'Acesso por 12 meses, sem renovação automática',quantity:1,value:PREMIUM_PRODUCT.amountCents/100}]}
-    const checkout=await asaasRequest('/checkouts',{method:'POST',body:JSON.stringify(checkoutPayload)})
+    const checkout=await asaasRequest('/checkouts',{method:'POST',body:JSON.stringify(checkoutPayload)},environment)
     if(!checkout?.id)throw new Error('O Asaas não retornou o identificador do checkout.')
     stage='order_confirmation'
-    const {error:updateError}=await db.rpc('update_premium_checkout_order',{target_order_id:order.order_id,target_status:'pending',target_checkout_id:checkout.id,target_expires_at:new Date(Date.now()+60*60*1000).toISOString()})
-    if(updateError)throw updateError
-    return json(res,201,{orderId:order.order_id,statusToken:order.public_token,checkoutUrl:checkoutPageUrl(checkout.id),amountCents:PREMIUM_PRODUCT.amountCents,environment:'sandbox'})
+    const {data:confirmed,error:updateError}=await db.rpc('finish_premium_checkout_attempt',{target_order_id:order.order_id,target_attempt_id:attemptId,target_checkout_id:checkout.id,target_result:'confirmed',target_expires_at:new Date(Date.now()+60*60*1000).toISOString()})
+    if(updateError||!confirmed)throw Object.assign(updateError||new Error('Reserva do checkout não pôde ser confirmada.'),{inconclusive:true})
+    return json(res,201,{orderId:order.order_id,statusToken:order.public_token,checkoutUrl:checkoutPageUrl(checkout.id,environment),amountCents:PREMIUM_PRODUCT.amountCents,environment})
   }catch(error){
     const db=adminClient()
-    if(orderId)await db.rpc('update_premium_checkout_order',{target_order_id:orderId,target_status:'failed',target_checkout_id:null,target_expires_at:null})
+    if(orderId&&attemptId)await db.rpc('finish_premium_checkout_attempt',{target_order_id:orderId,target_attempt_id:attemptId,target_checkout_id:null,target_result:error?.inconclusive?'inconclusive':'failed',target_expires_at:null})
     const technicalMessage=String(error?.message||error?.details||error?.hint||'Falha não identificada').slice(0,500)
     const failureStep=String(error?.checkoutStep||stage).replace(/[^a-z0-9_]/gi,'').slice(0,80)
     console.error('asaas_checkout_failed',{stage,step:failureStep,code:error?.code||null,status:error?.status||500,message:technicalMessage})
-    const safeMessages={existing_user_lookup:'Não foi possível validar o e-mail informado.',auth_user_creation:'Não foi possível criar seu acesso. Verifique o e-mail e tente novamente.',order_creation:'Não foi possível registrar o pedido.',asaas_pix_key_check:'A chave Pix do Sandbox ainda não está ativa. Verifique a área Pix do Asaas.',asaas_checkout_creation:'O Asaas não conseguiu criar o checkout no Sandbox.',order_confirmation:'O checkout foi criado, mas não foi possível confirmar o pedido.'}
+    const safeMessages={existing_user_lookup:'Não foi possível validar o e-mail informado.',auth_user_creation:'Não foi possível criar seu acesso. Verifique o e-mail e tente novamente.',order_creation:'Não foi possível registrar o pedido.',asaas_pix_key_check:'A chave Pix do ambiente de pagamento ainda não está ativa.',asaas_checkout_creation:'O Asaas não conseguiu criar o checkout.',order_confirmation:'O checkout foi criado, mas requer conciliação antes de uma nova tentativa.'}
     const databaseReason=/^(?:PGRST\d+|\d{5})$/.test(String(error?.code||''))?String(error.code):undefined
-    const providerDetail=stage.startsWith('asaas_')?technicalMessage.replace(/[\r\n]+/g,' ').slice(0,180):undefined
-    return json(res,error?.status||500,{error:safeMessages[stage]||'Não foi possível iniciar o checkout.',code:`checkout_${failureStep}`,...(databaseReason?{reason:databaseReason}:{}),...(providerDetail?{detail:providerDetail}:{})})
+    return json(res,error?.status||500,{error:safeMessages[stage]||'Não foi possível iniciar o checkout.',code:`checkout_${failureStep}`,...(databaseReason?{reason:databaseReason}:{})})
   }
 }
 async function resendInvite(req,res){
@@ -83,7 +86,13 @@ async function recoverInvite(req,res){
   try{
     const body=await readJson(req),email=String(body.email||'').trim().toLowerCase(),phone=String(body.phone||'').replace(/\D/g,''),taxId=normalizeTaxId(body.taxId)
     if(!emailPattern.test(email)||!validPhone(phone)||!validTaxId(taxId))return json(res,200,{ok:true,message:neutral})
-    const db=adminClient(),{data:order}=await db.from('premium_orders').select('id,status').eq('customer_email',email).eq('customer_phone',phone).eq('tax_id_last4',taxId.slice(-4)).eq('product_code',PREMIUM_PRODUCT.code).order('created_at',{ascending:false}).limit(1).maybeSingle()
+    const environment=productionPilotEnvironment({email,taxId})
+    const db=adminClient(),identityHash=createHash('sha256').update(`${environment}:${email}:${phone}:${taxId}`).digest('hex')
+    const ip=String(req.headers['x-forwarded-for']||req.socket?.remoteAddress||'unknown').split(',')[0].trim()
+    const ipHash=createHash('sha256').update(ip).digest('hex')
+    const {data:allowed}=await db.rpc('allow_premium_invite_recovery',{target_identity_hash:identityHash,target_ip_hash:ipHash})
+    if(!allowed)return json(res,200,{ok:true,message:neutral})
+    const {data:order}=await db.from('premium_orders').select('id,status').eq('asaas_environment',environment).eq('customer_email',email).eq('customer_phone',phone).eq('tax_id_last4',taxId.slice(-4)).eq('product_code',PREMIUM_PRODUCT.code).order('created_at',{ascending:false}).limit(1).maybeSingle()
     if(order?.status==='paid')await deliverPremiumAccessInvite(db,{orderId:order.id,force:true})
     return json(res,200,{ok:true,message:neutral})
   }catch(error){
