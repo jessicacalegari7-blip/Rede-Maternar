@@ -1,3 +1,5 @@
+import { fallbackArticles } from './_lib/public-content-fallback.mjs'
+
 const ORIGIN='https://www.materplace.com.br'
 const LOGO=`${ORIGIN}/brand/materplace-logo.png`
 const esc=value=>String(value??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]))
@@ -20,8 +22,12 @@ export default async function handler(req,res){
   const key=process.env.SUPABASE_SERVICE_ROLE_KEY||process.env.VITE_SUPABASE_ANON_KEY
   if(!base||!key)return res.redirect(302,`/noticias/${slug}`)
   const fields='title,seo_title,excerpt,content,category,cover_image_url,author_name,published_at,created_at,updated_at'
-  const response=await fetch(`${base}/rest/v1/news_articles?slug=eq.${encodeURIComponent(slug)}&status=eq.published&is_demo=eq.false&select=${fields}&limit=1`,{headers:{apikey:key,Authorization:`Bearer ${key}`}})
-  const [article]=response.ok?await response.json():[]
+  let liveArticle
+  try{
+    const response=await fetch(`${base}/rest/v1/news_articles?slug=eq.${encodeURIComponent(slug)}&status=eq.published&is_demo=eq.false&select=${fields}&limit=1`,{headers:{apikey:key,Authorization:`Bearer ${key}`}})
+    ;[liveArticle]=response.ok?await response.json():[]
+  }catch{liveArticle=null}
+  const article=liveArticle||fallbackArticles().find(item=>item.slug===slug)
   if(!article){res.setHeader('X-Robots-Tag','noindex, follow');return res.status(404).send('Notícia não encontrada')}
   const url=`${ORIGIN}/noticias/${slug}`
   const image=cachedImage(article.cover_image_url,base)

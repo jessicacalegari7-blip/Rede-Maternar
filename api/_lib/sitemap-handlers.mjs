@@ -1,5 +1,6 @@
 import { adminClient } from './supabase-admin.mjs'
 import { MAX_URLS, SITE_URL, fetchRange, pageNumber, sendXml, urlNode, urlset } from './sitemap-xml.mjs'
+import { fallbackArticles } from './public-content-fallback.mjs'
 
 const slugify=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')
 const pages=['','profissionais','marketplace','universidade','vagas','para-profissionais','sobre','expediente','contato','privacidade','termos','lgpd','cookies','isencao-de-responsabilidade']
@@ -8,7 +9,8 @@ async function fetchWindow(buildQuery,offset,limit){const rows=[];for(let cursor
 
 export async function posts(request,response){
   const db=adminClient(); const page=pageNumber(request)
-  const rows=await fetchRange(()=>db.from('news_articles').select('slug,published_at,updated_at').eq('status','published').eq('is_demo',false).order('published_at',{ascending:false}),page)
+  let rows
+  try{rows=await fetchRange(()=>db.from('news_articles').select('slug,published_at,updated_at').eq('status','published').eq('is_demo',false).order('published_at',{ascending:false}),page)}catch{rows=fallbackArticles().slice((page-1)*MAX_URLS,page*MAX_URLS)}
   const now=Date.now(); const nodes=rows.map(item=>{const published=new Date(item.published_at||item.updated_at).getTime();const recent=now-published<7*86400000;return urlNode({loc:`${SITE_URL}/noticias/${item.slug}`,lastmod:item.updated_at||item.published_at,changefreq:recent?'daily':'weekly',priority:recent?'0.9':'0.7'})})
   return sendXml(response,urlset(nodes))
 }
@@ -24,8 +26,8 @@ export async function directory(request,response){
 
 export async function categories(_request,response){
   const {data,error}=await adminClient().from('news_articles').select('category,updated_at').eq('status','published').eq('is_demo',false).order('updated_at',{ascending:false}).limit(1000)
-  if(error)throw error
-  const values=new Map();for(const item of data||[]){const slug=slugify(item.category);if(slug&&!values.has(slug))values.set(slug,item.updated_at)}
+  const rows=error?fallbackArticles():(data||[])
+  const values=new Map();for(const item of rows){const slug=slugify(item.category);if(slug&&!values.has(slug))values.set(slug,item.updated_at)}
   return sendXml(response,urlset([...values].map(([slug,lastmod])=>urlNode({loc:`${SITE_URL}/categoria/${slug}`,lastmod,changefreq:'daily',priority:'0.8'}))))
 }
 

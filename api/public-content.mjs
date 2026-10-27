@@ -1,4 +1,5 @@
 import { adminClient } from './_lib/supabase-admin.mjs'
+import { fallbackArticles, fallbackVideos } from './_lib/public-content-fallback.mjs'
 
 const ARTICLE_LIST_FIELDS='id,slug,title,seo_title,excerpt,category,cover_image_url,author_name,status,featured,published_at,created_at,is_demo,views'
 const ARTICLE_DETAIL_FIELDS=`${ARTICLE_LIST_FIELDS},content,updated_at`
@@ -15,6 +16,10 @@ function send(response,status,body,cache='public, max-age=60, s-maxage=21600, st
   return response.status(status).send(JSON.stringify(body))
 }
 
+function sendFallback(response,body){
+  response.setHeader('X-MaterPlace-Data-Source','fallback-snapshot')
+  return send(response,200,body,'public, max-age=300, s-maxage=21600, stale-while-revalidate=604800, stale-if-error=604800')
+}
 export default async function handler(request,response) {
   if(request.method!=='GET')return send(response,405,{error:'Método não permitido.'},'no-store')
   try {
@@ -58,6 +63,17 @@ export default async function handler(request,response) {
     }
     return send(response,400,{error:'Recurso inválido.'},'no-store')
   } catch(error) {
+    const resource=String(request.query?.resource||'')
+    if(resource==='articles'){
+      const limit=Math.min(Math.max(Number(request.query?.limit)||100,1),100)
+      return sendFallback(response,{data:fallbackArticles().slice(0,limit).map(row=>mapImages(row,640))})
+    }
+    if(resource==='article'){
+      const slug=String(request.query?.slug||'').replace(/[^a-z0-9-]/gi,'')
+      const article=fallbackArticles().find(item=>item.slug===slug)
+      if(article)return sendFallback(response,{data:mapImages(article,1200)})
+    }
+    if(resource==='videos')return sendFallback(response,{data:fallbackVideos()})
     return send(response,503,{error:'Conteúdo temporariamente indisponível.'},'no-store')
   }
 }

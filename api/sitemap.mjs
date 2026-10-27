@@ -1,15 +1,17 @@
 import { adminClient } from './_lib/supabase-admin.mjs'
 import { MAX_URLS, SITE_URL, escapeXml, isoDate, sendXml } from './_lib/sitemap-xml.mjs'
 import { categories, directory, ecosystem, posts, staticPages } from './_lib/sitemap-handlers.mjs'
+import { fallbackArticles } from './_lib/public-content-fallback.mjs'
 
 const sitemapNode=(loc,lastmod)=>`<sitemap><loc>${escapeXml(loc)}</loc><lastmod>${isoDate(lastmod)}</lastmod></sitemap>`
 const pageUrls=(name,count)=>{const pages=Math.max(1,Math.ceil(count/MAX_URLS));return pages===1?[`${SITE_URL}/sitemap-${name}.xml`]:Array.from({length:pages},(_,index)=>`${SITE_URL}/sitemap-${name}-${index+1}.xml`)}
 const countOrZero=async query=>{const {count,error}=await query;return error?0:(count||0)}
 const news=async response=>{
   const since=new Date(Date.now()-48*60*60*1000).toISOString()
-  const {data,error}=await adminClient().from('news_articles').select('slug,title,published_at').eq('status','published').eq('is_demo',false).gte('published_at',since).order('published_at',{ascending:false})
-  if(error)throw error
-  const urls=(data||[]).map(item=>`<url><loc>${SITE_URL}/noticias/${escapeXml(item.slug)}</loc><news:news><news:publication><news:name>MaterPlace</news:name><news:language>pt</news:language></news:publication><news:publication_date>${escapeXml(item.published_at)}</news:publication_date><news:title>${escapeXml(item.title)}</news:title></news:news></url>`).join('')
+  let data,error
+  try{({data,error}=await adminClient().from('news_articles').select('slug,title,published_at').eq('status','published').eq('is_demo',false).gte('published_at',since).order('published_at',{ascending:false}))}catch{error=true}
+  const rows=error?fallbackArticles().filter(item=>item.published_at>=since):(data||[])
+  const urls=rows.map(item=>`<url><loc>${SITE_URL}/noticias/${escapeXml(item.slug)}</loc><news:news><news:publication><news:name>MaterPlace</news:name><news:language>pt</news:language></news:publication><news:publication_date>${escapeXml(item.published_at)}</news:publication_date><news:title>${escapeXml(item.title)}</news:title></news:news></url>`).join('')
   response.setHeader('Content-Type','application/xml; charset=utf-8')
   response.setHeader('Cache-Control','public, max-age=300, s-maxage=21600, stale-while-revalidate=604800, stale-if-error=604800')
   return response.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">${urls}</urlset>`)
