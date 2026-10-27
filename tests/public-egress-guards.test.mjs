@@ -15,10 +15,15 @@ test('conteúdo editorial público usa API com cache compartilhado',()=>{
   const client=read('src/lib/news.ts')
   const endpoint=read('api/public-content.mjs')
   assert.match(client,/\/api\/public-content\?resource=articles/)
+  assert.doesNotMatch(client,/refreshBucket|resource=articles[^`]*[?&]v=/)
+  assert.match(client,/PORTAL_CACHE_FRESHNESS_MS = 5 \* 60 \* 1000/)
+  assert.match(client,/if\(!response\.ok\)return\[\]/)
   assert.match(endpoint,/s-maxage=21600/)
   assert.match(endpoint,/stale-if-error=604800/)
+  assert.match(endpoint,/mapImages\(row,640\)/)
   assert.match(endpoint,/\.eq\('is_demo',false\)/)
   assert.match(read('src/lib/ecosystem.ts'),/resource=ecosystem/)
+  assert.match(read('src/pages/public/PortalArticle.tsx'),/publicImageUrl\(image\[2\],1200\)/)
 })
 
 test('sitemaps mantêm cache resiliente e selecionam colunas necessárias',()=>{

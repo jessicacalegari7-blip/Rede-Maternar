@@ -33,7 +33,7 @@ const PORTAL_ARTICLES_STORAGE_KEY = 'materplace.portal-articles.v2'
 const PORTAL_ARTICLE_LIST_FIELDS = 'id,slug,title,seo_title,excerpt,category,cover_image_url,author_name,status,featured,published_at,created_at,is_demo,views'
 const PORTAL_ARTICLE_LIST_LIMIT = 100
 const PORTAL_FAILURE_COOLDOWN_MS = 5 * 60 * 1000
-const PORTAL_CACHE_FRESHNESS_MS = 60 * 1000
+const PORTAL_CACHE_FRESHNESS_MS = 5 * 60 * 1000
 let portalArticlesRetryAfter = 0
 
 function readStoredPortalArticles(): PortalArticle[] {
@@ -147,9 +147,9 @@ export async function listPortalArticles(limit = PORTAL_ARTICLE_LIST_LIMIT): Pro
   }
   if (!portalArticlesRequest) portalArticlesRequest = (async () => {
     let lastError: unknown = null
-    for (let attempt = 0; attempt < 2; attempt += 1) {
+    for (let attempt = 0; attempt < 1; attempt += 1) {
       let data:Record<string,unknown>[]|null=null;let error:Error|null=null
-      try { const refreshBucket=Math.floor(Date.now()/PORTAL_CACHE_FRESHNESS_MS);const response=await fetch(`/api/public-content?resource=articles&limit=${Math.min(limit,PORTAL_ARTICLE_LIST_LIMIT)}&v=${refreshBucket}`);const payload=await response.json();if(!response.ok)throw new Error(payload.error||'Conteúdo indisponível.');data=payload.data }
+      try { const response=await fetch(`/api/public-content?resource=articles&limit=${Math.min(limit,PORTAL_ARTICLE_LIST_LIMIT)}`);const payload=await response.json();if(!response.ok)throw new Error(payload.error||'Conteúdo indisponível.');data=payload.data }
       catch(reason){error=reason instanceof Error?reason:new Error('Conteúdo indisponível.')}
       if (!error && data?.length) {
         portalArticlesCache = data.map(mapRow)
@@ -238,7 +238,7 @@ export async function uploadNewsImage(file:File):Promise<string> {
 
 export async function listPortalVideos(admin=false):Promise<PortalVideo[]> {
   if(!supabase) return []
-  if(!admin){try{const response=await fetch('/api/public-content?resource=videos');const payload=await response.json();if(response.ok)return(payload.data||[]).map((row:Record<string,unknown>)=>({id:String(row.id),title:String(row.title),description:String(row.description||''),youtubeId:String(row.youtube_id),published:Boolean(row.published),featured:Boolean(row.featured),createdAt:String(row.created_at)}))}catch{return[]}}
+  if(!admin){try{const response=await fetch('/api/public-content?resource=videos');const payload=await response.json();if(!response.ok)return[];return(payload.data||[]).map((row:Record<string,unknown>)=>({id:String(row.id),title:String(row.title),description:String(row.description||''),youtubeId:String(row.youtube_id),published:Boolean(row.published),featured:Boolean(row.featured),createdAt:String(row.created_at)}))}catch{return[]}}
   let query=supabase.from('portal_videos').select('*').order('featured',{ascending:false}).order('created_at',{ascending:false})
   if(!admin) query=query.eq('published',true)
   const {data,error}=await query
