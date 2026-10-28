@@ -44,21 +44,22 @@ function inviteText(name,link){
   return `Pagamento confirmado!\n\nOlá, ${String(name||'profissional')}.\n\nRecebemos a confirmação do pagamento de R$ 59,99 referente à contratação do Perfil Premium MaterPlace, com validade de 12 meses.\n\nSeu acesso está liberado!\n\nCrie sua senha de acesso à plataforma pelo link seguro abaixo:\n${link}\n\nApós criar sua senha, você poderá acessar o painel e preencher as informações do seu perfil profissional. Seu perfil será publicado no diretório após o preenchimento completo e a validação dos dados obrigatórios.\n\nSe você não realizou essa contratação, entre em contato com a MaterPlace.\n\n${supportText()}\n\nAtenciosamente,\nEquipe MaterPlace`
 }
 
-export async function deliverPremiumAccessInvite(db,{orderId,force=false}){
+export async function deliverPremiumAccessInvite(db,{orderId,force=false,idempotencyKey,traceId}){
   if(!orderId)return 'not_applicable'
   const token=createPremiumInviteToken(),tokenHash=hashPremiumInviteToken(token)
   const {data:invite,error}=await db.rpc('issue_premium_access_invite',{target_order_id:orderId,target_token_hash:tokenHash,target_force:force})
   if(error)throw error
   if(!invite?.should_send)return invite?.status||'already_sent'
+  const link=`${siteUrl()}/convite-premium?token=${encodeURIComponent(token)}`
+  let providerId
   try{
-    const link=`${siteUrl()}/convite-premium?token=${encodeURIComponent(token)}`
-    const providerId=await brevoSend({sender,to:[{email:invite.email,name:invite.name||undefined}],subject:'MaterPlace | Pagamento confirmado — Crie sua senha',htmlContent:inviteHtml(invite.name,link),textContent:inviteText(invite.name,link)})
-    await db.rpc('finish_premium_access_invite_email',{target_invite_id:invite.invite_id,target_status:'sent',target_last_error:null,target_provider_id:providerId})
-    return 'sent'
+    providerId=await brevoSend({sender,to:[{email:invite.email,name:invite.name||undefined}],subject:'MaterPlace | Pagamento confirmado — Crie sua senha',htmlContent:inviteHtml(invite.name,link),textContent:inviteText(invite.name,link),headers:{...(idempotencyKey?{IdempotencyKey:String(idempotencyKey)}:{}),...(traceId?{'X-Mailin-custom':'premium-outbox:'+String(traceId)}:{})}})
   }catch(error){
     await db.rpc('finish_premium_access_invite_email',{target_invite_id:invite.invite_id,target_status:'failed',target_last_error:String(error instanceof Error?error.message:error).slice(0,500),target_provider_id:null})
     return 'failed'
   }
+  const {error:finishError}=await db.rpc('finish_premium_access_invite_email',{target_invite_id:invite.invite_id,target_status:'sent',target_last_error:null,target_provider_id:providerId})
+  return finishError?'delivery_uncertain':'sent'
 }
 
 function activationHtml(name,link,needsConfirmation){
@@ -113,4 +114,3 @@ export async function resendPremiumConfirmationEmail(db,{userId,orderId}){
     return 'failed'
   }
 }
-
