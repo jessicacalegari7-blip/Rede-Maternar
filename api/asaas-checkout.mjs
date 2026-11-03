@@ -4,6 +4,7 @@ import {allowMethods,json,readJson} from './_lib/http.mjs'
 import {PREMIUM_PRODUCT,asaasRequest,checkoutPageUrl,hasActivePixKey,hasPendingPixKey,normalizeTaxId,productionPilotEnvironment,validPhone,validTaxId} from './_lib/asaas.mjs'
 import adminHandler from './_lib/admin-asaas-handler.mjs'
 import workerHandler from './_lib/asaas-worker-handler.mjs'
+import productionDiagnosticHandler from './_lib/asaas-production-diagnostic-handler.mjs'
 import {deliverPremiumAccessInvite,deliverPremiumActivationEmail,hashPremiumInviteToken,resendPremiumConfirmationEmail} from './_lib/premium-email.mjs'
 
 const emailPattern=/^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -11,6 +12,7 @@ const baseSite=()=>String(process.env.PUBLIC_SITE_URL||process.env.PUBLIC_APP_UR
 
 export default async function handler(req,res){
   if(req.query?.asaasMode==='worker')return workerHandler(req,res)
+  if(req.query?.asaasMode==='production-diagnostic')return productionDiagnosticHandler(req,res)
   if(String(req.query?.admin||'')==='1')return adminHandler(req,res)
   if(String(req.query?.action||'')==='resend-confirmation')return resendConfirmation(req,res)
   if(String(req.query?.action||'')==='resend-invite')return resendInvite(req,res)

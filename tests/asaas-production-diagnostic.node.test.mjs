@@ -1,6 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {createProductionDiagnosticHandler} from '../api/_lib/asaas-production-diagnostic-handler.mjs'
+import {readFile} from 'node:fs/promises'
+
+const checkoutSource=await readFile(new URL('../api/asaas-checkout.mjs',import.meta.url),'utf8')
+const vercelConfig=await readFile(new URL('../vercel.json',import.meta.url),'utf8')
 
 function response(){
   return {statusCode:200,headers:{},setHeader(name,value){this.headers[name]=value},end(body){this.payload=JSON.parse(body);return this}}
@@ -54,4 +58,9 @@ test('diagnóstico permanece invisível quando a trava temporária está desativ
   const handler=createProductionDiagnosticHandler({authorize:async()=>{authorized=true},request:async()=>({})})
   const res=response();await handler({method:'GET',headers:{}},res)
   assert.equal(res.statusCode,404);assert.equal(authorized,false)
+})
+
+test('diagnóstico reutiliza função existente para respeitar o limite Hobby',()=>{
+  assert.match(checkoutSource,/asaasMode==='production-diagnostic'/)
+  assert.match(vercelConfig,/"\/api\/asaas-production-diagnostic"[^\n]+asaasMode=production-diagnostic/)
 })
