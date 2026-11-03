@@ -4,6 +4,7 @@ import {readFile} from 'node:fs/promises'
 import {processPremiumEmailJobs,workerAuthorized} from '../api/_lib/asaas-worker-handler.mjs'
 
 const migration=await readFile(new URL('../supabase/migrations/20261027160000_premium_email_outbox_leases.sql',import.meta.url),'utf8')
+const workerGrant=await readFile(new URL('../supabase/migrations/20261103100000_asaas_worker_event_read_grant.sql',import.meta.url),'utf8')
 const worker=await readFile(new URL('../api/_lib/asaas-worker-handler.mjs',import.meta.url),'utf8')
 const email=await readFile(new URL('../api/_lib/premium-email.mjs',import.meta.url),'utf8')
 const vercel=await readFile(new URL('../vercel.json',import.meta.url),'utf8')
@@ -31,3 +32,14 @@ test('17 nenhum cron Supabase recorrente é ativado',()=>assert.doesNotMatch(mig
 test('18 falha Supabase produz resposta genérica',()=>assert.match(worker,/Falha temporária no processamento/))
 test('19 cobrança real permanece protegida',()=>assert.match(asaas,/ASAAS_PRODUCTION_CHARGES_ENABLED/))
 test('20 migração preserva pedidos e contratos',()=>{assert.doesNotMatch(migration,/delete\s+from\s+public\.(premium_orders|premium_contracts)/i);assert.doesNotMatch(migration,/update\s+public\.(premium_orders|premium_contracts)/i)})
+test('21 worker recebe somente as colunas necessárias dos eventos',()=>{
+  assert.match(workerGrant,/grant select\s*\(\s*id,\s*asaas_environment,\s*payload,\s*processing_status,\s*attempts,\s*received_at\s*\)\s*on table public\.asaas_webhook_events to service_role/is)
+})
+test('22 grant não amplia acesso público ou autenticado',()=>{
+  assert.doesNotMatch(workerGrant,/grant\s+.+\s+to\s+(anon|authenticated)/i)
+  assert.doesNotMatch(workerGrant,/grant\s+(all|insert|update|delete|truncate|references|trigger)/i)
+})
+test('23 grant preserva RLS e dados financeiros',()=>{
+  assert.doesNotMatch(workerGrant,/disable\s+row\s+level\s+security/i)
+  assert.doesNotMatch(workerGrant,/(insert|update|delete)\s+(into|public\.)/i)
+})
