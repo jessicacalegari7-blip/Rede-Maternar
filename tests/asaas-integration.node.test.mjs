@@ -1,5 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import {createHash} from 'node:crypto'
 import {readFile} from 'node:fs/promises'
 import {PREMIUM_PRODUCT,asaasBaseUrl,asaasRequest,eventFields,hasActivePixKey,hasPendingPixKey,normalizeTaxId,processableEventType,productionPilotEnvironment,reconcilePaidEvent,safeEqual,validPhone,validTaxId} from '../api/_lib/asaas.mjs'
 import {handleAsaasWebhook} from '../api/_lib/asaas-webhook-handler.mjs'
@@ -20,6 +21,24 @@ test('piloto de produção exige todas as travas e comprador autorizado',()=>{
   const old={...process.env};delete process.env.ASAAS_PRODUCTION_CHARGES_ENABLED;delete process.env.ASAAS_PRODUCTION_PILOT_ENABLED;delete process.env.ASAAS_PRODUCTION_PILOT_EMAIL;delete process.env.ASAAS_PRODUCTION_PILOT_TAX_ID_SHA256
   try{assert.equal(productionPilotEnvironment({email:'pilot@example.com',taxId:'52998224725'}),'sandbox')}
   finally{for(const key of Object.keys(process.env))if(!(key in old))delete process.env[key];Object.assign(process.env,old)}
+})
+test('piloto bloqueia identidades divergentes e não aceita ambiente do frontend',()=>{
+  const old={...process.env},email='comprador.autorizado@example.com',taxId='52998224725'
+  process.env.ASAAS_PRODUCTION_CHARGES_ENABLED='true'
+  process.env.ASAAS_PRODUCTION_PILOT_ENABLED='true'
+  process.env.ASAAS_PRODUCTION_PILOT_EMAIL=email
+  process.env.ASAAS_PRODUCTION_PILOT_TAX_ID_SHA256=createHash('sha256').update(taxId).digest('hex')
+  try{
+    assert.equal(productionPilotEnvironment({email:'incorreto@example.com',taxId}),'sandbox')
+    assert.equal(productionPilotEnvironment({email,taxId:'35478623881'}),'sandbox')
+    assert.equal(productionPilotEnvironment({email:'incorreto@example.com',taxId:'35478623881'}),'sandbox')
+    assert.equal(productionPilotEnvironment({email,taxId,environment:'production'}),'production')
+    process.env.ASAAS_PRODUCTION_CHARGES_ENABLED='false'
+    assert.equal(productionPilotEnvironment({email,taxId,environment:'production'}),'sandbox')
+  }finally{
+    for(const key of Object.keys(process.env))if(!(key in old))delete process.env[key]
+    Object.assign(process.env,old)
+  }
 })
 test('reconciliação autoritativa aceita somente cobrança confirmada correspondente',async()=>{
   process.env.ASAAS_API_KEY='sandbox_test';const originalFetch=global.fetch
