@@ -1,6 +1,6 @@
 import {adminClient} from './supabase-admin.mjs'
 import {json} from './http.mjs'
-import {eventFields,reconcilePaidEvent,safeEqual,validateCheckoutPaidPayload} from './asaas.mjs'
+import {eventFields,safeEqual,verifiedCheckoutPaidFields} from './asaas.mjs'
 import {deliverPremiumAccessInvite} from './premium-email.mjs'
 
 export function workerAuthorized(req,env=process.env){
@@ -34,7 +34,7 @@ export async function processPremiumEmailJobs(db,jobs,{deliver=deliverPremiumAcc
   return summary
 }
 
-export function createWorkerHandler({getDb=adminClient,deliver=deliverPremiumAccessInvite,reconcile=reconcilePaidEvent}={}){
+export function createWorkerHandler({getDb=adminClient,deliver=deliverPremiumAccessInvite}={}){
   return async function workerHandler(req,res){
     if(req.method!=='GET')return json(res,405,{error:'Método não permitido.'})
     if(!workerAuthorized(req))return json(res,401,{error:'Não autorizado.'})
@@ -44,7 +44,7 @@ export function createWorkerHandler({getDb=adminClient,deliver=deliverPremiumAcc
       if(eventError)throw eventError
       for(const event of events||[]){
         try{
-          const fields=eventFields(event.payload),authoritative=fields.eventType==='CHECKOUT_PAID'?(validateCheckoutPaidPayload(event.payload),{...fields,...await reconcile(fields,event.asaas_environment)}):fields
+          const fields=eventFields(event.payload),authoritative=fields.eventType==='CHECKOUT_PAID'?verifiedCheckoutPaidFields(event.payload):fields
           const {data:result,error}=await db.rpc('process_asaas_webhook_event',{target_asaas_environment:event.asaas_environment,target_event_id:fields.eventId,target_event_type:fields.eventType,target_checkout_id:authoritative.checkoutId,target_payment_id:authoritative.paymentId,target_external_reference:authoritative.externalReference,target_amount_cents:authoritative.amountCents,target_payload:event.payload})
           if(error||!result?.ok)throw error||new Error(result?.error_code||'processing_failed')
           summary.eventsProcessed++

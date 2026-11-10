@@ -1,6 +1,6 @@
 import {adminClient} from './supabase-admin.mjs'
 import {allowMethods,json,readJson} from './http.mjs'
-import {eventFields,reconcilePaidEvent,safeEqual,validateCheckoutPaidPayload} from './asaas.mjs'
+import {eventFields,safeEqual,verifiedCheckoutPaidFields} from './asaas.mjs'
 
 export async function handleAsaasWebhook(req,res,{environment,tokenVariable}){
   if(!allowMethods(req,res,['POST']))return
@@ -21,7 +21,7 @@ export async function handleAsaasWebhook(req,res,{environment,tokenVariable}){
     if(recorded?.duplicate)return json(res,200,{ok:true,duplicate:true,status:recorded.status})
     let authoritative=fields
     if(fields.eventType==='CHECKOUT_PAID'){
-      try{validateCheckoutPaidPayload(payload);authoritative={...fields,...await reconcilePaidEvent(fields,environment)}}
+      try{authoritative=verifiedCheckoutPaidFields(payload)}
       catch(error){
         if(String(error?.code||'').startsWith('invalid_')||['checkout_not_paid','amount_mismatch','reference_mismatch','payment_mismatch'].includes(error?.code))await db.from('asaas_webhook_events').update({processing_status:'error',attempts:8,last_error:'authoritative_validation_failed'}).eq('asaas_environment',environment).eq('id',fields.eventId)
         console.error('asaas_webhook_reconciliation_pending',{environment,eventIdSuffix:fields.eventId.slice(-12),code:error?.code||null})

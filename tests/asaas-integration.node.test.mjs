@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {createHash} from 'node:crypto'
 import {readFile} from 'node:fs/promises'
-import {PREMIUM_PRODUCT,asaasBaseUrl,asaasRequest,eventFields,hasActivePixKey,hasPendingPixKey,normalizeTaxId,processableEventType,productionPilotEnvironment,reconcilePaidEvent,safeEqual,validPhone,validTaxId} from '../api/_lib/asaas.mjs'
+import {PREMIUM_PRODUCT,asaasBaseUrl,asaasRequest,eventFields,hasActivePixKey,hasPendingPixKey,normalizeTaxId,processableEventType,productionPilotEnvironment,reconcilePaidEvent,safeEqual,validPhone,validTaxId,verifiedCheckoutPaidFields} from '../api/_lib/asaas.mjs'
 import {handleAsaasWebhook} from '../api/_lib/asaas-webhook-handler.mjs'
 
 function responseCapture(){
@@ -15,6 +15,15 @@ test('normaliza e valida dados mínimos',()=>{assert.equal(normalizeTaxId('529.9
 test('só considera Pix pronto quando existe chave ACTIVE',()=>{assert.equal(hasActivePixKey({data:[{status:'AWAITING_ACTIVATION'}]}),false);assert.equal(hasPendingPixKey({data:[{status:'AWAITING_ACTIVATION'}]}),true);assert.equal(hasActivePixKey({data:[{status:'ACTIVE'}]}),true)})
 test('extrai correlação e valor do webhook',()=>assert.deepEqual(eventFields({id:'evt_1',event:'CHECKOUT_PAID',checkout:{id:'chk_1',externalReference:'order-1',value:59.99},payment:{id:'pay_1'}}),{eventId:'evt_1',eventType:'CHECKOUT_PAID',checkoutId:'chk_1',paymentId:'pay_1',externalReference:'order-1',amountCents:5999,refundedAmountCents:null}))
 test('calcula o total do checkout pela lista de itens enviada pelo Asaas',()=>assert.equal(eventFields({id:'evt_2',event:'CHECKOUT_PAID',checkout:{items:[{quantity:1,value:59.99}]}}).amountCents,5999))
+test('confirma CHECKOUT_PAID oficial sem exigir payment.id',()=>{
+  const fields=verifiedCheckoutPaidFields({id:'evt_paid',event:'CHECKOUT_PAID',checkout:{id:'checkout-1',status:'PAID',externalReference:'3a6f8853-bef9-4758-baa7-39c0f40d69b7',chargeTypes:['DETACHED'],items:[{name:PREMIUM_PRODUCT.name,quantity:1,value:59.99}]}})
+  assert.equal(fields.paymentId,null);assert.equal(fields.amountCents,5999);assert.equal(fields.checkoutId,'checkout-1')
+})
+test('rejeita CHECKOUT_PAID sem estado pago ou produto correspondente',()=>{
+  const base={id:'evt_paid',event:'CHECKOUT_PAID',checkout:{id:'checkout-1',externalReference:'3a6f8853-bef9-4758-baa7-39c0f40d69b7',chargeTypes:['DETACHED'],items:[{name:PREMIUM_PRODUCT.name,quantity:1,value:59.99}]}}
+  assert.throws(()=>verifiedCheckoutPaidFields(base),/não está pago/)
+  assert.throws(()=>verifiedCheckoutPaidFields({...base,checkout:{...base.checkout,status:'PAID',items:[{name:PREMIUM_PRODUCT.name,quantity:1,value:60}]}}),/Produto do checkout divergente/)
+})
 test('compara token de webhook com segurança',()=>{assert.equal(safeEqual('token-seguro','token-seguro'),true);assert.equal(safeEqual('token-seguro','token'),false)})
 test('preserva estados financeiros distintos',()=>{assert.equal(processableEventType('PAYMENT_CHARGEBACK_DISPUTE'),'PAYMENT_CHARGEBACK_DISPUTE');assert.equal(processableEventType('PAYMENT_PARTIALLY_REFUNDED'),'PAYMENT_PARTIALLY_REFUNDED')})
 test('piloto de produção exige todas as travas e comprador autorizado',()=>{
@@ -78,7 +87,7 @@ test('pagamento aprovado usa somente o novo convite seguro',async()=>{
   assert.match(worker,/deliverPremiumAccessInvite/)
   assert.doesNotMatch(webhook,/deliverPremiumActivationEmail/)
   assert.doesNotMatch(adminRetry,/deliverPremiumAccessInvite/)
-  assert.match(adminRetry,/reconcilePaidEvent/)
+  assert.match(adminRetry,/verifiedCheckoutPaidFields/)
 })
 test('webhooks usam tokens e ambientes independentes sem confiar no payload',async()=>{
   const sandbox=await readFile(new URL('../api/asaas-webhook.mjs',import.meta.url),'utf8')

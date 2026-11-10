@@ -1,6 +1,6 @@
 import {requirePlatformAdmin} from './supabase-admin.mjs'
 import {allowMethods,json,readJson} from './http.mjs'
-import {eventFields,reconcilePaidEvent} from './asaas.mjs'
+import {eventFields,verifiedCheckoutPaidFields} from './asaas.mjs'
 
 export default async function handler(req,res){
   if(!allowMethods(req,res,['GET','POST']))return
@@ -12,7 +12,7 @@ export default async function handler(req,res){
       const {data:event,error:eventError}=await db.from('asaas_webhook_events').select('*').eq('asaas_environment',eventEnvironment).eq('id',String(eventId||'')).single()
       if(eventError||!event)return json(res,404,{error:'Evento não encontrado.'})
       const fields=eventFields(event.payload)
-      const authoritative=fields.eventType==='CHECKOUT_PAID'?{...fields,...await reconcilePaidEvent(fields,eventEnvironment)}:fields
+      const authoritative=fields.eventType==='CHECKOUT_PAID'?verifiedCheckoutPaidFields(event.payload):fields
       const {data:result,error:rpcError}=await db.rpc('process_asaas_webhook_event',{
         target_asaas_environment:eventEnvironment,target_event_id:event.id,target_event_type:fields.eventType,target_checkout_id:authoritative.checkoutId,
         target_payment_id:authoritative.paymentId,target_external_reference:authoritative.externalReference,

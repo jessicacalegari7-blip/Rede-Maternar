@@ -90,15 +90,22 @@ export function eventFields(payload){
 export function validateCheckoutPaidPayload(payload){
   const checkout=payload?.checkout||{}
   if(!checkout.id)throw Object.assign(new Error('Checkout sem identificador.'),{code:'invalid_checkout'})
-  if(checkout.status&&checkout.status!=='PAID')throw Object.assign(new Error('Checkout não está pago.'),{code:'checkout_not_paid'})
-  if(Array.isArray(checkout.chargeTypes)&&!checkout.chargeTypes.includes('DETACHED'))throw Object.assign(new Error('Tipo de cobrança inesperado.'),{code:'invalid_charge_type'})
+  if(checkout.status!=='PAID')throw Object.assign(new Error('Checkout não está pago.'),{code:'checkout_not_paid'})
+  if(!checkout.externalReference)throw Object.assign(new Error('Checkout sem referência do pedido.'),{code:'invalid_reference'})
+  if(!Array.isArray(checkout.chargeTypes)||!checkout.chargeTypes.includes('DETACHED'))throw Object.assign(new Error('Tipo de cobrança inesperado.'),{code:'invalid_charge_type'})
   if(checkout.currency&&checkout.currency!=='BRL')throw Object.assign(new Error('Moeda inesperada.'),{code:'invalid_currency'})
-  if(Array.isArray(checkout.items)){
-    if(checkout.items.length!==1)throw Object.assign(new Error('Itens do checkout divergentes.'),{code:'invalid_items'})
-    const item=checkout.items[0]
-    if(String(item?.name||'')!==PREMIUM_PRODUCT.name||Number(item?.quantity)!==1||Math.round(Number(item?.value)*100)!==PREMIUM_PRODUCT.amountCents)throw Object.assign(new Error('Produto do checkout divergente.'),{code:'invalid_product'})
-  }
+  if(!Array.isArray(checkout.items)||checkout.items.length!==1)throw Object.assign(new Error('Itens do checkout divergentes.'),{code:'invalid_items'})
+  const item=checkout.items[0]
+  if(String(item?.name||'')!==PREMIUM_PRODUCT.name||Number(item?.quantity)!==1||Math.round(Number(item?.value)*100)!==PREMIUM_PRODUCT.amountCents)throw Object.assign(new Error('Produto do checkout divergente.'),{code:'invalid_product'})
   return true
+}
+
+export function verifiedCheckoutPaidFields(payload){
+  validateCheckoutPaidPayload(payload)
+  const fields=eventFields(payload)
+  if(fields.eventType!=='CHECKOUT_PAID')throw Object.assign(new Error('Tipo de evento inesperado.'),{code:'invalid_event_type'})
+  if(fields.amountCents!==PREMIUM_PRODUCT.amountCents)throw Object.assign(new Error('Valor financeiro divergente.'),{code:'amount_mismatch'})
+  return fields
 }
 
 const paidStatuses=new Set(['CONFIRMED','RECEIVED','RECEIVED_IN_CASH'])
