@@ -14,4 +14,15 @@ describe('professional research helpers', () => {
     expect(row).not.toHaveProperty('address')
     expect(row.whatsapp).toBe('5519999999999')
   })
+  it('trata endereço ausente, parcial e completo sem inventar localização', () => {
+    const target={city:'Campinas',city_slug:'campinas',state_code:'SP',specialty:'Pediatria',specialty_slug:'pediatria'}
+    const missing=mapOsmItem({type:'node',id:1,tags:{name:'Clínica Infantil'}},target)
+    const partial=mapOsmItem({type:'node',id:2,tags:{name:'Clínica Infantil Centro','addr:district':'Centro'}},target)
+    const complete=mapOsmItem({type:'node',id:3,tags:{name:'Clínica Infantil Cambuí','addr:neighbourhood':'Cambuí','addr:street':'Rua privada','addr:housenumber':'10'}},target)
+    expect(missing?.neighborhood).toBeNull()
+    expect(partial?.neighborhood).toBe('Centro')
+    expect(complete?.neighborhood).toBe('Cambuí')
+    expect(complete?.source_payload.tags['addr:street']).toBeUndefined()
+    expect(complete?.source_payload.tags['addr:housenumber']).toBeUndefined()
+  })
 })

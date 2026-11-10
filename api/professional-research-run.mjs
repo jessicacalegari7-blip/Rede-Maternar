@@ -121,6 +121,7 @@ function isPlausibleHealthProvider(name, types = [], tags = {}) {
   if (normalizedTypes.some(type => HEALTH_PLACE_TYPES.has(type))) return true
   const category = `${tags.amenity||''} ${tags.healthcare||''} ${tags.category||''} ${tags.type||''}`
   return /clinic|doctor|hospital|health|medical|dentist|physio|therapy|midwife/i.test(category)
+    || /\b(cl[ií]nica|consult[oó]rio|hospital|maternidade|pediatr|m[eé]dic|fisioterap|psicolog|nutri[cç]|odontolog)\b/i.test(name)
 }
 
 export function mapOsmItem(item, target) {
