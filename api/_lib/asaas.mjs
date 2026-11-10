@@ -122,10 +122,13 @@ export async function reconcilePaidEvent(fields,environment){
 
 export function productionPilotEnvironment({email,taxId}={}){
   const enabled=process.env.ASAAS_PRODUCTION_CHARGES_ENABLED==='true'
+  const commercialEnabled=process.env.ASAAS_PRODUCTION_COMMERCIAL_ENABLED==='true'
   const pilotEnabled=process.env.ASAAS_PRODUCTION_PILOT_ENABLED==='true'
+  if(!enabled)return 'sandbox'
+  if(commercialEnabled)return 'production'
   const authorizedEmail=String(process.env.ASAAS_PRODUCTION_PILOT_EMAIL||'').trim().toLowerCase()
   const authorizedTaxHash=String(process.env.ASAAS_PRODUCTION_PILOT_TAX_ID_SHA256||'').trim().toLowerCase()
-  if(!enabled||!pilotEnabled||!authorizedEmail||!authorizedTaxHash)return 'sandbox'
+  if(!pilotEnabled||!authorizedEmail||!authorizedTaxHash)return 'sandbox'
   const normalizedEmail=String(email||'').trim().toLowerCase()
   const normalizedTaxId=normalizeTaxId(taxId)
   const taxHash=createHash('sha256').update(normalizedTaxId).digest('hex')

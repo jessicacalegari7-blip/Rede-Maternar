@@ -27,9 +27,23 @@ test('rejeita CHECKOUT_PAID sem estado pago ou produto correspondente',()=>{
 test('compara token de webhook com segurança',()=>{assert.equal(safeEqual('token-seguro','token-seguro'),true);assert.equal(safeEqual('token-seguro','token'),false)})
 test('preserva estados financeiros distintos',()=>{assert.equal(processableEventType('PAYMENT_CHARGEBACK_DISPUTE'),'PAYMENT_CHARGEBACK_DISPUTE');assert.equal(processableEventType('PAYMENT_PARTIALLY_REFUNDED'),'PAYMENT_PARTIALLY_REFUNDED')})
 test('piloto de produção exige todas as travas e comprador autorizado',()=>{
-  const old={...process.env};delete process.env.ASAAS_PRODUCTION_CHARGES_ENABLED;delete process.env.ASAAS_PRODUCTION_PILOT_ENABLED;delete process.env.ASAAS_PRODUCTION_PILOT_EMAIL;delete process.env.ASAAS_PRODUCTION_PILOT_TAX_ID_SHA256
+  const old={...process.env};delete process.env.ASAAS_PRODUCTION_CHARGES_ENABLED;delete process.env.ASAAS_PRODUCTION_COMMERCIAL_ENABLED;delete process.env.ASAAS_PRODUCTION_PILOT_ENABLED;delete process.env.ASAAS_PRODUCTION_PILOT_EMAIL;delete process.env.ASAAS_PRODUCTION_PILOT_TAX_ID_SHA256
   try{assert.equal(productionPilotEnvironment({email:'pilot@example.com',taxId:'52998224725'}),'sandbox')}
   finally{for(const key of Object.keys(process.env))if(!(key in old))delete process.env[key];Object.assign(process.env,old)}
+})
+test('modo comercial exige duas travas explícitas e permanece bloqueado por padrão',()=>{
+  const old={...process.env}
+  try{
+    process.env.ASAAS_PRODUCTION_COMMERCIAL_ENABLED='true';process.env.ASAAS_PRODUCTION_CHARGES_ENABLED='false'
+    assert.equal(productionPilotEnvironment({email:'comprador@example.com',taxId:'52998224725'}),'sandbox')
+    process.env.ASAAS_PRODUCTION_CHARGES_ENABLED='true'
+    assert.equal(productionPilotEnvironment({email:'comprador@example.com',taxId:'52998224725'}),'production')
+    process.env.ASAAS_PRODUCTION_COMMERCIAL_ENABLED='false'
+    assert.equal(productionPilotEnvironment({email:'comprador@example.com',taxId:'52998224725'}),'sandbox')
+  }finally{
+    for(const key of Object.keys(process.env))if(!(key in old))delete process.env[key]
+    Object.assign(process.env,old)
+  }
 })
 test('piloto bloqueia identidades divergentes e não aceita ambiente do frontend',()=>{
   const old={...process.env},email='comprador.autorizado@example.com',taxId='52998224725'
