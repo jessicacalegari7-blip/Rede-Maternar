@@ -147,3 +147,10 @@ test('webhook não depende do envio imediato pelo Brevo',async()=>{
   assert.match(webhook,/record_asaas_webhook_event/)
   assert.match(webhook,/reconciliation_pending/)
 })
+test('perfil Premium completo é publicado automaticamente sem aprovação manual',async()=>{
+  const migration=await readFile(new URL('../supabase/migrations/20261020190000_fix_specialty_trigger_optional_registration.sql',import.meta.url),'utf8')
+  assert.match(migration,/required_profile_ok.*specialty_ok.*location_ok/s)
+  assert.match(migration,/else new_status:='published'/)
+  assert.match(migration,/marketplace_visible=\(new_status='published'\)/)
+  assert.doesNotMatch(migration,/awaiting_approval/)
+})
