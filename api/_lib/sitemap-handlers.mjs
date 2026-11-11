@@ -17,10 +17,14 @@ export async function posts(request,response){
 
 export async function directory(request,response){
   const db=adminClient();const page=pageNumber(request)
-  const profiles=await fetchRange(()=>db.from('published_clinic_directory').select('id,name,primary_specialty,specialty_slug,city,city_slug,state_code,created_at,updated_at').order('id',{ascending:true}),page)
+  const [profiles,premiumProfiles]=await Promise.all([
+    fetchRange(()=>db.from('published_clinic_directory').select('id,name,primary_specialty,specialty_slug,city,city_slug,state_code,created_at,updated_at').order('id',{ascending:true}),page),
+    page===1?fetchWindow(()=>db.from('marketplace_professionals').select('public_slug').not('public_slug','is',null).order('public_slug',{ascending:true}),0,MAX_URLS):Promise.resolve([]),
+  ])
   const nodes=[];const seen=new Set()
   for(const item of profiles){const specialty=item.specialty_slug||slugify(item.primary_specialty);const city=item.city_slug||slugify(item.city);const state=String(item.state_code||'').toLowerCase();const key=`${specialty}/${state}/${city}`;if(!specialty||!state||!city||seen.has(key))continue;seen.add(key);nodes.push(urlNode({loc:`${SITE_URL}/profissionais/${key}`,lastmod:item.updated_at||item.created_at,changefreq:'daily',priority:'0.9'}))}
   for(const item of profiles){const specialty=item.specialty_slug||slugify(item.primary_specialty);const city=item.city_slug||slugify(item.city);const state=String(item.state_code||'').toLowerCase();if(specialty&&state&&city)nodes.push(urlNode({loc:`${SITE_URL}/profissionais/${specialty}/${state}/${city}/${slugify(item.name)}-${item.id}`,lastmod:item.updated_at,changefreq:'weekly',priority:'0.8'}))}
+  for(const item of premiumProfiles){if(item.public_slug)nodes.push(urlNode({loc:`${SITE_URL}/${item.public_slug}`,changefreq:'weekly',priority:'0.9'}))}
   return sendXml(response,urlset(nodes))
 }
 

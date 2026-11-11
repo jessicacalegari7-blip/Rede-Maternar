@@ -50,7 +50,7 @@ export function Marketplace() {
   const newsSection=(start:number,keyPrefix:string)=><section className="directory-empty-news directory-results-news" aria-label="Matérias recomendadas"><div><span>Conteúdo MaterPlace</span><h2>Leia também</h2><p>Conteúdos relacionados à sua busca e as publicações mais recentes do portal.</p></div><div className="directory-empty-news-grid">{relatedArticles.slice(start,start+6).map(article=>newsCard(article,keyPrefix))}</div></section>
   const publicProfileHref=(p:any)=>p.directory_profile
     ? `/profissional/${normalize(p.full_name)}-${p.id}`
-    : `/perfil/${p.id}`
+    : p.public_slug?`/${p.public_slug}`:`/perfil/${p.id}`
 
   function searchProfessionals(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()

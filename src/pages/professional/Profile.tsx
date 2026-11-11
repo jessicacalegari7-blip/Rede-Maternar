@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Eye, MapPin, Plus, Save, Trash2 } from 'lucide-react'
+import { Copy, Eye, MapPin, MessageCircle, Plus, Save, Trash2 } from 'lucide-react'
 import { useAuth } from '../../lib/AuthContext'
 import { getMyProfessionalProfile, getProfessionalServiceLocations, getProfessionalSpecialtyEditor, listMyProfileViewCounts, saveProfessionalServiceLocations, saveProfessionalSpecialties, updateMyProfessionalProfile, uploadMarketplaceMedia, type ProfessionalServiceLocation, type RealProfessionalProfile } from '../../lib/operations'
 import { specialtyLimitForPlan } from '../../lib/plans'
@@ -19,6 +19,7 @@ export function ProfessionalProfilePage() {
   const [locationNotice,setLocationNotice]=useState<{message:string;error:boolean}|null>(null)
   const [saving,setSaving]=useState(false)
   const [error,setError]=useState('')
+  const [linkNotice,setLinkNotice]=useState('')
   const specialtyLimit=specialtyLimitForPlan(user?.plan)
 
   useEffect(()=>{void getMyProfessionalProfile().then(async loaded=>{
@@ -98,9 +99,18 @@ export function ProfessionalProfilePage() {
     finally{setSaving(false)}
   }
 
+  const publicPath=profile.public_slug?`/${profile.public_slug}`:''
+  const publicUrl=publicPath?`${window.location.origin}${publicPath}`:''
+  const missingPublicationFields=[!profile.full_name?.trim()?'nome':'',!profile.whatsapp?.trim()?'telefone':'',!selectedSpecialties.length?'especialidade':'',!serviceLocations.length?'local de atendimento':''].filter(Boolean)
+  const copyPublicLink=async()=>{if(!publicUrl)return;await navigator.clipboard.writeText(publicUrl);setLinkNotice('Link copiado com sucesso.')}
+
   return <div>
-    <div className="page-heading"><div><h1>Perfil no Marketplace</h1><p>Cadastre aqui todos os dados públicos da clínica ou profissional.</p><strong>{viewCount} visualizações deste perfil</strong></div><a className="btn btn-secondary" href={`/perfil/${profile.id}`} target="_blank" rel="noreferrer"><Eye size={17}/>Ver perfil</a></div>
+    <div className="page-heading"><div><h1>Perfil no Marketplace</h1><p>Cadastre aqui todos os dados públicos da clínica ou profissional.</p><strong>{viewCount} visualizações deste perfil</strong></div>{profile.marketplace_visible&&publicPath?<a className="btn btn-secondary" href={publicPath} target="_blank" rel="noreferrer"><Eye size={17}/>Ver perfil</a>:null}</div>
     {notice&&<div className="notice">{notice}</div>}
+    <section className="card public-profile-link-card">
+      <div><small>Meu link público</small><h2>{publicUrl||'O link será reservado após informar o nome.'}</h2><p>{profile.marketplace_visible?'Perfil publicado e disponível no diretório.':missingPublicationFields.length?`Link reservado. Para publicar, preencha: ${missingPublicationFields.join(', ')}.`:'A publicação automática está sendo confirmada.'}</p>{linkNotice&&<div className="notice" role="status">{linkNotice}</div>}</div>
+      {publicUrl&&<div className="public-profile-link-actions"><button type="button" className="btn btn-secondary" onClick={()=>void copyPublicLink()}><Copy size={16}/>Copiar link</button>{profile.marketplace_visible&&<a className="btn btn-secondary" href={publicPath} target="_blank" rel="noreferrer"><Eye size={16}/>Visualizar</a>}<a className="btn btn-secondary" href={`https://wa.me/?text=${encodeURIComponent(`Conheça meu perfil na MaterPlace: ${publicUrl}`)}`} target="_blank" rel="noreferrer"><MessageCircle size={16}/>Compartilhar</a></div>}
+    </section>
     <section className="card grid grid-2 profile-editor-grid">
       <div className="field"><label>Foto do perfil ou logotipo</label><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>void upload('profile',e.target.files)}/>{profile.profile_image_url&&<img src={profile.profile_image_url} alt="Perfil" style={{maxWidth:160,borderRadius:16,marginTop:10}}/>}</div>
       <div className="field"><label>Imagem de capa</label><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>void upload('cover',e.target.files)}/>{profile.cover_image_url&&<img src={profile.cover_image_url} alt="Capa" style={{width:'100%',maxHeight:150,objectFit:'cover',borderRadius:16,marginTop:10}}/>}</div>

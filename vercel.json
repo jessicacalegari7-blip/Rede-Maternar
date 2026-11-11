@@ -23,6 +23,7 @@
     { "source": "/api/asaas-worker", "destination": "/api/asaas-checkout?asaasMode=worker" },
     { "source": "/api/asaas-production-diagnostic", "destination": "/api/asaas-checkout?asaasMode=production-diagnostic" },
     { "source": "/api/asaas-production-webhook", "destination": "/api/asaas-webhook?asaasEnvironment=production" },
+    { "source": "/perfil/:profile", "destination": "/api/public-profile-redirect?profile=:profile" },
     { "source": "/profissionais/:specialty/:uf/:city/:profile", "has": [{ "type": "header", "key": "user-agent", "value": ".*(Googlebot|bingbot|facebookexternalhit|Facebot|Twitterbot|LinkedInBot|WhatsApp|TelegramBot).*" }], "destination": "/api/directory-share?specialty=:specialty&uf=:uf&city=:city&profile=:profile" },
     { "source": "/profissionais/:specialty/:uf/:city", "has": [{ "type": "header", "key": "user-agent", "value": ".*(Googlebot|bingbot|facebookexternalhit|Facebot|Twitterbot|LinkedInBot|WhatsApp|TelegramBot).*" }], "destination": "/api/directory-share?specialty=:specialty&uf=:uf&city=:city" },
     { "source": "/noticias/:slug", "has": [{ "type": "header", "key": "user-agent", "value": ".*(Googlebot|bingbot|facebookexternalhit|Facebot|Twitterbot|LinkedInBot|WhatsApp|TelegramBot).*" }], "destination": "/api/article-share?slug=:slug" },

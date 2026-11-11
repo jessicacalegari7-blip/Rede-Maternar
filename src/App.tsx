@@ -145,6 +145,7 @@ export default function App() {
       </Route>
     </Route>
 
+    <Route path="/:publicSlug" element={<PublicProfessionalProfile />} />
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes></Suspense><CookieConsent/></AuthProvider></BrowserRouter>
 }

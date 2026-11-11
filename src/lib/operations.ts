@@ -599,7 +599,7 @@ export async function listMarketplaceProfessionals(specialty='',city='') {
     return db.rpc('directory_search_by_city',{requested_specialty_slug:specialtySlug,requested_city_slug:citySlug,requested_page:1,requested_page_size:50})
   })()
   const [profilesResult,directoryResult]=await Promise.all([
-    db.from('marketplace_professionals').select('id,full_name,clinic_name,verified,rating,review_count,specialties,city,state_code,neighborhood,whatsapp,visibility_cities,profile_image_url,plan').order('verified',{ascending:false}).order('full_name').limit(50),
+    db.from('marketplace_professionals').select('id,full_name,clinic_name,verified,rating,review_count,specialties,city,state_code,neighborhood,whatsapp,visibility_cities,profile_image_url,plan,public_slug').order('verified',{ascending:false}).order('full_name').limit(50),
     directoryPromise,
   ])
   if(profilesResult.error) throw new Error(profilesResult.error.message)
@@ -652,6 +652,7 @@ export async function listMyProfileViewCounts() {
 
 export interface RealProfessionalProfile {
   id:string;full_name:string;professional_registration:string|null;bio:string|null
+  public_slug:string|null
   whatsapp:string|null;email:string|null;city:string;state_code:string;neighborhood:string|null
   clinic_name:string|null;accepts_online:boolean;marketplace_visible:boolean;verified:boolean
   website_url:string|null;instagram_handle:string|null;accepted_insurances:string[]
@@ -830,8 +831,9 @@ export async function saveProfessionalSpecialties(professionalId:string,names:st
   if(confirmed.selected.length!==unique.length||unique.some(name=>!confirmed.selected.includes(name))) throw new Error('O banco não confirmou todas as especialidades selecionadas.')
 }
 
-export async function getMarketplaceProfessional(id:string) {
-  const {data,error}=await client().from('marketplace_professionals').select('*').eq('id',id).maybeSingle()
+export async function getMarketplaceProfessional(identifier:string) {
+  const field=/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(identifier)?'id':'public_slug'
+  const {data,error}=await client().from('marketplace_professionals').select('*').eq(field,identifier).maybeSingle()
   if(error) throw new Error(error.message)
   return data?withCachedPublicMedia(data):data
 }
