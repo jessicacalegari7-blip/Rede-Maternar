@@ -7,7 +7,7 @@ O modo comercial só usa Asaas Production quando as duas variáveis abaixo estã
 - `ASAAS_PRODUCTION_CHARGES_ENABLED`
 - `ASAAS_PRODUCTION_COMMERCIAL_ENABLED`
 
-Para reverter imediatamente, definir qualquer uma delas como `false` e realizar redeploy. O modo piloto continua separado e não substitui a trava comercial.
+Para pausar imediatamente depois da abertura, manter `ASAAS_PRODUCTION_COMMERCIAL_ENABLED=true`, definir `ASAAS_PRODUCTION_CHARGES_ENABLED=false` e realizar redeploy. Nessa combinação o checkout falha de forma fechada com HTTP 503 e nunca retorna ao Sandbox. Para encerrar definitivamente o modo comercial, desativar a flag comercial somente depois que a trava financeira já estiver carregada no runtime.
 
 ## Antes da abertura
 

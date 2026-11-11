@@ -66,7 +66,8 @@ export default async function handler(req,res){
     console.error('asaas_checkout_failed',{stage,step:failureStep,code:error?.code||null,status:error?.status||500,message:technicalMessage})
     const safeMessages={existing_user_lookup:'Não foi possível validar o e-mail informado.',auth_user_creation:'Não foi possível criar seu acesso. Verifique o e-mail e tente novamente.',order_creation:'Não foi possível registrar o pedido.',asaas_pix_key_check:'A chave Pix do ambiente de pagamento ainda não está ativa.',asaas_checkout_creation:'O Asaas não conseguiu criar o checkout.',order_confirmation:'O checkout foi criado, mas requer conciliação antes de uma nova tentativa.'}
     const databaseReason=/^(?:PGRST\d+|\d{5})$/.test(String(error?.code||''))?String(error.code):undefined
-    return json(res,error?.status||500,{error:safeMessages[stage]||'Não foi possível iniciar o checkout.',code:`checkout_${failureStep}`,...(databaseReason?{reason:databaseReason}:{})})
+    const publicMessage=error?.code==='commercial_sales_paused'?'As contratações estão temporariamente pausadas. Tente novamente mais tarde.':safeMessages[stage]||'Não foi possível iniciar o checkout.'
+    return json(res,error?.status||500,{error:publicMessage,code:`checkout_${failureStep}`,...(databaseReason?{reason:databaseReason}:{})})
   }
 }
 async function resendInvite(req,res){

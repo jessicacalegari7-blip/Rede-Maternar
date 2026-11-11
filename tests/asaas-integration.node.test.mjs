@@ -35,7 +35,7 @@ test('modo comercial exige duas travas explícitas e permanece bloqueado por pad
   const old={...process.env}
   try{
     process.env.ASAAS_PRODUCTION_COMMERCIAL_ENABLED='true';process.env.ASAAS_PRODUCTION_CHARGES_ENABLED='false'
-    assert.equal(productionPilotEnvironment({email:'comprador@example.com',taxId:'52998224725'}),'sandbox')
+    assert.throws(()=>productionPilotEnvironment({email:'comprador@example.com',taxId:'52998224725'}),error=>error?.code==='commercial_sales_paused'&&error?.status===503)
     process.env.ASAAS_PRODUCTION_CHARGES_ENABLED='true'
     assert.equal(productionPilotEnvironment({email:'comprador@example.com',taxId:'52998224725'}),'production')
     process.env.ASAAS_PRODUCTION_COMMERCIAL_ENABLED='false'
@@ -153,4 +153,10 @@ test('perfil Premium completo é publicado automaticamente sem aprovação manua
   assert.match(migration,/else new_status:='published'/)
   assert.match(migration,/marketplace_visible=\(new_status='published'\)/)
   assert.doesNotMatch(migration,/awaiting_approval/)
+})
+test('reativação administrativa respeita os requisitos do Premium',async()=>{
+  const handler=await readFile(new URL('../api/admin-professional-status.mjs',import.meta.url),'utf8')
+  assert.doesNotMatch(handler,/marketplace_visible:status==='active'/)
+  assert.match(handler,/status!=='active'.*marketplace_visible:false/s)
+  assert.match(handler,/refresh_premium_publication.*target_professional_id:professional\.id/s)
 })

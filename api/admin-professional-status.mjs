@@ -24,7 +24,14 @@ export default async function handler(req,res){
     if(!approvedProfile)throw new Error('Cadastro profissional não encontrado para aprovação.')
     if(organizationId){
       const {error:organizationError}=await db.from('organizations').update({status,updated_at:now}).eq('id',organizationId);if(organizationError)throw organizationError
-      const {error:professionalError}=await db.from('professional_profiles').update({marketplace_visible:status==='active',updated_at:now}).eq('organization_id',organizationId);if(professionalError)throw professionalError
+      const {data:professionalProfiles,error:listError}=await db.from('professional_profiles').select('id').eq('organization_id',organizationId);if(listError)throw listError
+      if(status!=='active'){
+        const {error:professionalError}=await db.from('professional_profiles').update({marketplace_visible:false,updated_at:now}).eq('organization_id',organizationId);if(professionalError)throw professionalError
+      }else{
+        for(const professional of professionalProfiles||[]){
+          const {error:publicationError}=await db.rpc('refresh_premium_publication',{target_professional_id:professional.id});if(publicationError)throw publicationError
+        }
+      }
     }
     const email=target.user.email
     let emailSent=false
