@@ -13,6 +13,17 @@ function page({title,description,canonical,schema,content,index=true}){
 
 export default async function handler(request,response){
   try{
+    const legacyProfile=String(request.query.legacyProfile||'').trim().toLowerCase()
+    if(legacyProfile){
+      if(request.method!=='GET')return response.status(405).json({error:'Método não permitido.'})
+      const db=adminClient()
+      const field=/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(legacyProfile)?'id':'public_slug'
+      const {data,error}=await db.from('marketplace_professionals').select('public_slug').eq(field,legacyProfile).maybeSingle()
+      if(error)throw error
+      if(!data?.public_slug)return response.status(404).send('Perfil não encontrado ou não publicado.')
+      response.setHeader('Cache-Control','public, max-age=300, s-maxage=3600')
+      return response.redirect(301,`${ORIGIN}/${data.public_slug}`)
+    }
     const specialty=String(request.query.specialty||'')
     const state=String(request.query.uf||'').toUpperCase()
     const city=String(request.query.city||'')

@@ -28,7 +28,7 @@ test('public view only returns automatically published profiles and exposes slug
 })
 
 test('legacy public profile links use a permanent redirect',async()=>{
-  const source=await readFile(new URL('../api/public-profile-redirect.mjs',import.meta.url),'utf8')
+  const source=await readFile(new URL('../api/directory-share.mjs',import.meta.url),'utf8')
   assert.match(source,/response\.redirect\(301/)
   assert.match(source,/marketplace_professionals/)
   assert.doesNotMatch(source,/professional_profiles'\)\.select\('\*'/)
