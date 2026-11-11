@@ -4,6 +4,7 @@ import { test } from 'node:test'
 
 const migrationPath=new URL('../supabase/migrations/20261111100000_premium_public_profile_slugs.sql',import.meta.url)
 const migration=await readFile(migrationPath,'utf8')
+const serviceGrant=await readFile(new URL('../supabase/migrations/20261111163000_marketplace_view_service_read.sql',import.meta.url),'utf8')
 
 test('public slugs are normalized, unique and backfilled without changing later',()=>{
   assert.match(migration,/normalize_professional_public_slug/)
@@ -32,4 +33,10 @@ test('legacy public profile links use a permanent redirect',async()=>{
   assert.match(source,/response\.redirect\(301/)
   assert.match(source,/marketplace_professionals/)
   assert.doesNotMatch(source,/professional_profiles'\)\.select\('\*'/)
+})
+
+test('server renderer receives read-only access to the public marketplace view',()=>{
+  assert.match(serviceGrant,/grant select on public\.marketplace_professionals to service_role/i)
+  assert.doesNotMatch(serviceGrant,/grant (insert|update|delete|all)/i)
+  assert.doesNotMatch(serviceGrant,/\b(anon|authenticated)\b/i)
 })
