@@ -34,8 +34,8 @@ export default async function handler(req,res){
     if(!validPhone(phone))return json(res,400,{error:'Informe um telefone ou WhatsApp válido, com DDD.'})
     if(!validTaxId(taxId))return json(res,400,{error:'O CPF ou CNPJ informado é inválido. Confira os números e tente novamente.'})
     const attribution=Object.fromEntries(Object.entries(body.attribution||{}).filter(([key,value])=>/^(utm_(source|medium|campaign|term|content)|campaign_id)$/.test(key)&&typeof value==='string').map(([key,value])=>[key,value.trim().slice(0,160)]))
-    const db=adminClient()
     environment=productionPilotEnvironment({email,taxId})
+    const db=adminClient()
     stage='order_creation'
     const {data:order,error:orderError}=await db.rpc('reserve_premium_checkout',{target_asaas_environment:environment,target_name:name,target_email:email,target_phone:phone,target_tax_id_last4:taxId.slice(-4),target_amount_cents:PREMIUM_PRODUCT.amountCents,target_attribution:attribution})
     if(orderError)throw orderError
@@ -59,8 +59,7 @@ export default async function handler(req,res){
     if(updateError||!confirmed)throw Object.assign(updateError||new Error('Reserva do checkout não pôde ser confirmada.'),{inconclusive:true})
     return json(res,201,{orderId:order.order_id,statusToken:order.public_token,checkoutUrl:checkoutPageUrl(checkout.id,environment),amountCents:PREMIUM_PRODUCT.amountCents,environment})
   }catch(error){
-    const db=adminClient()
-    if(orderId&&attemptId)await db.rpc('finish_premium_checkout_attempt',{target_order_id:orderId,target_attempt_id:attemptId,target_checkout_id:null,target_result:error?.inconclusive?'inconclusive':'failed',target_expires_at:null})
+    if(orderId&&attemptId)await adminClient().rpc('finish_premium_checkout_attempt',{target_order_id:orderId,target_attempt_id:attemptId,target_checkout_id:null,target_result:error?.inconclusive?'inconclusive':'failed',target_expires_at:null})
     const technicalMessage=String(error?.message||error?.details||error?.hint||'Falha não identificada').slice(0,500)
     const failureStep=String(error?.checkoutStep||stage).replace(/[^a-z0-9_]/gi,'').slice(0,80)
     console.error('asaas_checkout_failed',{stage,step:failureStep,code:error?.code||null,status:error?.status||500,message:technicalMessage})

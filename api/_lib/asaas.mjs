@@ -124,16 +124,17 @@ export function productionPilotEnvironment({email,taxId}={}){
   const enabled=process.env.ASAAS_PRODUCTION_CHARGES_ENABLED==='true'
   const commercialEnabled=process.env.ASAAS_PRODUCTION_COMMERCIAL_ENABLED==='true'
   const pilotEnabled=process.env.ASAAS_PRODUCTION_PILOT_ENABLED==='true'
-  if(commercialEnabled&&!enabled){
-    throw Object.assign(new Error('Vendas comerciais temporariamente indisponíveis.'),{status:503,code:'commercial_sales_paused'})
-  }
-  if(!enabled)return 'sandbox'
-  if(commercialEnabled)return 'production'
+  const sandboxDevelopmentEnabled=process.env.ASAAS_SANDBOX_CHECKOUT_ENABLED==='true'&&process.env.VERCEL_ENV!=='production'
+  const paused=()=>{throw Object.assign(new Error('Vendas comerciais temporariamente indisponíveis.'),{status:503,code:'commercial_sales_paused'})}
+  if(commercialEnabled)return enabled?'production':paused()
   const authorizedEmail=String(process.env.ASAAS_PRODUCTION_PILOT_EMAIL||'').trim().toLowerCase()
   const authorizedTaxHash=String(process.env.ASAAS_PRODUCTION_PILOT_TAX_ID_SHA256||'').trim().toLowerCase()
-  if(!pilotEnabled||!authorizedEmail||!authorizedTaxHash)return 'sandbox'
-  const normalizedEmail=String(email||'').trim().toLowerCase()
-  const normalizedTaxId=normalizeTaxId(taxId)
-  const taxHash=createHash('sha256').update(normalizedTaxId).digest('hex')
-  return safeEqual(normalizedEmail,authorizedEmail)&&safeEqual(taxHash,authorizedTaxHash)?'production':'sandbox'
+  if(enabled&&pilotEnabled&&authorizedEmail&&authorizedTaxHash){
+    const normalizedEmail=String(email||'').trim().toLowerCase()
+    const normalizedTaxId=normalizeTaxId(taxId)
+    const taxHash=createHash('sha256').update(normalizedTaxId).digest('hex')
+    if(safeEqual(normalizedEmail,authorizedEmail)&&safeEqual(taxHash,authorizedTaxHash))return 'production'
+  }
+  if(!enabled&&!commercialEnabled&&!pilotEnabled&&sandboxDevelopmentEnabled)return 'sandbox'
+  return paused()
 }

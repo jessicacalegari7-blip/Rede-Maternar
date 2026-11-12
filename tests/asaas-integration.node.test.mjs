@@ -4,6 +4,7 @@ import {createHash} from 'node:crypto'
 import {readFile} from 'node:fs/promises'
 import {PREMIUM_PRODUCT,asaasBaseUrl,asaasRequest,eventFields,hasActivePixKey,hasPendingPixKey,normalizeTaxId,processableEventType,productionPilotEnvironment,reconcilePaidEvent,safeEqual,validPhone,validTaxId,verifiedCheckoutPaidFields} from '../api/_lib/asaas.mjs'
 import {handleAsaasWebhook} from '../api/_lib/asaas-webhook-handler.mjs'
+import checkoutHandler from '../api/asaas-checkout.mjs'
 
 function responseCapture(){
   return {statusCode:0,headers:{},body:null,setHeader(name,value){this.headers[name]=value},end(value){this.body=JSON.parse(value)}}
@@ -26,20 +27,50 @@ test('rejeita CHECKOUT_PAID sem estado pago ou produto correspondente',()=>{
 })
 test('compara token de webhook com segurança',()=>{assert.equal(safeEqual('token-seguro','token-seguro'),true);assert.equal(safeEqual('token-seguro','token'),false)})
 test('preserva estados financeiros distintos',()=>{assert.equal(processableEventType('PAYMENT_CHARGEBACK_DISPUTE'),'PAYMENT_CHARGEBACK_DISPUTE');assert.equal(processableEventType('PAYMENT_PARTIALLY_REFUNDED'),'PAYMENT_PARTIALLY_REFUNDED')})
-test('piloto de produção exige todas as travas e comprador autorizado',()=>{
-  const old={...process.env};delete process.env.ASAAS_PRODUCTION_CHARGES_ENABLED;delete process.env.ASAAS_PRODUCTION_COMMERCIAL_ENABLED;delete process.env.ASAAS_PRODUCTION_PILOT_ENABLED;delete process.env.ASAAS_PRODUCTION_PILOT_EMAIL;delete process.env.ASAAS_PRODUCTION_PILOT_TAX_ID_SHA256
-  try{assert.equal(productionPilotEnvironment({email:'pilot@example.com',taxId:'52998224725'}),'sandbox')}
+test('produção permanece bloqueada por padrão sem fallback público ao Sandbox',()=>{
+  const old={...process.env};delete process.env.ASAAS_PRODUCTION_CHARGES_ENABLED;delete process.env.ASAAS_PRODUCTION_COMMERCIAL_ENABLED;delete process.env.ASAAS_PRODUCTION_PILOT_ENABLED;delete process.env.ASAAS_PRODUCTION_PILOT_EMAIL;delete process.env.ASAAS_PRODUCTION_PILOT_TAX_ID_SHA256;delete process.env.ASAAS_SANDBOX_CHECKOUT_ENABLED
+  try{assert.throws(()=>productionPilotEnvironment({email:'pilot@example.com',taxId:'52998224725'}),error=>error?.code==='commercial_sales_paused'&&error?.status===503)}
   finally{for(const key of Object.keys(process.env))if(!(key in old))delete process.env[key];Object.assign(process.env,old)}
 })
-test('modo comercial exige duas travas explícitas e permanece bloqueado por padrão',()=>{
+test('as quatro combinações das travas comerciais falham fechadas ou selecionam Production',()=>{
   const old={...process.env}
   try{
+    process.env.VERCEL_ENV='production';delete process.env.ASAAS_PRODUCTION_PILOT_ENABLED
+    process.env.ASAAS_PRODUCTION_COMMERCIAL_ENABLED='false';process.env.ASAAS_PRODUCTION_CHARGES_ENABLED='false'
+    assert.throws(()=>productionPilotEnvironment({email:'comprador@example.com',taxId:'52998224725'}),error=>error?.code==='commercial_sales_paused'&&error?.status===503)
     process.env.ASAAS_PRODUCTION_COMMERCIAL_ENABLED='true';process.env.ASAAS_PRODUCTION_CHARGES_ENABLED='false'
     assert.throws(()=>productionPilotEnvironment({email:'comprador@example.com',taxId:'52998224725'}),error=>error?.code==='commercial_sales_paused'&&error?.status===503)
+    process.env.ASAAS_PRODUCTION_COMMERCIAL_ENABLED='false';process.env.ASAAS_PRODUCTION_CHARGES_ENABLED='true'
+    assert.throws(()=>productionPilotEnvironment({email:'comprador@example.com',taxId:'52998224725'}),error=>error?.code==='commercial_sales_paused'&&error?.status===503)
+    process.env.ASAAS_PRODUCTION_COMMERCIAL_ENABLED='true'
     process.env.ASAAS_PRODUCTION_CHARGES_ENABLED='true'
     assert.equal(productionPilotEnvironment({email:'comprador@example.com',taxId:'52998224725'}),'production')
-    process.env.ASAAS_PRODUCTION_COMMERCIAL_ENABLED='false'
-    assert.equal(productionPilotEnvironment({email:'comprador@example.com',taxId:'52998224725'}),'sandbox')
+  }finally{
+    for(const key of Object.keys(process.env))if(!(key in old))delete process.env[key]
+    Object.assign(process.env,old)
+  }
+})
+test('Sandbox exige autorização explícita e nunca é selecionado na Vercel Production',()=>{
+  const old={...process.env}
+  try{
+    process.env.ASAAS_PRODUCTION_CHARGES_ENABLED='false';process.env.ASAAS_PRODUCTION_COMMERCIAL_ENABLED='false';process.env.ASAAS_PRODUCTION_PILOT_ENABLED='false';process.env.ASAAS_SANDBOX_CHECKOUT_ENABLED='true';process.env.VERCEL_ENV='development'
+    assert.equal(productionPilotEnvironment({email:'dev@example.com',taxId:'52998224725'}),'sandbox')
+    process.env.VERCEL_ENV='production'
+    assert.throws(()=>productionPilotEnvironment({email:'dev@example.com',taxId:'52998224725'}),error=>error?.code==='commercial_sales_paused'&&error?.status===503)
+  }finally{
+    for(const key of Object.keys(process.env))if(!(key in old))delete process.env[key]
+    Object.assign(process.env,old)
+  }
+})
+test('API pública responde 503 antes de reservar pedido quando as vendas estão pausadas',async()=>{
+  const old={...process.env}
+  try{
+    process.env.VERCEL_ENV='production';process.env.ASAAS_PRODUCTION_CHARGES_ENABLED='false';process.env.ASAAS_PRODUCTION_COMMERCIAL_ENABLED='false';delete process.env.ASAAS_PRODUCTION_PILOT_ENABLED
+    const response=responseCapture()
+    await checkoutHandler({method:'POST',query:{},body:{name:'Profissional Teste',email:'teste@example.com',phone:'11999999999',taxId:'52998224725',environment:'production'},headers:{}},response)
+    assert.equal(response.statusCode,503)
+    assert.equal(response.body.error,'As contratações estão temporariamente pausadas. Tente novamente mais tarde.')
+    assert.doesNotMatch(JSON.stringify(response.body),/sandbox/i)
   }finally{
     for(const key of Object.keys(process.env))if(!(key in old))delete process.env[key]
     Object.assign(process.env,old)
@@ -52,12 +83,12 @@ test('piloto bloqueia identidades divergentes e não aceita ambiente do frontend
   process.env.ASAAS_PRODUCTION_PILOT_EMAIL=email
   process.env.ASAAS_PRODUCTION_PILOT_TAX_ID_SHA256=createHash('sha256').update(taxId).digest('hex')
   try{
-    assert.equal(productionPilotEnvironment({email:'incorreto@example.com',taxId}),'sandbox')
-    assert.equal(productionPilotEnvironment({email,taxId:'35478623881'}),'sandbox')
-    assert.equal(productionPilotEnvironment({email:'incorreto@example.com',taxId:'35478623881'}),'sandbox')
+    assert.throws(()=>productionPilotEnvironment({email:'incorreto@example.com',taxId}),error=>error?.code==='commercial_sales_paused')
+    assert.throws(()=>productionPilotEnvironment({email,taxId:'35478623881'}),error=>error?.code==='commercial_sales_paused')
+    assert.throws(()=>productionPilotEnvironment({email:'incorreto@example.com',taxId:'35478623881'}),error=>error?.code==='commercial_sales_paused')
     assert.equal(productionPilotEnvironment({email,taxId,environment:'production'}),'production')
     process.env.ASAAS_PRODUCTION_CHARGES_ENABLED='false'
-    assert.equal(productionPilotEnvironment({email,taxId,environment:'production'}),'sandbox')
+    assert.throws(()=>productionPilotEnvironment({email,taxId,environment:'production'}),error=>error?.code==='commercial_sales_paused')
   }finally{
     for(const key of Object.keys(process.env))if(!(key in old))delete process.env[key]
     Object.assign(process.env,old)
