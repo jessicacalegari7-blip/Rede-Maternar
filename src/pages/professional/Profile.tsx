@@ -20,6 +20,7 @@ export function ProfessionalProfilePage() {
   const [saving,setSaving]=useState(false)
   const [error,setError]=useState('')
   const [linkNotice,setLinkNotice]=useState('')
+  const [videoUrl,setVideoUrl]=useState('')
   const specialtyLimit=specialtyLimitForPlan(user?.plan)
 
   useEffect(()=>{void getMyProfessionalProfile().then(async loaded=>{
@@ -103,6 +104,17 @@ export function ProfessionalProfilePage() {
   const publicUrl=publicPath?`${window.location.origin}${publicPath}`:''
   const missingPublicationFields=[!profile.full_name?.trim()?'nome':'',!profile.whatsapp?.trim()?'telefone':'',!selectedSpecialties.length?'especialidade':'',!serviceLocations.length?'local de atendimento':''].filter(Boolean)
   const copyPublicLink=async()=>{if(!publicUrl)return;await navigator.clipboard.writeText(publicUrl);setLinkNotice('Link copiado com sucesso.')}
+  const addVideo=()=>{
+    if((profile.office_video_urls||[]).length>=3){setNotice('Limite de 3 vídeos atingido.');return}
+    try{
+      const parsed=new URL(videoUrl.trim()),host=parsed.hostname.replace(/^www\./,'')
+      const id=host==='youtu.be'?parsed.pathname.slice(1):host.endsWith('youtube.com')?(parsed.searchParams.get('v')||parsed.pathname.match(/^\/(?:shorts|embed)\/([^/?]+)/)?.[1]):''
+      if(!id||!/^[\w-]{6,20}$/.test(id))throw new Error()
+      const canonical=`https://www.youtube.com/watch?v=${id}`
+      if((profile.office_video_urls||[]).includes(canonical)){setNotice('Este vídeo já foi adicionado.');return}
+      set('office_video_urls',[...(profile.office_video_urls||[]),canonical]);setVideoUrl('');setNotice('Vídeo adicionado. Clique em Salvar alterações para confirmar.')
+    }catch{setNotice('Informe um link válido do YouTube.')}
+  }
 
   return <div>
     <div className="page-heading"><div><h1>Perfil no Marketplace</h1><p>Cadastre aqui todos os dados públicos da clínica ou profissional.</p><strong>{viewCount} visualizações deste perfil</strong></div>{profile.marketplace_visible&&publicPath?<a className="btn btn-secondary" href={publicPath} target="_blank" rel="noreferrer"><Eye size={17}/>Ver perfil</a>:null}</div>
@@ -130,7 +142,7 @@ export function ProfessionalProfilePage() {
       <div className="field grid-span-2"><label>Sobre a clínica ou consultório</label><textarea rows={5} value={profile.clinic_description||''} onChange={e=>set('clinic_description',e.target.value)}/></div>
       <div className="field"><label>Convênios (separados por vírgula)</label><input value={(profile.accepted_insurances||[]).join(', ')} onChange={e=>set('accepted_insurances',list(e.target.value))}/></div>
       <div className="field"><label>Formas de pagamento</label><input value={(profile.payment_methods||[]).join(', ')} onChange={e=>set('payment_methods',list(e.target.value))}/></div>
-      <div className="field grid-span-2"><label>Vídeos do consultório (máximo 3)</label><input type="file" multiple accept="video/mp4,video/webm,video/quicktime" onChange={e=>void upload('video',e.target.files)}/><small>{(profile.office_video_urls||[]).length} de 3 vídeo(s)</small><div className="profile-media-editor">{(profile.office_video_urls||[]).map((url,index)=><div key={url}><video controls preload="metadata" src={url}/><button type="button" className="btn btn-danger" onClick={()=>set('office_video_urls',profile.office_video_urls.filter(item=>item!==url))}><Trash2 size={15}/> Remover vídeo {index+1}</button></div>)}</div></div>
+      <div className="field grid-span-2"><label>Vídeos de apresentação (máximo 3)</label><small>Use links do YouTube para manter o perfil rápido e economizar armazenamento.</small><div className="editor-upload-row"><input type="url" placeholder="https://www.youtube.com/watch?v=..." value={videoUrl} onChange={e=>setVideoUrl(e.target.value)}/><button type="button" className="btn btn-secondary" onClick={addVideo}>Adicionar vídeo</button></div><small>{(profile.office_video_urls||[]).length} de 3 vídeo(s)</small><div className="profile-media-editor">{(profile.office_video_urls||[]).map((url,index)=><div key={url}><a href={url} target="_blank" rel="noreferrer">Vídeo {index+1} no YouTube</a><button type="button" className="btn btn-danger" onClick={()=>set('office_video_urls',profile.office_video_urls.filter(item=>item!==url))}><Trash2 size={15}/> Remover vídeo {index+1}</button></div>)}</div></div>
       <div className="field grid-span-2"><label>Fotos do consultório (máximo 5)</label><input type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={e=>void upload('gallery',e.target.files)}/><small>{(profile.gallery_urls||[]).length} de 5 foto(s)</small><div className="profile-media-editor">{(profile.gallery_urls||[]).map((url,index)=><div key={url}><img src={url} alt={`Foto do consultório ${index+1}`} width="320" height="200"/><button type="button" className="btn btn-danger" onClick={()=>set('gallery_urls',profile.gallery_urls.filter(item=>item!==url))}><Trash2 size={15}/> Remover foto {index+1}</button></div>)}</div></div>
       <label className="switch-card"><span><strong>Aceita atendimento online</strong></span><input type="checkbox" checked={profile.accepts_online} onChange={e=>set('accepts_online',e.target.checked)}/></label>
       <div className="switch-card"><span><strong>Publicação no Marketplace</strong><small>{profile.marketplace_visible?'Perfil validado e publicado automaticamente.':'Perfil privado até informar nome, telefone, especialidade e local de atendimento.'}</small></span></div>

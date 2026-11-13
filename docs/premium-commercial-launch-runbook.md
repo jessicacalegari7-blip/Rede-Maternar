@@ -15,7 +15,7 @@ Para pausar imediatamente depois da abertura, manter `ASAAS_PRODUCTION_COMMERCIA
 - Confirmar exatamente um Cron `materplace-asaas-worker-5m` ativo e worker HTTP 200.
 - Confirmar outbox sem itens `processing`, `failed` ou `uncertain` antigos.
 - Confirmar `ASAAS_PRODUCTION_CHARGES_ENABLED=false` até a autorização final.
-- Confirmar preço R$ 59,99, pagamento único e validade de 12 meses.
+- Confirmar preço R$ 99,90, pagamento único e validade de 12 meses.
 
 ## Monitoramento — dias 1 a 7
 

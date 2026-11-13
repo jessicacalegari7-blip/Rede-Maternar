@@ -53,8 +53,8 @@ export function Login() {
 
         <div className="auth-signup-callout">
           <strong>Quero fazer parte da MaterPlace</strong>
-          <p className="muted">Contrate o Perfil Premium por R$ 59,99 ao ano. Você criará seu acesso após a confirmação do pagamento.</p>
-          <Link className="btn btn-secondary" to="/cadastro-profissional" style={{ width: '100%' }}>
+          <p className="muted">Contrate o Perfil Premium por R$ 99,90 ao ano. Você criará seu acesso após a confirmação do pagamento.</p>
+          <Link className="btn btn-secondary" to="/premium" style={{ width: '100%' }}>
             Contratar Perfil Premium
           </Link>
         </div>

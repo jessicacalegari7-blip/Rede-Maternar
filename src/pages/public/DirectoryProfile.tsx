@@ -42,7 +42,7 @@ export function DirectoryProfile(){
       <ShieldCheck/><h1>{row.name}</h1><h2>{row.primary_specialty}</h2>
       <p><MapPin/> {[row.neighborhood,row.city,row.state_code].filter(Boolean).join(' · ')}</p>
       <p className="directory-trust-note">Informações obtidas de cadastro próprio ou fontes públicas. Confirme o registro no conselho profissional competente antes do atendimento.</p>
-      {premium?<p>Perfil Premium reivindicado e administrado pelo responsável.</p>:<div className="claim-profile"><h2>Este perfil ainda não foi reivindicado</h2><p>Por privacidade, telefone, WhatsApp, e-mail e endereço completo não são exibidos.</p><Link className="btn btn-primary" to="/cadastro-profissional">É responsável por este perfil? Reivindique agora</Link></div>}
+      {premium?<p>Perfil Premium reivindicado e administrado pelo responsável.</p>:<div className="claim-profile"><h2>Este perfil ainda não foi reivindicado</h2><p>Por privacidade, telefone, WhatsApp, e-mail e endereço completo não são exibidos.</p><Link className="btn btn-primary" to="/premium">É responsável por este perfil? Conheça o Premium</Link></div>}
     </section></main><LegalFooter/>
   </div>
 }

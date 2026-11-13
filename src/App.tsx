@@ -7,6 +7,7 @@ import { DirectoryLanding } from './pages/public/DirectoryLanding'
 import { DirectoryProfile } from './pages/public/DirectoryProfile'
 import { Login } from './pages/public/Login'
 import { ProfessionalSignup } from './pages/public/ProfessionalSignup'
+import { PremiumLanding } from './pages/public/PremiumLanding'
 import { PublicProfessionalProfile } from './pages/public/PublicProfessionalProfile'
 import { PatientInvitation } from './pages/public/PatientInvitation'
 import { PortalLayout } from './layouts/PortalLayout'
@@ -75,6 +76,7 @@ export default function App() {
     <Route path="/definir-senha" element={<SetPassword />} />
     <Route path="/recuperar-senha" element={<RecoverPassword />} />
     <Route path="/cadastro-profissional" element={<ProfessionalSignup />} />
+    <Route path="/premium" element={<PremiumLanding />} />
     <Route path="/checkout/status" element={<CheckoutStatus />} />
     <Route path="/convite-premium" element={<PremiumInvite />} />
     <Route path="/privacidade" element={<PrivacyPolicy />} />

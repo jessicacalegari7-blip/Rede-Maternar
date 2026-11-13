@@ -61,7 +61,7 @@ export function PortalHome() {
     <Seo title={selectedCategory?`${selectedCategory}: conteúdos para famílias`:'MaterPlace — saúde materno-infantil e profissionais'} description={selectedCategory?`Conteúdos informativos da MaterPlace sobre ${selectedCategory}, com autoria, fontes e orientação para buscar atendimento profissional.`:'Encontre profissionais materno-infantis por especialidade e cidade e acesse conteúdo informativo para cada fase da maternidade.'} path={selectedCategory?`/categoria/${categorySlug}`:'/'} appendBrand={false} schema={!selectedCategory||hasIndexableEditorialContent?baseSchemas:undefined} index={!selectedCategory||hasIndexableEditorialContent}/>
     <header className="portal-topbar">
       <Link to="/" aria-label="Início"><Logo /></Link>
-      <Link className="professional-access" to="/login"><span><Users /></span><strong>Profissional de Saúde<small>Login na plataforma</small></strong></Link>
+      <div className="portal-header-actions"><Link className="btn portal-premium-button" to="/premium"><Sparkles/>Contratar Perfil Premium</Link><Link className="professional-access" to="/login"><span><Users /></span><strong>Fazer login<small>Área profissional</small></strong></Link></div>
       <nav className="portal-institutional-nav" aria-label="Menu institucional">
         <Link to="/sobre">Sobre</Link><Link to="/expediente">Expediente</Link><Link to="/contato">Contato</Link><Link to="/privacidade">Privacidade</Link><Link to="/termos">Termos</Link><Link to="/cookies">Cookies</Link><Link to="/lgpd">LGPD</Link><Link to="/isencao-de-responsabilidade">Isenção</Link>
       </nav>

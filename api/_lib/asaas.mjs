@@ -1,6 +1,6 @@
 import {createHash,timingSafeEqual} from 'node:crypto'
 
-export const PREMIUM_PRODUCT={code:'premium_annual',name:'Perfil Premium MaterPlace',amountCents:5999,validityMonths:12}
+export const PREMIUM_PRODUCT={code:'premium_annual',name:'Perfil Premium MaterPlace',amountCents:9990,validityMonths:12}
 
 export function normalizeAsaasEnvironment(value=process.env.ASAAS_ENVIRONMENT){
   return String(value||'sandbox').toLowerCase()==='production'?'production':'sandbox'

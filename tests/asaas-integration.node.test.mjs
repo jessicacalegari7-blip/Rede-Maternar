@@ -10,18 +10,18 @@ function responseCapture(){
   return {statusCode:0,headers:{},body:null,setHeader(name,value){this.headers[name]=value},end(value){this.body=JSON.parse(value)}}
 }
 
-test('preço permanece exclusivamente no backend',()=>assert.deepEqual(PREMIUM_PRODUCT,{code:'premium_annual',name:'Perfil Premium MaterPlace',amountCents:5999,validityMonths:12}))
+test('preço permanece exclusivamente no backend',()=>assert.deepEqual(PREMIUM_PRODUCT,{code:'premium_annual',name:'Perfil Premium MaterPlace',amountCents:9990,validityMonths:12}))
 test('Sandbox é o ambiente padrão',()=>{delete process.env.ASAAS_ENVIRONMENT;assert.match(asaasBaseUrl(),/api-sandbox/);process.env.ASAAS_ENVIRONMENT='production';assert.equal(asaasBaseUrl(),'https://api.asaas.com/v3');delete process.env.ASAAS_ENVIRONMENT})
 test('normaliza e valida dados mínimos',()=>{assert.equal(normalizeTaxId('529.982.247-25'),'52998224725');assert.equal(validTaxId('529.982.247-25'),true);assert.equal(validTaxId('11.222.333/0001-81'),true);assert.equal(validTaxId('354.786.238-81'),true);assert.equal(validTaxId('354.786.238-82'),false);assert.equal(validTaxId('111.111.111-11'),false);assert.equal(validPhone('(11) 99999-9999'),true)})
 test('só considera Pix pronto quando existe chave ACTIVE',()=>{assert.equal(hasActivePixKey({data:[{status:'AWAITING_ACTIVATION'}]}),false);assert.equal(hasPendingPixKey({data:[{status:'AWAITING_ACTIVATION'}]}),true);assert.equal(hasActivePixKey({data:[{status:'ACTIVE'}]}),true)})
-test('extrai correlação e valor do webhook',()=>assert.deepEqual(eventFields({id:'evt_1',event:'CHECKOUT_PAID',checkout:{id:'chk_1',externalReference:'order-1',value:59.99},payment:{id:'pay_1'}}),{eventId:'evt_1',eventType:'CHECKOUT_PAID',checkoutId:'chk_1',paymentId:'pay_1',externalReference:'order-1',amountCents:5999,refundedAmountCents:null}))
-test('calcula o total do checkout pela lista de itens enviada pelo Asaas',()=>assert.equal(eventFields({id:'evt_2',event:'CHECKOUT_PAID',checkout:{items:[{quantity:1,value:59.99}]}}).amountCents,5999))
+test('extrai correlação e valor do webhook',()=>assert.deepEqual(eventFields({id:'evt_1',event:'CHECKOUT_PAID',checkout:{id:'chk_1',externalReference:'order-1',value:99.90},payment:{id:'pay_1'}}),{eventId:'evt_1',eventType:'CHECKOUT_PAID',checkoutId:'chk_1',paymentId:'pay_1',externalReference:'order-1',amountCents:9990,refundedAmountCents:null}))
+test('calcula o total do checkout pela lista de itens enviada pelo Asaas',()=>assert.equal(eventFields({id:'evt_2',event:'CHECKOUT_PAID',checkout:{items:[{quantity:1,value:99.90}]}}).amountCents,9990))
 test('confirma CHECKOUT_PAID oficial sem exigir payment.id',()=>{
-  const fields=verifiedCheckoutPaidFields({id:'evt_paid',event:'CHECKOUT_PAID',checkout:{id:'checkout-1',status:'PAID',externalReference:'3a6f8853-bef9-4758-baa7-39c0f40d69b7',chargeTypes:['DETACHED'],items:[{name:PREMIUM_PRODUCT.name,quantity:1,value:59.99}]}})
-  assert.equal(fields.paymentId,null);assert.equal(fields.amountCents,5999);assert.equal(fields.checkoutId,'checkout-1')
+  const fields=verifiedCheckoutPaidFields({id:'evt_paid',event:'CHECKOUT_PAID',checkout:{id:'checkout-1',status:'PAID',externalReference:'3a6f8853-bef9-4758-baa7-39c0f40d69b7',chargeTypes:['DETACHED'],items:[{name:PREMIUM_PRODUCT.name,quantity:1,value:99.90}]}})
+  assert.equal(fields.paymentId,null);assert.equal(fields.amountCents,9990);assert.equal(fields.checkoutId,'checkout-1')
 })
 test('rejeita CHECKOUT_PAID sem estado pago ou produto correspondente',()=>{
-  const base={id:'evt_paid',event:'CHECKOUT_PAID',checkout:{id:'checkout-1',externalReference:'3a6f8853-bef9-4758-baa7-39c0f40d69b7',chargeTypes:['DETACHED'],items:[{name:PREMIUM_PRODUCT.name,quantity:1,value:59.99}]}}
+  const base={id:'evt_paid',event:'CHECKOUT_PAID',checkout:{id:'checkout-1',externalReference:'3a6f8853-bef9-4758-baa7-39c0f40d69b7',chargeTypes:['DETACHED'],items:[{name:PREMIUM_PRODUCT.name,quantity:1,value:99.90}]}}
   assert.throws(()=>verifiedCheckoutPaidFields(base),/não está pago/)
   assert.throws(()=>verifiedCheckoutPaidFields({...base,checkout:{...base.checkout,status:'PAID',items:[{name:PREMIUM_PRODUCT.name,quantity:1,value:60}]}}),/Produto do checkout divergente/)
 })
@@ -96,8 +96,8 @@ test('piloto bloqueia identidades divergentes e não aceita ambiente do frontend
 })
 test('reconciliação autoritativa aceita somente cobrança confirmada correspondente',async()=>{
   process.env.ASAAS_API_KEY='sandbox_test';const originalFetch=global.fetch
-  global.fetch=async()=>new Response(JSON.stringify({id:'pay_1',status:'RECEIVED',value:59.99,externalReference:'order-1',billingType:'PIX'}),{status:200,headers:{'content-type':'application/json'}})
-  try{const result=await reconcilePaidEvent({paymentId:'pay_1',externalReference:'order-1'},'sandbox');assert.equal(result.amountCents,5999);assert.equal(result.status,'RECEIVED')}
+  global.fetch=async()=>new Response(JSON.stringify({id:'pay_1',status:'RECEIVED',value:99.90,externalReference:'order-1',billingType:'PIX'}),{status:200,headers:{'content-type':'application/json'}})
+  try{const result=await reconcilePaidEvent({paymentId:'pay_1',externalReference:'order-1'},'sandbox');assert.equal(result.amountCents,9990);assert.equal(result.status,'RECEIVED')}
   finally{global.fetch=originalFetch;delete process.env.ASAAS_API_KEY}
 })
 test('reconciliação rejeita valor divergente',async()=>{
@@ -190,4 +190,22 @@ test('reativação administrativa respeita os requisitos do Premium',async()=>{
   assert.doesNotMatch(handler,/marketplace_visible:status==='active'/)
   assert.match(handler,/status!=='active'.*marketplace_visible:false/s)
   assert.match(handler,/refresh_premium_publication.*target_professional_id:professional\.id/s)
+})
+test('migration aceita somente R$ 99,90 em novos pedidos e preserva valores históricos',async()=>{
+  const migration=await readFile(new URL('../supabase/migrations/20261113100000_premium_annual_price_9990.sql',import.meta.url),'utf8')
+  assert.match(migration,/target_amount_cents<>9990/)
+  assert.match(migration,/amount_cents<>target_amount_cents/)
+  assert.doesNotMatch(migration,/delete from public\.premium_orders/i)
+  assert.doesNotMatch(migration,/update public\.premium_contracts/i)
+})
+test('landing Premium anuncia somente recursos implementados e converge para um checkout',async()=>{
+  const [landing,profile,publicProfile,app]=await Promise.all([
+    readFile(new URL('../src/pages/public/PremiumLanding.tsx',import.meta.url),'utf8'),
+    readFile(new URL('../src/pages/professional/Profile.tsx',import.meta.url),'utf8'),
+    readFile(new URL('../src/pages/public/PublicProfessionalProfile.tsx',import.meta.url),'utf8'),
+    readFile(new URL('../src/App.tsx',import.meta.url),'utf8'),
+  ])
+  assert.match(landing,/R\$ 99,90/);assert.match(landing,/const checkout='\/cadastro-profissional\?plano=marketplace'/)
+  assert.match(app,/path="\/premium"/);assert.match(profile,/youtube\.com\/watch/);assert.match(publicProfile,/youtube-nocookie\.com\/embed/)
+  assert.match(profile,/gallery_urls/);assert.match(profile,/serviceLocations/);assert.match(profile,/instagram_handle/);assert.match(publicProfile,/wa\.me/)
 })
