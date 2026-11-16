@@ -2,9 +2,25 @@ import {ArrowRight, Check, CirclePlay, ExternalLink, Image, Instagram, Link2, Ma
 import {Link} from 'react-router-dom'
 import {Logo} from '../../components/Logo'
 import {Seo} from '../../components/Seo'
+import {publicImageUrl} from '../../lib/publicImage'
 import {LegalFooter} from './Legal'
 
 const checkout='/cadastro-profissional?plano=marketplace'
+const featuredProfile={
+  path:'/jessicacalegaric0a16e',
+  name:'Jéssica Calegari',
+  clinic:'Jéssica Calegari — Amamentação',
+  specialty:'Consultora de Amamentação',
+  location:'Vila Carrão · São Paulo · SP',
+  summary:'Acolhimento e orientação especializada para tornar a amamentação mais leve, segura e confiante.',
+  photo:'https://epmbqjbgrivjvrszsvrs.supabase.co/storage/v1/object/public/marketplace-media/8d2bf5bc-de03-4be7-9459-9f2d09154c4c/profile-9828287b-1c9d-4bf9-8b0f-b7603771ee22.jpeg',
+  cover:'https://epmbqjbgrivjvrszsvrs.supabase.co/storage/v1/object/public/marketplace-media/8d2bf5bc-de03-4be7-9459-9f2d09154c4c/cover-d3c384d7-1adb-4417-9933-7d36cbc51644.jpeg',
+  gallery:[
+    'https://epmbqjbgrivjvrszsvrs.supabase.co/storage/v1/object/public/marketplace-media/8d2bf5bc-de03-4be7-9459-9f2d09154c4c/gallery-903977c2-9762-4465-89b1-8e50fdfed26a.jpeg',
+    'https://epmbqjbgrivjvrszsvrs.supabase.co/storage/v1/object/public/marketplace-media/8d2bf5bc-de03-4be7-9459-9f2d09154c4c/gallery-85691091-6f78-4ab1-af75-a7a5e9701351.jpeg',
+    'https://epmbqjbgrivjvrszsvrs.supabase.co/storage/v1/object/public/marketplace-media/8d2bf5bc-de03-4be7-9459-9f2d09154c4c/gallery-b17fb6e5-4aed-4a44-9166-fedd84826e0a.jpeg',
+  ],
+} as const
 const benefits=[
   [Link2,'Seu endereço profissional','Uma URL personalizada e estável dentro da MaterPlace para compartilhar em seus canais.'],
   [Image,'Galeria profissional','Fotos otimizadas da clínica, consultório, equipe e ambientes de atendimento.'],
@@ -39,12 +55,20 @@ export function PremiumLanding(){return <div className="premium-landing">
   <header className="premium-header"><Link to="/"><Logo/></Link><nav><a href="#beneficios">Benefícios</a><a href="#como-funciona">Como funciona</a><a href="#faq">Dúvidas</a></nav><div><Link className="btn btn-secondary" to="/login">FAZER LOGIN</Link><Buy label="CONTRATAR"/></div></header>
   <main>
     <section className="premium-hero"><div className="premium-hero-copy"><span>CONECTA • ACOLHE • TRANSFORMA</span><h1>Sua profissão merece mais do que um perfil. <em>Merece um espaço só seu.</em></h1><p>Transforme sua presença digital com uma página profissional completa na MaterPlace. Apresente seu trabalho e facilite o encontro com famílias do universo materno-infantil.</p><div className="premium-price"><strong>R$ 99,90</strong><span>/ ano<small>Pagamento único. Sem renovação automática.</small></span></div><div className="premium-actions"><Buy/><a className="btn btn-secondary" href="#beneficios">CONHECER OS BENEFÍCIOS</a></div><small className="premium-safe"><ShieldCheck/> Checkout Asaas com Pix ou cartão</small></div>
-      <div className="premium-profile-demo" aria-label="Demonstração de perfil profissional"><div className="demo-cover"><span>materplace.com.br/seunome</span></div><div className="demo-person"><div className="demo-avatar">MP</div><div><small>PERFIL PREMIUM</small><h2>Marina Profissional</h2><p>Especialista materno-infantil</p></div></div><p>Um espaço para apresentar sua abordagem, serviços e locais de atendimento.</p><div className="demo-gallery"><i/><i/><i/></div><div className="demo-tags"><span>Consulta inicial</span><span>Atendimento online</span></div><button>Falar no WhatsApp</button></div>
+      <article className="premium-profile-demo" aria-label={`Perfil Premium de ${featuredProfile.name}`}>
+        <div className="demo-cover"><img src={publicImageUrl(featuredProfile.cover,960)} alt={`Capa do perfil de ${featuredProfile.name}`} width="960" height="360"/><span>Perfil real autorizado</span></div>
+        <div className="demo-person"><div className="demo-avatar"><img src={publicImageUrl(featuredProfile.photo,240)} alt={`Foto de ${featuredProfile.name}`} width="160" height="160"/></div><div><small>PERFIL PREMIUM</small><h2>{featuredProfile.name}</h2><p>{featuredProfile.specialty}</p></div></div>
+        <p>{featuredProfile.summary}</p>
+        <div className="demo-location"><MapPin/><span><strong>{featuredProfile.clinic}</strong>{featuredProfile.location}</span></div>
+        <div className="demo-gallery">{featuredProfile.gallery.map((url,index)=><img key={url} src={publicImageUrl(url,index===0?620:400)} alt={`Atendimento de ${featuredProfile.name} — foto ${index+1}`} loading="lazy" width="480" height="320"/>)}</div>
+        <div className="demo-tags"><span>Laserterapia</span><span>Sono infantil</span><span>Atendimento online</span></div>
+        <Link className="demo-profile-link" to={featuredProfile.path}>Ver perfil completo <ExternalLink size={16}/></Link>
+      </article>
     </section>
 
     <section className="premium-section" id="beneficios"><div className="premium-heading"><span>SEU ESPAÇO PROFISSIONAL</span><h2>Tudo o que você precisa para apresentar seu trabalho com clareza.</h2><p>Recursos reais, editáveis e organizados em uma experiência feita para profissionais do cuidado.</p></div><div className="premium-benefit-grid">{benefits.map(([Icon,title,description])=><article key={title}><Icon/><h3>{title}</h3><p>{description}</p></article>)}</div><Buy label="QUERO UMA PÁGINA ASSIM" className="premium-centered"/></section>
 
-    <section className="premium-showcase"><div><span>SEU PERFIL NA PRÁTICA</span><h2>Bonito no desktop. Direto ao ponto no celular.</h2><p>Nome, especialidades, apresentação, galeria, vídeos, serviços, unidades, Instagram e WhatsApp em um único endereço.</p><ul>{['URL personalizada dentro da MaterPlace','Informações atualizadas por você','Publicação automática quando elegível','Contato rápido para visitantes'].map(item=><li key={item}><Check/>{item}</li>)}</ul><Buy label="CONTRATAR MEU PERFIL"/></div><div className="premium-device"><div className="device-screen"><span>Perfil Premium</span><div className="device-avatar"/><h3>Seu nome profissional</h3><p>Especialidade • Cidade</p><div className="device-buttons"><b>WhatsApp</b><b>Instagram</b></div><div className="device-cards"><i/><i/><i/><i/></div></div></div></section>
+    <section className="premium-showcase"><div><span>SEU PERFIL NA PRÁTICA</span><h2>Bonito no desktop. Direto ao ponto no celular.</h2><p>Nome, especialidades, apresentação, galeria, vídeos, serviços, unidades, Instagram e WhatsApp em um único endereço.</p><ul>{['URL personalizada dentro da MaterPlace','Informações atualizadas por você','Publicação automática quando elegível','Contato rápido para visitantes'].map(item=><li key={item}><Check/>{item}</li>)}</ul><Buy label="CONTRATAR MEU PERFIL"/></div><div className="premium-device"><div className="device-screen"><span>Perfil Premium</span><div className="device-avatar"><img src={publicImageUrl(featuredProfile.photo,220)} alt={`Foto de ${featuredProfile.name}`} loading="lazy" width="160" height="160"/></div><h3>{featuredProfile.name}</h3><p>{featuredProfile.specialty} • São Paulo</p><div className="device-buttons"><b>WhatsApp</b><b>Instagram</b></div><div className="device-cards">{featuredProfile.gallery.map(url=><img key={url} src={publicImageUrl(url,260)} alt="" loading="lazy" width="180" height="120"/>)}</div><Link to={featuredProfile.path}>Ver perfil real</Link></div></div></section>
 
     <section className="premium-section" id="como-funciona"><div className="premium-heading"><span>SIMPLES DO INÍCIO AO LINK</span><h2>Como funciona</h2></div><div className="premium-steps">{[['01','Contrate seu Premium','Escolha Pix ou cartão e realize o pagamento único de R$ 99,90.'],['02','Receba seu acesso','Após a confirmação, receba o convite para criar sua senha.'],['03','Personalize seu espaço','Cadastre informações, serviços, fotos, vídeos, locais e contatos.'],['04','Comece a divulgar','Com o perfil completo e elegível, a publicação é automática.']].map(([number,title,text])=><article key={number}><strong>{number}</strong><h3>{title}</h3><p>{text}</p></article>)}</div><p className="premium-callout">Sem burocracia. Sem aprovação manual. A publicação depende apenas dos dados obrigatórios e da vigência do Premium.</p><Buy label="COMEÇAR AGORA" className="premium-centered"/></section>
 

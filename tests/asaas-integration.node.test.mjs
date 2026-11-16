@@ -206,6 +206,7 @@ test('landing Premium anuncia somente recursos implementados e converge para um 
     readFile(new URL('../src/App.tsx',import.meta.url),'utf8'),
   ])
   assert.match(landing,/R\$ 99,90/);assert.match(landing,/const checkout='\/cadastro-profissional\?plano=marketplace'/)
+  assert.match(landing,/jessicacalegaric0a16e/);assert.match(landing,/Jéssica Calegari/);assert.match(landing,/publicImageUrl/)
   assert.match(app,/path="\/premium"/);assert.match(profile,/youtube\.com\/watch/);assert.match(publicProfile,/youtube-nocookie\.com\/embed/)
   assert.match(profile,/gallery_urls/);assert.match(profile,/serviceLocations/);assert.match(profile,/instagram_handle/);assert.match(publicProfile,/wa\.me/)
 })
