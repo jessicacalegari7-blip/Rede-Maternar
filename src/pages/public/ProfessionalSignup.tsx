@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Logo } from '../../components/Logo'
+import {marketingAttribution,trackMarketingEvent} from '../../lib/marketing'
 
 export function ProfessionalSignup(){
   const [params]=useSearchParams()
@@ -9,10 +10,12 @@ export function ProfessionalSignup(){
     event.preventDefault();setError('');const form=new FormData(event.currentTarget)
     setLoading(true)
     try{
-      const attribution=Object.fromEntries(['utm_source','utm_medium','utm_campaign','utm_term','utm_content','campaign_id'].map(key=>[key,params.get(key)]).filter(([,value])=>value))
-      const response=await fetch('/api/asaas-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:String(form.get('name')),email:String(form.get('email')),phone:String(form.get('phone')),taxId:String(form.get('taxId')||''),attribution})})
+      const attribution={...marketingAttribution(),...Object.fromEntries(['utm_source','utm_medium','utm_campaign','utm_term','utm_content','campaign_id'].map(key=>[key,params.get(key)]).filter(([,value])=>value))}
+      const response=await fetch('/api/asaas-checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:String(form.get('name')),email:String(form.get('email')),phone:String(form.get('phone')),taxId:String(form.get('taxId')||''),sourceUrl:location.href,attribution})})
       const checkout=await response.json()
       if(!response.ok)throw new Error(checkout.error||'Não foi possível iniciar o pagamento.')
+      if(checkout.marketingEventIds?.lead)await trackMarketingEvent('Lead',{content_name:'Perfil Premium MaterPlace'},{eventId:checkout.marketingEventIds.lead,server:false})
+      if(checkout.marketingEventIds?.checkout)await trackMarketingEvent('InitiateCheckout',{content_name:'Perfil Premium MaterPlace',value:checkout.amountCents/100,currency:'BRL'},{eventId:checkout.marketingEventIds.checkout,server:false})
       window.location.assign(checkout.checkoutUrl)
     }catch(reason){setError(reason instanceof Error?reason.message:'Não foi possível enviar o cadastro.')}
     finally{setLoading(false)}

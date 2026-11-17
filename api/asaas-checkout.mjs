@@ -6,6 +6,7 @@ import adminHandler from './_lib/admin-asaas-handler.mjs'
 import workerHandler from './_lib/asaas-worker-handler.mjs'
 import productionDiagnosticHandler from './_lib/asaas-production-diagnostic-handler.mjs'
 import {deliverPremiumAccessInvite,deliverPremiumActivationEmail,hashPremiumInviteToken,resendPremiumConfirmationEmail} from './_lib/premium-email.mjs'
+import {marketingUserData,queueMarketingEvent} from './_lib/meta-marketing.mjs'
 
 const emailPattern=/^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const baseSite=()=>String(process.env.PUBLIC_SITE_URL||process.env.PUBLIC_APP_URL||'https://www.materplace.com.br').replace(/\/$/,'')
@@ -33,7 +34,8 @@ export default async function handler(req,res){
     if(!emailPattern.test(email))return json(res,400,{error:'Informe um e-mail válido.'})
     if(!validPhone(phone))return json(res,400,{error:'Informe um telefone ou WhatsApp válido, com DDD.'})
     if(!validTaxId(taxId))return json(res,400,{error:'O CPF ou CNPJ informado é inválido. Confira os números e tente novamente.'})
-    const attribution=Object.fromEntries(Object.entries(body.attribution||{}).filter(([key,value])=>/^(utm_(source|medium|campaign|term|content)|campaign_id)$/.test(key)&&typeof value==='string').map(([key,value])=>[key,value.trim().slice(0,160)]))
+    const attribution=Object.fromEntries(Object.entries(body.attribution||{}).filter(([key,value])=>/^(utm_(source|medium|campaign|term|content)|campaign_id|fbclid|fbp|fbc|session_id)$/.test(key)&&typeof value==='string').map(([key,value])=>[key,value.trim().slice(0,300)]))
+    attribution.marketing_consent=body.attribution?.marketing_consent===true
     environment=productionPilotEnvironment({email,taxId})
     const db=adminClient()
     stage='order_creation'
@@ -41,8 +43,11 @@ export default async function handler(req,res){
     if(orderError)throw orderError
     orderId=order.order_id
     attemptId=order.attempt_id||null
+    const marketingEventIds={lead:`lead:${order.order_id}`,checkout:`checkout:${order.order_id}`}
+    const userData=marketingUserData({email,phone,fbp:attribution.fbp,fbc:attribution.fbc,userAgent:req.headers['user-agent']})
+    await queueMarketingEvent(db,{eventId:marketingEventIds.lead,eventName:'Lead',sourceUrl:body.sourceUrl,orderId:order.order_id,userData,customData:{content_name:PREMIUM_PRODUCT.name},attribution,consent:attribution.marketing_consent}).catch(error=>console.error('marketing_lead_enqueue_failed',{code:error?.code||null}))
     const statusUrl=`${baseSite()}/checkout/status?token=${order.public_token}`
-    if(order.status==='existing')return json(res,200,{orderId,statusToken:order.public_token,checkoutUrl:checkoutPageUrl(order.checkout_id,environment),amountCents:PREMIUM_PRODUCT.amountCents,environment})
+    if(order.status==='existing')return json(res,200,{orderId,statusToken:order.public_token,checkoutUrl:checkoutPageUrl(order.checkout_id,environment),amountCents:PREMIUM_PRODUCT.amountCents,environment,marketingEventIds})
     if(order.status!=='reserved')return json(res,409,{error:'Já existe uma tentativa em confirmação. Aguarde alguns minutos antes de tentar novamente.',code:'checkout_reconciliation_pending'})
     stage='asaas_pix_key_check'
     const pixKeys=await asaasRequest('/pix/addressKeys?limit=100',{method:'GET'},environment,{readOnly:true})
@@ -57,7 +62,8 @@ export default async function handler(req,res){
     stage='order_confirmation'
     const {data:confirmed,error:updateError}=await db.rpc('finish_premium_checkout_attempt',{target_order_id:order.order_id,target_attempt_id:attemptId,target_checkout_id:checkout.id,target_result:'confirmed',target_expires_at:new Date(Date.now()+60*60*1000).toISOString()})
     if(updateError||!confirmed)throw Object.assign(updateError||new Error('Reserva do checkout não pôde ser confirmada.'),{inconclusive:true})
-    return json(res,201,{orderId:order.order_id,statusToken:order.public_token,checkoutUrl:checkoutPageUrl(checkout.id,environment),amountCents:PREMIUM_PRODUCT.amountCents,environment})
+    await queueMarketingEvent(db,{eventId:marketingEventIds.checkout,eventName:'InitiateCheckout',sourceUrl:body.sourceUrl,orderId:order.order_id,valueCents:PREMIUM_PRODUCT.amountCents,userData,customData:{content_name:PREMIUM_PRODUCT.name,value:PREMIUM_PRODUCT.amountCents/100,currency:'BRL'},attribution,consent:attribution.marketing_consent}).catch(error=>console.error('marketing_checkout_enqueue_failed',{code:error?.code||null}))
+    return json(res,201,{orderId:order.order_id,statusToken:order.public_token,checkoutUrl:checkoutPageUrl(checkout.id,environment),amountCents:PREMIUM_PRODUCT.amountCents,environment,marketingEventIds})
   }catch(error){
     if(orderId&&attemptId)await adminClient().rpc('finish_premium_checkout_attempt',{target_order_id:orderId,target_attempt_id:attemptId,target_checkout_id:null,target_result:error?.inconclusive?'inconclusive':'failed',target_expires_at:null})
     const technicalMessage=String(error?.message||error?.details||error?.hint||'Falha não identificada').slice(0,500)
@@ -138,7 +144,15 @@ async function premiumInvite(req,res){
       if(createdUserId)await db.auth.admin.deleteUser(createdUserId).catch(()=>undefined)
       throw redeemError
     }
-    return json(res,200,{ok:true,status:result?.status||'active',redirect:'/profissional/perfil'})
+    let marketingEventId=null
+    try{
+      const {data:order}=await db.from('premium_orders').select('id,public_token,customer_email,customer_phone,attribution').eq('user_id',userId).eq('status','paid').order('paid_at',{ascending:false}).limit(1).maybeSingle()
+      if(order?.attribution?.marketing_consent===true){
+        marketingEventId=`registration:${order.public_token}`
+        await queueMarketingEvent(db,{eventId:marketingEventId,eventName:'CompleteRegistration',sourceUrl:`${baseSite()}/convite-premium`,orderId:order.id,userData:marketingUserData({email:order.customer_email,phone:order.customer_phone,fbp:order.attribution?.fbp,fbc:order.attribution?.fbc}),customData:{content_name:PREMIUM_PRODUCT.name},attribution:order.attribution,consent:true})
+      }
+    }catch(error){console.error('marketing_registration_enqueue_failed',{code:error?.code||null})}
+    return json(res,200,{ok:true,status:result?.status||'active',redirect:'/profissional/perfil',marketingEventId})
   }catch(error){console.error('premium_invite_failed',{code:error?.code||null});return json(res,500,{error:'Não foi possível criar o acesso agora. Tente novamente.'})}
 }
 async function resendConfirmation(req,res){

@@ -24,6 +24,7 @@ import { CookieConsent } from './components/CookieConsent'
 import { EcosystemDetail, EcosystemListing } from './pages/public/Ecosystem'
 import { CheckoutStatus } from './pages/public/CheckoutStatus'
 import { PremiumInvite } from './pages/public/PremiumInvite'
+import { MarketingTracking } from './components/MarketingTracking'
 
 const ProfessionalPatients=lazy(()=>import('./pages/professional/Patients').then(m=>({default:m.ProfessionalPatients})))
 const ProfessionalProfilePage=lazy(()=>import('./pages/professional/Profile').then(m=>({default:m.ProfessionalProfilePage})))
@@ -149,5 +150,5 @@ export default function App() {
 
     <Route path="/:publicSlug" element={<PublicProfessionalProfile />} />
     <Route path="*" element={<Navigate to="/" replace />} />
-  </Routes></Suspense><CookieConsent/></AuthProvider></BrowserRouter>
+  </Routes></Suspense><MarketingTracking/><CookieConsent/></AuthProvider></BrowserRouter>
 }

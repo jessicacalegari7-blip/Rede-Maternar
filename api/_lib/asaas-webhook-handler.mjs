@@ -1,6 +1,7 @@
 import {adminClient} from './supabase-admin.mjs'
 import {allowMethods,json,readJson} from './http.mjs'
 import {eventFields,safeEqual,verifiedCheckoutPaidFields} from './asaas.mjs'
+import {marketingUserData,queueMarketingEvent} from './meta-marketing.mjs'
 
 export async function handleAsaasWebhook(req,res,{environment,tokenVariable}){
   if(!allowMethods(req,res,['POST']))return
@@ -37,6 +38,12 @@ export async function handleAsaasWebhook(req,res,{environment,tokenVariable}){
     if(!result?.ok){
       console.error('asaas_webhook_accepted_pending',{environment,eventType:fields.eventType,eventIdSuffix:fields.eventId.slice(-12),code:result?.error_code||'processing_failed'})
       return json(res,200,{ok:true,accepted:true,status:'processing_pending'})
+    }
+    if(fields.eventType==='CHECKOUT_PAID'&&result?.order_id){
+      try{
+        const {data:order}=await db.from('premium_orders').select('id,public_token,customer_email,customer_phone,amount_cents,currency,attribution').eq('id',result.order_id).maybeSingle()
+        if(order?.attribution?.marketing_consent===true)await queueMarketingEvent(db,{eventId:`purchase:${order.public_token}`,eventName:'Purchase',sourceUrl:'https://www.materplace.com.br/checkout/status',orderId:order.id,valueCents:order.amount_cents,currency:order.currency,userData:marketingUserData({email:order.customer_email,phone:order.customer_phone,fbp:order.attribution?.fbp,fbc:order.attribution?.fbc}),customData:{content_name:'Perfil Premium MaterPlace',value:order.amount_cents/100,currency:order.currency,order_id:order.id},attribution:order.attribution,consent:true})
+      }catch(error){console.error('marketing_purchase_enqueue_failed',{environment,code:error?.code||null})}
     }
     return json(res,200,{ok:true,status:result?.status,duplicate:Boolean(result?.duplicate),ignored:Boolean(result?.ignored),emailQueued:fields.eventType==='CHECKOUT_PAID'})
   }catch(error){

@@ -2,6 +2,7 @@ import {adminClient} from './supabase-admin.mjs'
 import {json} from './http.mjs'
 import {eventFields,safeEqual,verifiedCheckoutPaidFields} from './asaas.mjs'
 import {deliverPremiumAccessInvite} from './premium-email.mjs'
+import {processMarketingOutbox} from './meta-marketing.mjs'
 
 export function workerAuthorized(req,env=process.env){
   const authorization=String(req.headers.authorization||'')
@@ -38,7 +39,7 @@ export function createWorkerHandler({getDb=adminClient,deliver=deliverPremiumAcc
   return async function workerHandler(req,res){
     if(req.method!=='GET')return json(res,405,{error:'Método não permitido.'})
     if(!workerAuthorized(req))return json(res,401,{error:'Não autorizado.'})
-    const db=getDb(),summary={eventsProcessed:0,eventsPending:0,emailsSent:0,emailsFailed:0,emailsUncertain:0,staleFinishes:0}
+    const db=getDb(),summary={eventsProcessed:0,eventsPending:0,emailsSent:0,emailsFailed:0,emailsUncertain:0,staleFinishes:0,marketingSent:0,marketingFailed:0,marketingDisabled:0}
     try{
       const {data:events,error:eventError}=await db.from('asaas_webhook_events').select('id,asaas_environment,payload').in('processing_status',['received','error']).lt('attempts',8).order('received_at',{ascending:true}).limit(10)
       if(eventError)throw eventError
@@ -53,6 +54,7 @@ export function createWorkerHandler({getDb=adminClient,deliver=deliverPremiumAcc
       const {data:outbox,error:claimError}=await db.rpc('claim_premium_email_outbox',{target_limit:10})
       if(claimError)throw claimError
       Object.assign(summary,await processPremiumEmailJobs(db,outbox,{deliver}))
+      Object.assign(summary,await processMarketingOutbox(db))
       return json(res,200,{ok:true,...summary})
     }catch(error){console.error('asaas_worker_failed',{code:error?.code||null});return json(res,500,{error:'Falha temporária no processamento.'})}
   }
