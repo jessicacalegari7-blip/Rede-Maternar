@@ -86,6 +86,11 @@ alter table public.marketing_coupons enable row level security;
 alter table public.marketing_coupon_redemptions enable row level security;
 alter table public.marketing_recovery_queue enable row level security;
 
+drop policy if exists "marketing admin read events" on public.marketing_funnel_events;
+drop policy if exists "marketing admin read outbox" on public.marketing_event_outbox;
+drop policy if exists "marketing admin read coupons" on public.marketing_coupons;
+drop policy if exists "marketing admin read redemptions" on public.marketing_coupon_redemptions;
+drop policy if exists "marketing admin read recovery" on public.marketing_recovery_queue;
 create policy "marketing admin read events" on public.marketing_funnel_events for select to authenticated using(public.is_platform_admin());
 create policy "marketing admin read outbox" on public.marketing_event_outbox for select to authenticated using(public.is_platform_admin());
 create policy "marketing admin read coupons" on public.marketing_coupons for select to authenticated using(public.is_platform_admin());
