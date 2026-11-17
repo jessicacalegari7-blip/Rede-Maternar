@@ -42,7 +42,7 @@ const management: Item[] = [
   ['Serviços', '/profissional/servicos', BriefcaseBusiness],
   ['Financeiro ERP', '/profissional/financeiro', Wallet],
   ['Relatórios', '/profissional/relatorios', BarChart3],
-  ['Perfil no Marketplace', '/profissional/perfil', UserRound],
+  ['Perfil Premium', '/profissional/perfil', UserRound],
   ['Meus produtos', '/profissional/produtos', BriefcaseBusiness],
   ['Meus cursos', '/profissional/cursos', Newspaper],
   ['Minhas vagas', '/profissional/vagas', Users],
@@ -50,7 +50,7 @@ const management: Item[] = [
 ]
 
 const marketplace: Item[] = [
-  ['Perfil no Marketplace', '/profissional/perfil', UserRound],
+  ['Perfil Premium', '/profissional/perfil', UserRound],
   ['Meus produtos', '/profissional/produtos', BriefcaseBusiness],
   ['Meus cursos', '/profissional/cursos', Newspaper],
   ['Minhas vagas', '/profissional/vagas', Users],

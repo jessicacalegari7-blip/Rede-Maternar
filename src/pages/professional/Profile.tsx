@@ -117,7 +117,7 @@ export function ProfessionalProfilePage() {
   }
 
   return <div>
-    <div className="page-heading"><div><h1>Perfil no Marketplace</h1><p>Cadastre aqui todos os dados públicos da clínica ou profissional.</p><strong>{viewCount} visualizações deste perfil</strong></div>{profile.marketplace_visible&&publicPath?<a className="btn btn-secondary" href={publicPath} target="_blank" rel="noreferrer"><Eye size={17}/>Ver perfil</a>:null}</div>
+    <div className="page-heading"><div><h1>Perfil Premium</h1><p>Cadastre aqui todos os dados públicos da clínica ou profissional.</p><strong>{viewCount} visualizações deste perfil</strong></div>{profile.marketplace_visible&&publicPath?<a className="btn btn-secondary" href={publicPath} target="_blank" rel="noreferrer"><Eye size={17}/>Ver perfil</a>:null}</div>
     {notice&&<div className="notice">{notice}</div>}
     <section className="card public-profile-link-card">
       <div><small>Meu link público</small><h2>{publicUrl||'O link será reservado após informar o nome.'}</h2><p>{profile.marketplace_visible?'Perfil publicado e disponível no diretório.':missingPublicationFields.length?`Link reservado. Para publicar, preencha: ${missingPublicationFields.join(', ')}.`:'A publicação automática está sendo confirmada.'}</p>{linkNotice&&<div className="notice" role="status">{linkNotice}</div>}</div>
