@@ -1,10 +1,12 @@
-import {adminClient} from './_lib/supabase-admin.mjs'
-import {allowMethods,json,readJson} from './_lib/http.mjs'
-import {marketingUserData,queueMarketingEvent} from './_lib/meta-marketing.mjs'
+import {adminClient} from './supabase-admin.mjs'
+import {allowMethods,json,readJson} from './http.mjs'
+import {marketingUserData,queueMarketingEvent} from './meta-marketing.mjs'
 
 const publicEvents=new Set(['PageView','ViewContent'])
-export default async function handler(req,res){
+
+export default async function marketingEventHandler(req,res){
   if(!allowMethods(req,res,['POST']))return
+  if(process.env.META_MARKETING_COLLECTION_ENABLED!=='true')return json(res,404,{error:'Rota não encontrada.'})
   try{
     const body=await readJson(req),eventName=String(body.eventName||''),eventId=String(body.eventId||'')
     if(!publicEvents.has(eventName)||!/^[a-z0-9:_-]{12,180}$/i.test(eventId))return json(res,400,{error:'Evento inválido.'})
@@ -13,4 +15,3 @@ export default async function handler(req,res){
     return json(res,202,{ok:true})
   }catch(error){console.error('marketing_event_enqueue_failed',{code:error?.code||null});return json(res,202,{ok:true})}
 }
-

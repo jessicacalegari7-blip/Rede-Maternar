@@ -11,6 +11,7 @@ export function marketingUserData({email,phone,fbp,fbc,userAgent}={}){
 
 export async function queueMarketingEvent(db,{eventId,eventName,sourceUrl,orderId=null,valueCents=null,currency='BRL',userData={},customData={},attribution={},consent=false}){
   if(!allowedEvents.has(eventName)||!consent)return {queued:false,reason:'disabled_or_without_consent'}
+  if(process.env.META_MARKETING_COLLECTION_ENABLED!=='true')return {queued:false,reason:'collection_disabled'}
   const safeAttribution=cleanObject(attribution,['utm_source','utm_medium','utm_campaign','utm_term','utm_content','campaign_id','fbp','fbc','session_id'])
   const {data,error}=await db.rpc('queue_marketing_event',{target_event_id:String(eventId).slice(0,180),target_event_name:eventName,target_source_url:String(sourceUrl||'').slice(0,1000),target_order_id:orderId,target_value_cents:valueCents,target_currency:currency,target_user_data:userData,target_custom_data:cleanObject(customData,['content_name','content_type','value','currency','order_id']),target_attribution:safeAttribution,target_consent:true})
   if(error)throw error

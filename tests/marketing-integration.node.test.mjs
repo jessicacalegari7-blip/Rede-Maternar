@@ -7,6 +7,8 @@ const migration=fs.readFileSync(new URL('../supabase/migrations/20261117170000_m
 const checkout=fs.readFileSync(new URL('../api/asaas-checkout.mjs',import.meta.url),'utf8')
 const webhook=fs.readFileSync(new URL('../api/_lib/asaas-webhook-handler.mjs',import.meta.url),'utf8')
 const browser=fs.readFileSync(new URL('../src/lib/marketing.ts',import.meta.url),'utf8')
+const marketingApi=fs.readFileSync(new URL('../api/_lib/marketing-event-handler.mjs',import.meta.url),'utf8')
+const vercelConfig=fs.readFileSync(new URL('../vercel.json',import.meta.url),'utf8')
 
 test('identificadores pessoais enviados à CAPI são normalizados e hasheados',()=>{
   const data=marketingUserData({email:' Pessoa@Example.com ',phone:'(11) 99999-0000',fbp:'fb.1.1.abc'})
@@ -18,6 +20,12 @@ test('CAPI fica inerte sem flag e nunca exige token no modo desativado',async()=
   let called=false
   const result=await sendMetaConversion({event_name:'PageView'},{env:{META_CAPI_ENABLED:'false'},fetchImpl:async()=>{called=true}})
   assert.equal(result.status,'disabled');assert.equal(called,false)
+})
+
+test('coleta permanece inerte até habilitação explícita no cliente e servidor',()=>{
+  assert.match(browser,/VITE_META_TRACKING_ENABLED/)
+  assert.match(marketingApi,/META_MARKETING_COLLECTION_ENABLED/)
+  assert.match(vercelConfig,/marketing-event[^\n]+asaasMode=marketing-event/)
 })
 
 test('CAPI aceita exatamente um evento confirmado pela Meta',async()=>{
