@@ -140,8 +140,8 @@ export async function findDuplicateContacts(input:{cpf?:string;phone?:string;wha
 }
 
 export interface RealService {
-  id: string; name: string; description: string | null; duration_minutes: number
-  price_cents: number; attendance_modes: string[]; marketplace_visible: boolean; active: boolean
+  id: string; name: string|null; description: string | null; duration_minutes: number|null
+  price_cents: number|null; attendance_modes: string[]; marketplace_visible: boolean; active: boolean
   professional_name:string|null; specialty:string|null; professional_registration:string|null
   city:string|null; neighborhood:string|null; professional_id:string|null
 }
@@ -654,7 +654,7 @@ export interface RealProfessionalProfile {
   id:string;full_name:string;professional_registration:string|null;bio:string|null
   public_slug:string|null
   whatsapp:string|null;email:string|null;city:string;state_code:string;neighborhood:string|null
-  clinic_name:string|null;accepts_online:boolean;marketplace_visible:boolean;verified:boolean
+  clinic_name:string|null;accepts_in_person:boolean;accepts_home:boolean;accepts_online:boolean;marketplace_visible:boolean;verified:boolean
   website_url:string|null;instagram_handle:string|null;accepted_insurances:string[]
   facebook_url:string|null;tiktok_url:string|null
   payment_methods:string[];profile_completed:boolean
@@ -684,7 +684,7 @@ export async function updateMyProfessionalProfile(id:string,changes:Partial<Real
     full_name:changes.full_name,professional_registration:changes.professional_registration,
     bio:changes.bio,whatsapp:changes.whatsapp,email:changes.email,city:changes.city,
     state_code:changes.state_code,neighborhood:changes.neighborhood,clinic_name:changes.clinic_name,
-    accepts_online:changes.accepts_online,
+    accepts_in_person:changes.accepts_in_person,accepts_home:changes.accepts_home,accepts_online:changes.accepts_online,
     website_url:changes.website_url,instagram_handle:changes.instagram_handle,
     facebook_url:changes.facebook_url,tiktok_url:changes.tiktok_url,
     accepted_insurances:changes.accepted_insurances,payment_methods:changes.payment_methods,
@@ -719,6 +719,19 @@ export async function getProfessionalServiceCities(professionalId:string) {
   const {data,error}=await client().from('professional_service_cities').select('city,state_code').eq('professional_id',professionalId).eq('active',true).order('is_primary',{ascending:false}).order('city')
   if(error) throw new Error(error.message)
   return (data??[]).map(item=>`${item.city}, ${item.state_code}`)
+}
+
+export async function getProfessionalServiceArea(professionalId:string) {
+  const {data,error}=await client().from('professional_service_cities').select('city,state_code').eq('professional_id',professionalId).eq('active',true).eq('location_managed',false).order('is_primary',{ascending:false}).limit(1).maybeSingle()
+  if(error) throw new Error(error.message)
+  return data?{city:String(data.city||''),stateCode:String(data.state_code||'')}:{city:'',stateCode:''}
+}
+
+export async function saveProfessionalServiceArea(professionalId:string,city:string,stateCode:string) {
+  const normalizedCity=city.trim(),normalizedState=stateCode.trim().toUpperCase()
+  if((normalizedCity||normalizedState)&&(!normalizedCity||!/^[A-Z]{2}$/.test(normalizedState)))throw new Error('Informe cidade e UF para a área de atendimento.')
+  const {error}=await client().rpc('save_professional_service_area',{target_professional_id:professionalId,target_city:normalizedCity||null,target_state_code:normalizedState||null})
+  if(error)throw new Error(error.message)
 }
 
 export async function saveProfessionalServiceCities(professionalId:string,cities:string[]) {
@@ -829,6 +842,23 @@ export async function saveProfessionalSpecialties(professionalId:string,names:st
   if(error) throw new Error(error.message)
   const confirmed=await getProfessionalSpecialtyEditor(professionalId)
   if(confirmed.selected.length!==unique.length||unique.some(name=>!confirmed.selected.includes(name))) throw new Error('O banco não confirmou todas as especialidades selecionadas.')
+}
+
+export type ProfileServiceDraft={id?:string;name:string;description:string;duration:string;price:string}
+
+export async function listProfileServices(professionalId:string) {
+  const rows=await listServices()
+  return rows.filter(service=>!service.professional_id||service.professional_id===professionalId).map(service=>({
+    id:service.id,name:service.name||'',description:service.description||'',duration:service.duration_minutes?String(service.duration_minutes):'',price:service.price_cents==null?'':(service.price_cents/100).toFixed(2).replace('.',','),
+  })) as ProfileServiceDraft[]
+}
+
+export async function saveProfileServices(professionalId:string,services:ProfileServiceDraft[]) {
+  const rows=services.filter(service=>[service.name,service.description,service.duration,service.price].some(value=>String(value).trim())).map(service=>({id:service.id||null,name:service.name.trim()||null,description:service.description.trim()||null,duration_minutes:service.duration.trim()?Number(service.duration):null,price_cents:service.price.trim()?Math.round(Number(service.price.replace(',','.'))*100):null}))
+  if(rows.some(row=>(row.duration_minutes!=null&&(!Number.isInteger(row.duration_minutes)||row.duration_minutes<1))||(row.price_cents!=null&&(!Number.isFinite(row.price_cents)||row.price_cents<0))))throw new Error('Confira o tempo estimado e o valor dos serviços.')
+  const {data,error}=await client().rpc('save_professional_profile_services',{target_professional_id:professionalId,service_rows:rows})
+  if(error)throw new Error(error.message)
+  return (data??[]).map((service:any)=>({id:service.id,name:service.name||'',description:service.description||'',duration:service.duration_minutes?String(service.duration_minutes):'',price:service.price_cents==null?'':(service.price_cents/100).toFixed(2).replace('.',',')})) as ProfileServiceDraft[]
 }
 
 export async function getMarketplaceProfessional(identifier:string) {

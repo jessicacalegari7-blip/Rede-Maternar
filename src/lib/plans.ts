@@ -63,5 +63,5 @@ export function isClinicPlan(plan?: ProfessionalPlan) {
 
 export function specialtyLimitForPlan(plan?: ProfessionalPlan): number | null {
   if (isClinicPlan(plan)) return null
-  return plan === 'independent' ? 3 : 1
+  return plan === 'free' ? 1 : 3
 }

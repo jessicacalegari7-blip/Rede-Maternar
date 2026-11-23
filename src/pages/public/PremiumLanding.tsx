@@ -22,6 +22,7 @@ const featuredProfile={
   ],
 } as const
 const benefits=[
+  [Sparkles,'Até 3 especialidades','Escolha até três especialidades para destacar sua atuação e ampliar as oportunidades de ser encontrada por pacientes.'],
   [Link2,'Seu endereço profissional','Uma URL personalizada e estável dentro da MaterPlace para compartilhar em seus canais.'],
   [Image,'Galeria profissional','Fotos otimizadas da clínica, consultório, equipe e ambientes de atendimento.'],
   [CirclePlay,'Vídeos por link','Inclua até três vídeos do YouTube sem consumir o armazenamento do seu perfil.'],
@@ -29,7 +30,7 @@ const benefits=[
   [Instagram,'Instagram integrado','Leve visitantes diretamente ao seu perfil profissional oficial.'],
   [Tag,'Serviços e preços','Organize seus atendimentos, modalidades, duração e valores em cards claros.'],
   [MessageCircle,'WhatsApp direto','Facilite o primeiro contato com uma mensagem inicial pronta.'],
-  [Sparkles,'Diretório especializado','Apareça no ecossistema materno-infantil quando o perfil estiver completo e elegível.'],
+  [Sparkles,'Diretório especializado','Cada especialidade selecionada participa das buscas do diretório quando o perfil estiver completo e elegível.'],
 ] as const
 const faq=[
   ['O que é o MaterPlace Premium?','É uma página profissional completa dentro do ecossistema MaterPlace, com URL personalizada, mídia, serviços, contatos e presença no diretório.'],
@@ -39,6 +40,7 @@ const faq=[
   ['Como publico meu perfil?','Preencha nome, telefone, ao menos uma especialidade e um local de atendimento. Com contrato ativo e dados válidos, a publicação é automática.'],
   ['Preciso aguardar aprovação manual?','Não. A publicação ocorre automaticamente quando os requisitos obrigatórios são atendidos, sem eliminar os controles de segurança e moderação.'],
   ['Posso cadastrar várias clínicas?','Sim. Você pode incluir múltiplos locais de atendimento; controles técnicos protegem a plataforma contra abuso.'],
+  ['Preciso escolher três especialidades?','Não. Uma especialidade principal é obrigatória, e você pode adicionar até duas especialidades complementares.'],
   ['Posso incluir fotos e vídeos?','Sim. O perfil aceita galeria de fotos e até três vídeos por links do YouTube.'],
   ['Posso mostrar serviços e preços?','Sim. Serviços publicados podem apresentar descrição, duração, modalidade e preço.'],
   ['Posso colocar Instagram e WhatsApp?','Sim. Os links são exibidos como ações diretas no perfil público.'],
