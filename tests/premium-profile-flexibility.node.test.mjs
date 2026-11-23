@@ -8,6 +8,8 @@ const landing=fs.readFileSync(new URL('../src/pages/public/PremiumLanding.tsx',i
 const operations=fs.readFileSync(new URL('../src/lib/operations.ts',import.meta.url),'utf8')
 const plans=fs.readFileSync(new URL('../src/lib/plans.ts',import.meta.url),'utf8')
 const css=fs.readFileSync(new URL('../src/styles/global.css',import.meta.url),'utf8')
+const app=fs.readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8')
+const portalLayout=fs.readFileSync(new URL('../src/layouts/PortalLayout.tsx',import.meta.url),'utf8')
 const migration=fs.readFileSync(new URL('../supabase/migrations/20261118120000_premium_profile_flexibility.sql',import.meta.url),'utf8')
 
 test('modalidades usam cidade e UF sem criar endereço físico paralelo',()=>{
@@ -21,6 +23,9 @@ test('modalidades usam cidade e UF sem criar endereço físico paralelo',()=>{
 
 test('serviços opcionais reutilizam a tabela existente e ocultam seção vazia',()=>{
   assert.match(profile,/Serviços e procedimentos/);assert.match(profile,/Adicionar serviço/)
+  assert.match(profile,/id="servicos"/);assert.doesNotMatch(portalLayout,/Serviços do perfil/)
+  assert.match(app,/PlanGate requires="management"[^]*Route path="servicos"/)
+  assert.doesNotMatch(profile,/Valor do atendimento \(R\$\)[^<]*<\/span><input[^>]*required/)
   assert.match(migration,/insert into public\.services/);assert.doesNotMatch(migration,/create table[^;]+services/i)
   assert.match(publicProfile,/services\.length>0&&/)
   assert.match(migration,/professional_id is null or s\.professional_id=pp\.id/)

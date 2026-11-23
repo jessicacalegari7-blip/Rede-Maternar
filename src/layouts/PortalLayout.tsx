@@ -54,7 +54,6 @@ const marketplace: Item[] = [
   ['Meus produtos', '/profissional/produtos', BriefcaseBusiness],
   ['Meus cursos', '/profissional/cursos', Newspaper],
   ['Minhas vagas', '/profissional/vagas', Users],
-  ['Serviços do perfil', '/profissional/servicos', BriefcaseBusiness],
   ['Meu plano', '/profissional/plano', Sparkles],
 ]
 

@@ -111,12 +111,12 @@ export default function App() {
       <Route path="/profissional" element={<PortalLayout role="professional" />}>
         <Route index element={<ProfessionalEntry />} />
         <Route path="perfil" element={<ProfessionalProfilePage />} />
-        <Route path="servicos" element={<ErpServices />} />
         <Route path="plano" element={<ProfessionalPlanPage />} />
         <Route path="produtos" element={<EcosystemManager kind="marketplace" />} />
         <Route path="cursos" element={<EcosystemManager kind="courses" />} />
         <Route path="vagas" element={<EcosystemManager kind="jobs" />} />
         <Route element={<PlanGate requires="management" />}>
+          <Route path="servicos" element={<ErpServices />} />
           <Route path="funil" element={<CrmPipeline />} />
           <Route path="clientes" element={<CrmCustomers />} />
           <Route path="pacientes" element={<ProfessionalPatients />} />
