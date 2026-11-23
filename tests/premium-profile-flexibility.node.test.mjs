@@ -11,6 +11,7 @@ const css=fs.readFileSync(new URL('../src/styles/global.css',import.meta.url),'u
 const app=fs.readFileSync(new URL('../src/App.tsx',import.meta.url),'utf8')
 const portalLayout=fs.readFileSync(new URL('../src/layouts/PortalLayout.tsx',import.meta.url),'utf8')
 const migration=fs.readFileSync(new URL('../supabase/migrations/20261118120000_premium_profile_flexibility.sql',import.meta.url),'utf8')
+const serviceModesMigration=fs.readFileSync(new URL('../supabase/migrations/20261123193000_profile_service_attendance_modes.sql',import.meta.url),'utf8')
 
 test('modalidades usam cidade e UF sem criar endereço físico paralelo',()=>{
   assert.match(profile,/Atendimento presencial em clínica ou consultório/)
@@ -29,6 +30,15 @@ test('serviços opcionais reutilizam a tabela existente e ocultam seção vazia'
   assert.match(migration,/insert into public\.services/);assert.doesNotMatch(migration,/create table[^;]+services/i)
   assert.match(publicProfile,/services\.length>0&&/)
   assert.match(migration,/professional_id is null or s\.professional_id=pp\.id/)
+})
+
+test('cada serviço aceita múltiplas modalidades independentes',()=>{
+  assert.match(profile,/Modalidades deste serviço/)
+  assert.match(profile,/\['presencial','Consultório'\],\['online','Online'\],\['domiciliar','À domicílio'\]/)
+  assert.match(operations,/attendance_modes:service\.attendanceModes/)
+  assert.match(serviceModesMigration,/attendance_modes=modes/)
+  assert.match(serviceModesMigration,/not in \('presencial','online','domiciliar'\)/)
+  assert.match(publicProfile,/serviceModeLabel/)
 })
 
 test('Premium aceita três especialidades e o diretório preserva todas',()=>{
